@@ -25,7 +25,8 @@
 11. `TESTING.md`
 12. `LOCAL_ENVIRONMENT.md`
 13. `DECISIONS.md`
-14. `exec-plans/README.md`
+14. `GIT_WORKFLOW.md`
+15. `exec-plans/README.md`
 
 ## 문서 역할
 
@@ -36,6 +37,7 @@
 | `USER_ROLES.md` | 학생/선생님/내부 사용자/외부 사용자 역할 |
 | `USER_FLOWS.md` | 실제 사용 흐름 |
 | `DECISIONS.md` | 결정 로그와 미결정 사항 |
+| `GIT_WORKFLOW.md` | 커밋, 이슈, PR 운영 기준 |
 | `TECH_STACK.md` | 기술 스택 후보 비교 기준 |
 | `FRONTEND_ARCHITECTURE.md` | 프론트엔드 구조 방향 |
 | `UI_UX_DIRECTION.md` | 제품 UI/UX 방향 |

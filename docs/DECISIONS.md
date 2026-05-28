@@ -44,6 +44,17 @@
 - Reason: 초기 문서 중복을 줄이기 위해 MVP는 `REQUIREMENTS.md`, API 전제는 `REQUIREMENTS.md`와 `FRONTEND_ARCHITECTURE.md`에 흡수한다.
 - Follow-up: 백엔드 상세 설계가 시작되면 `API_CONTRACTS.md`를 분리할 수 있다.
 
+## 2026-05-28 — 커밋 메시지는 Udacity 기반 Repo-V2 형식을 사용한다
+
+- Decision: 커밋 제목은 `type(#이슈번호) :: 커밋 내용` 형식을 사용한다.
+- Context: Udacity Git Commit Message Style Guide를 참고하되, GitHub 이슈 번호를 제목에서 바로 확인하고 싶다.
+- Alternatives:
+  - Udacity 원문처럼 `type: Subject`만 사용한다.
+  - Conventional Commits 형식만 사용한다.
+- Reason: 이슈 기반 작업 흐름과 커밋 히스토리 가독성을 함께 유지하기 좋다.
+- Risk: 이슈가 없는 초기 작업은 형식이 어색할 수 있다.
+- Follow-up: Issue/PR 템플릿이 준비되면 `GIT_WORKFLOW.md`에 반영한다.
+
 ## Open Questions
 
 - 관리자 역할 분리가 필요한가?
