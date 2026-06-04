@@ -8,7 +8,7 @@
 
 - Node.js: `v20.20.2`
 
-Vite 기반 개발을 위해 Node.js 20.19+ 또는 22.12+ 계열을 기준으로 둡니다. 팀 표준 Node.js 버전은 추후 `.nvmrc`, `.node-version`, Volta, mise 등 중 하나로 고정할 수 있습니다.
+현재 Vite scaffold와 향후 Next.js 전환 모두를 고려해 Node.js 20.19+ 또는 22.12+ 계열 이상을 기준으로 둡니다. 팀 표준 Node.js 버전은 추후 `.nvmrc`, `.node-version`, Volta, mise 등 중 하나로 고정할 수 있습니다.
 
 ## Package Manager
 
@@ -21,15 +21,16 @@ Repo-V2는 패키지 매니저로 `pnpm`을 사용합니다.
 
 ## Frontend Base Stack
 
-Repo-V2는 현재 다음 프론트엔드 기본 스택으로 시작합니다.
+Repo-V2는 다음 프론트엔드 기본 스택으로 전환합니다.
 
+- Next.js App Router
 - React
 - React DOM
 - TypeScript
-- Vite
 - ESLint
+- Playwright
 
-Next.js는 아직 확정하지 않았으며, 추후 별도 검토합니다.
+현재 repository는 Vite scaffold 상태입니다. Next.js와 Playwright 설정은 별도 마이그레이션 작업 단위에서 반영합니다.
 
 ## Environment Variables
 

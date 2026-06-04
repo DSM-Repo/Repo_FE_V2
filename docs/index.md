@@ -7,7 +7,14 @@
 - 서비스 방향 정리 완료
 - 초기 문서 하네스 작성 단계
 - 제품 기능 구현 전
-- 기술 스택 최종 확정 전
+- 기본 프론트 스택 확정 완료
+  - `pnpm`
+  - Next.js App Router 전환 방향
+  - React
+  - TypeScript
+  - ESLint
+  - Playwright
+- 문서형 에디터, PDF 변환, 상태 관리, form/validation은 추가 결정 필요
 - Figma 디자인은 존재하지만, 이 문서 세트에서는 세부 퍼블리싱 계획을 아직 확정하지 않음
 
 ## 추천 읽기 순서

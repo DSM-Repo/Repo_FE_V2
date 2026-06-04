@@ -1,13 +1,13 @@
 # Testing Strategy
 
-이 문서는 Repo-V2의 테스트 전략 초안입니다. 테스트 도구는 아직 확정하지 않습니다.
+이 문서는 Repo-V2의 테스트 전략 초안입니다. 핵심 테스트 도구는 `Playwright`로 시작합니다.
 
 ## 테스트 레벨
 
 - Unit Test
 - Integration Test
-- E2E Test
-- Visual/Manual QA
+- E2E Test: Playwright
+- Visual/Manual QA: Playwright screenshot 또는 수동 QA로 시작
 
 ## 중요 테스트 대상
 
@@ -62,7 +62,17 @@
 
 ## TODO
 
-- 테스트 프레임워크 결정
-- E2E 도구 결정
+- Playwright 설정 추가
+- `pnpm test:e2e` 스크립트 추가
 - 시각적 회귀 테스트 필요 여부 결정
 - CI에서 실행할 최소 검증 명령 결정
+
+## 최소 검증 명령 초안
+
+Next.js 전환 후 CI는 최소한 아래 명령을 실행합니다.
+
+```bash
+pnpm lint
+pnpm build
+pnpm test:e2e
+```

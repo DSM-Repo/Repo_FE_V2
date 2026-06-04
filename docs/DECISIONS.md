@@ -26,7 +26,7 @@
 - Risk: 선생님 전용 기능이 커질 경우 route guard와 feature 경계를 엄격히 관리해야 한다.
 - Follow-up: 백엔드 authorization과 프론트 route guard 기준을 함께 설계한다.
 
-## 2026-05-27 — 기술 스택 최종 확정은 보류한다
+## 2026-05-27 — 초기 기술 스택 결정은 후보 비교로 시작한다
 
 - Decision: 초기 하네스에서는 기술 스택을 확정하지 않고 후보 비교 기준만 정리한다.
 - Context: 핵심 기능이 문서형 에디터, PDF 변환, Figma 구현, API 연동과 밀접하다.
@@ -35,7 +35,8 @@
   - 후보 비교 기준을 먼저 정리한다.
 - Reason: 문서형 에디터와 PDF 변환 안정성이 제품 핵심에 직접 영향을 주므로 충분한 비교가 필요하다.
 - Risk: 결정이 늦어지면 구현 착수가 지연될 수 있다.
-- Follow-up: `TECH_STACK.md` 기준으로 후보를 비교한다.
+- Status: Narrowed by 2026-06-04 decisions. 기본 프론트 스택은 확정했고, editor/PDF/state/form 계열은 추가 결정이 필요하다.
+- Follow-up: `TECH_STACK.md` 기준으로 남은 후보를 비교한다.
 
 ## 2026-05-27 — MVP와 API 계약 문서는 초기에는 분리하지 않는다
 
@@ -66,20 +67,43 @@
 - Risk: 팀원이 `pnpm` 또는 Corepack 사용에 익숙하지 않으면 초기 온보딩 비용이 생길 수 있다.
 - Follow-up: `package.json`의 `packageManager` 필드와 `pnpm-lock.yaml`을 기준으로 로컬/CI 명령을 통일한다.
 
-## 2026-06-04 — 초기 프론트엔드 기본 스택은 React + TypeScript + Vite로 시작한다
+## 2026-06-04 — 초기 프론트엔드 scaffold는 React + TypeScript + Vite였다
 
-- Decision: Repo-V2의 퍼블리싱과 초기 프론트엔드 구현은 React + TypeScript + Vite 기반으로 시작한다.
+- Decision: Repo-V2의 초기 scaffold는 React + TypeScript + Vite 기반이었다.
 - Context: 현재 프로젝트가 이미 Vite, React, TypeScript, ESLint 기반으로 구성되어 있고, 퍼블리싱을 시작할 수 있는 상태다.
 - Alternatives:
   - Next.js로 전환한 뒤 퍼블리싱을 시작한다.
   - 프레임워크 후보 비교를 끝낼 때까지 퍼블리싱을 보류한다.
 - Reason: 현재 핵심 과제는 학생/선생님/도서관 화면을 빠르게 퍼블리싱하며 제품 흐름을 검증하는 것이고, Vite 기반 React 앱은 초기 구현 속도와 단순성이 좋다.
 - Risk: 이후 SSR/SSG, 서버 컴포넌트, 파일/이미지 처리, 라우팅 정책에서 Next.js가 더 적합하다고 판단되면 전환 비용이 생길 수 있다.
-- Follow-up: Next.js 도입 여부는 별도 검토한다. 문서형 에디터, PDF 변환, 상태 관리, form/validation, 테스트 도구는 순차적으로 결정한다.
+- Status: Narrowed by `2026-06-04 — Next.js App Router로 전환한다`.
+- Follow-up: 문서형 에디터, PDF 변환, 상태 관리, form/validation은 순차적으로 결정한다.
+
+## 2026-06-04 — Next.js App Router로 전환한다
+
+- Decision: Repo-V2는 Vite scaffold에서 Next.js App Router 기반으로 전환한다.
+- Context: Repo-V2는 장기적으로 학생 포트폴리오와 레주메북을 외부에 보여주는 제품을 지향하며, SEO뿐 아니라 GEO/AEO 대응도 중요하다.
+- Alternatives:
+  - Vite SPA를 유지한다.
+  - React Router 또는 TanStack Router를 도입한다.
+- Reason: Next.js는 라우팅뿐 아니라 metadata, sitemap, robots, server/static rendering, structured data 전략을 함께 가져갈 수 있어 공개 포트폴리오/레주메북 제품 방향에 더 적합하다.
+- Risk: 기존 Vite scaffold에서 전환 비용이 생기고, 내부 인증/에디터 화면에서 Client Component 경계 관리가 필요하다.
+- Follow-up: Next.js 마이그레이션 작업에서 App Router route group, public/internal layout, metadata, sitemap, robots, JSON-LD 기준을 반영한다.
+
+## 2026-06-04 — 테스트 도구는 Playwright로 시작한다
+
+- Decision: Repo-V2의 핵심 테스트 도구는 `Playwright`로 시작한다.
+- Context: 사용자는 Playwright 경험이 있고, test는 항상 포함하기를 원한다.
+- Alternatives:
+  - Vitest + Testing Library를 먼저 도입한다.
+  - 테스트 도구 결정을 미룬다.
+- Reason: Repo-V2는 사용자 흐름, 권한별 라우팅, 공개 페이지, PDF/도서관 흐름 검증이 중요하므로 제품 관점 E2E/acceptance test를 우선하는 것이 적합하다.
+- Risk: 세밀한 unit test가 필요한 영역에서는 Playwright만으로 테스트 비용이 커질 수 있다.
+- Follow-up: unit/component test가 필요한 시점에 Vitest 또는 Testing Library 추가 도입을 검토한다.
 
 ## Open Questions
 
 - 관리자 역할 분리가 필요한가?
 - PDF 변환 책임을 어느 계층에 둘 것인가?
 - 문서형 에디터 저장 포맷은 무엇으로 할 것인가?
-- Next.js 도입이 Repo-V2의 인증/권한 라우팅, PDF 변환, 파일 처리, 배포 구조에 실질적 이득을 주는가?
+- Next.js API route/server action을 사용할 것인가, 별도 백엔드 API만 사용할 것인가?
