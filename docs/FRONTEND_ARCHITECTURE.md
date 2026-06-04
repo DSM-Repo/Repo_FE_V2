@@ -5,9 +5,11 @@
 Repo-V2는 단일 프론트엔드 앱으로 시작합니다.
 
 - 단일 앱
+- React + TypeScript + Vite 기반
 - 권한별 라우팅
 - feature 단위 분리
 - shared layer로 공통 UI/API/types/utils 관리
+- Next.js는 아직 도입하지 않으며, 필요성은 별도 검토합니다.
 
 ## 권장 구조 초안
 

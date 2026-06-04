@@ -55,8 +55,31 @@
 - Risk: 이슈가 없는 초기 작업은 형식이 어색할 수 있다.
 - Follow-up: Issue/PR 템플릿이 준비되면 `GIT_WORKFLOW.md`에 반영한다.
 
+## 2026-06-04 — 패키지 매니저는 pnpm을 사용한다
+
+- Decision: Repo-V2는 패키지 매니저로 `pnpm`을 사용한다.
+- Context: 현재 프로젝트는 Vite + React + TypeScript 단일 앱이며, 기술 스택을 확정하고 퍼블리싱을 시작할 준비를 하고 있다.
+- Alternatives:
+  - 기존 `npm`과 `package-lock.json`을 유지한다.
+  - `yarn` 또는 `bun`을 사용한다.
+- Reason: 초기 전환 비용이 작고, 설치 속도, 디스크 효율, 의존성 엄격성, 향후 workspace/monorepo 확장성 측면에서 `pnpm`이 적합하다.
+- Risk: 팀원이 `pnpm` 또는 Corepack 사용에 익숙하지 않으면 초기 온보딩 비용이 생길 수 있다.
+- Follow-up: `package.json`의 `packageManager` 필드와 `pnpm-lock.yaml`을 기준으로 로컬/CI 명령을 통일한다.
+
+## 2026-06-04 — 초기 프론트엔드 기본 스택은 React + TypeScript + Vite로 시작한다
+
+- Decision: Repo-V2의 퍼블리싱과 초기 프론트엔드 구현은 React + TypeScript + Vite 기반으로 시작한다.
+- Context: 현재 프로젝트가 이미 Vite, React, TypeScript, ESLint 기반으로 구성되어 있고, 퍼블리싱을 시작할 수 있는 상태다.
+- Alternatives:
+  - Next.js로 전환한 뒤 퍼블리싱을 시작한다.
+  - 프레임워크 후보 비교를 끝낼 때까지 퍼블리싱을 보류한다.
+- Reason: 현재 핵심 과제는 학생/선생님/도서관 화면을 빠르게 퍼블리싱하며 제품 흐름을 검증하는 것이고, Vite 기반 React 앱은 초기 구현 속도와 단순성이 좋다.
+- Risk: 이후 SSR/SSG, 서버 컴포넌트, 파일/이미지 처리, 라우팅 정책에서 Next.js가 더 적합하다고 판단되면 전환 비용이 생길 수 있다.
+- Follow-up: Next.js 도입 여부는 별도 검토한다. 문서형 에디터, PDF 변환, 상태 관리, form/validation, 테스트 도구는 순차적으로 결정한다.
+
 ## Open Questions
 
 - 관리자 역할 분리가 필요한가?
 - PDF 변환 책임을 어느 계층에 둘 것인가?
 - 문서형 에디터 저장 포맷은 무엇으로 할 것인가?
+- Next.js 도입이 Repo-V2의 인증/권한 라우팅, PDF 변환, 파일 처리, 배포 구조에 실질적 이득을 주는가?

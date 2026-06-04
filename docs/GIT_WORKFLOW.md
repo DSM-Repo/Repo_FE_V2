@@ -74,7 +74,7 @@ Closes: #12
 
 ```txt
 Constraint: PDF 변환 방식은 아직 확정하지 않음
-Tested: npm run lint; npm run build
+Tested: pnpm lint; pnpm build
 ```
 
 ## Issue / PR 운영
