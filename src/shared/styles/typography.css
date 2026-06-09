@@ -1,0 +1,141 @@
+:root {
+  --repo-font-label-medium-weight: 400;
+  --repo-font-label-medium-size: 16px;
+  --repo-font-label-medium-line-height: 120%;
+
+  --repo-font-body-very-tiny-weight: 400;
+  --repo-font-body-very-tiny-size: 12px;
+  --repo-font-body-very-tiny-line-height: 120%;
+
+  --repo-font-body-tiny-weight: 400;
+  --repo-font-body-tiny-size: 14px;
+  --repo-font-body-tiny-line-height: 120%;
+
+  --repo-font-body-small-weight: 400;
+  --repo-font-body-small-size: 16px;
+  --repo-font-body-small-line-height: 120%;
+
+  --repo-font-body-medium-weight: 400;
+  --repo-font-body-medium-size: 18px;
+  --repo-font-body-medium-line-height: 120%;
+
+  --repo-font-body-medium-2-weight: 600;
+  --repo-font-body-medium-2-size: 18px;
+  --repo-font-body-medium-2-line-height: 120%;
+
+  --repo-font-body-large-weight: 400;
+  --repo-font-body-large-size: 20px;
+  --repo-font-body-large-line-height: 120%;
+
+  --repo-font-title-tiny-weight: 600;
+  --repo-font-title-tiny-size: 16px;
+  --repo-font-title-tiny-line-height: 120%;
+
+  --repo-font-title-small-weight: 600;
+  --repo-font-title-small-size: 24px;
+  --repo-font-title-small-line-height: 120%;
+
+  --repo-font-title-s-medium-weight: 600;
+  --repo-font-title-s-medium-size: 32px;
+  --repo-font-title-s-medium-line-height: 120%;
+
+  --repo-font-title-medium-weight: 600;
+  --repo-font-title-medium-size: 36px;
+  --repo-font-title-medium-line-height: 120%;
+
+  --repo-font-title-large-weight: 600;
+  --repo-font-title-large-size: 48px;
+  --repo-font-title-large-line-height: 120%;
+
+  --repo-font-resume-small-weight: 600;
+  --repo-font-resume-small-size: 10px;
+  --repo-font-resume-small-line-height: 120%;
+
+  --repo-font-resume-major-weight: 200;
+  --repo-font-resume-major-size: 16px;
+  --repo-font-resume-major-line-height: 120%;
+}
+
+.text-label-medium {
+  font-size: var(--repo-font-label-medium-size);
+  font-weight: var(--repo-font-label-medium-weight);
+  line-height: var(--repo-font-label-medium-line-height);
+}
+
+.text-body-very-tiny {
+  font-size: var(--repo-font-body-very-tiny-size);
+  font-weight: var(--repo-font-body-very-tiny-weight);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+}
+
+.text-body-tiny {
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.text-body-small {
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+}
+
+.text-body-medium {
+  font-size: var(--repo-font-body-medium-size);
+  font-weight: var(--repo-font-body-medium-weight);
+  line-height: var(--repo-font-body-medium-line-height);
+}
+
+.text-body-medium-2 {
+  font-size: var(--repo-font-body-medium-2-size);
+  font-weight: var(--repo-font-body-medium-2-weight);
+  line-height: var(--repo-font-body-medium-2-line-height);
+}
+
+.text-body-large {
+  font-size: var(--repo-font-body-large-size);
+  font-weight: var(--repo-font-body-large-weight);
+  line-height: var(--repo-font-body-large-line-height);
+}
+
+.text-title-tiny {
+  font-size: var(--repo-font-title-tiny-size);
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: var(--repo-font-title-tiny-line-height);
+}
+
+.text-title-small {
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: var(--repo-font-title-small-line-height);
+}
+
+.text-title-s-medium {
+  font-size: var(--repo-font-title-s-medium-size);
+  font-weight: var(--repo-font-title-s-medium-weight);
+  line-height: var(--repo-font-title-s-medium-line-height);
+}
+
+.text-title-medium {
+  font-size: var(--repo-font-title-medium-size);
+  font-weight: var(--repo-font-title-medium-weight);
+  line-height: var(--repo-font-title-medium-line-height);
+}
+
+.text-title-large {
+  font-size: var(--repo-font-title-large-size);
+  font-weight: var(--repo-font-title-large-weight);
+  line-height: var(--repo-font-title-large-line-height);
+}
+
+.text-resume-small {
+  font-size: var(--repo-font-resume-small-size);
+  font-weight: var(--repo-font-resume-small-weight);
+  line-height: var(--repo-font-resume-small-line-height);
+}
+
+.text-resume-major {
+  font-size: var(--repo-font-resume-major-size);
+  font-weight: var(--repo-font-resume-major-weight);
+  line-height: var(--repo-font-resume-major-line-height);
+}
