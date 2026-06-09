@@ -58,8 +58,15 @@ pnpm dev
 TODO:
 
 - 로컬 백엔드 사용 여부
-- mock API 사용 여부
 - PDF 변환 서버 로컬 실행 여부
+
+## Mock Data
+
+퍼블리싱 단계에서는 단순 object 기반 mock data로 시작합니다.
+
+- MSW는 바로 도입하지 않습니다.
+- API 에러/지연/네트워크 시나리오 검증이 필요해지는 시점에 MSW를 재검토합니다.
+- mock data는 화면 퍼블리싱과 상태 표현 확인을 위한 최소 데이터로 유지합니다.
 
 ## Verification Commands
 

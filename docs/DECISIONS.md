@@ -123,9 +123,32 @@
 - Risk: primitive 기반 구현은 초기 조립 비용이 생길 수 있다.
 - Follow-up: Radix UI 도입 여부와 shared UI wrapper 기준을 확정한다.
 
+## 2026-06-09 — 공개 포트폴리오 URL은 slug 기반으로 설계한다
+
+- Decision: 공개 포트폴리오 URL은 `studentId` 노출 대신 사용자 친화적인 slug 기반으로 설계한다.
+- Context: Repo-V2는 장기적으로 학생 포트폴리오를 외부에 보여주는 제품이며, 사용자가 읽고 공유하기 쉬운 URL이 중요하다.
+- Alternatives:
+  - `/portfolios/[studentId]`처럼 내부 식별자 기반 URL을 사용한다.
+  - UUID 또는 숫자 ID 기반 URL을 사용한다.
+- Reason: slug 기반 URL은 학생 이름/브랜드를 드러내기 쉽고, 외부 공유 및 SEO/GEO/AEO 맥락에서 더 사용자 친화적이다.
+- Risk: 한글 slug는 내부적으로 percent-encoding될 수 있고, 중복/예약어/변경/redirect 정책이 필요하다.
+- Follow-up: slug unique 정책, 예약어, 변경 이력, redirect 정책을 백엔드/API 설계 때 결정한다.
+
+## 2026-06-09 — 퍼블리싱 mock data는 단순 object로 시작한다
+
+- Decision: 백엔드/API 설계 전 퍼블리싱 단계의 mock data는 단순 object로 시작하고, MSW는 바로 도입하지 않는다.
+- Context: 현재 목적은 화면 구조와 상태 표현을 빠르게 확인하는 것이다.
+- Alternatives:
+  - MSW를 즉시 도입한다.
+  - mock API 서버를 별도로 만든다.
+- Reason: 초기 퍼블리싱에는 네트워크 계층 시뮬레이션보다 단순하고 빠른 mock object가 더 적합하다.
+- Risk: API 에러/지연/실패 시나리오 검증은 부족할 수 있다.
+- Follow-up: API 연동 또는 E2E 시나리오가 구체화되면 MSW 도입을 재검토한다.
+
 ## Open Questions
 
 - 관리자 역할 분리가 필요한가?
 - PDF 변환 책임을 어느 계층에 둘 것인가?
 - 문서형 에디터 저장 포맷은 무엇으로 할 것인가?
 - Next.js API route/server action을 사용할 것인가, 별도 백엔드 API만 사용할 것인가?
+- 공개 URL slug 중복/예약어/변경/redirect 정책은 어떻게 관리할 것인가?
