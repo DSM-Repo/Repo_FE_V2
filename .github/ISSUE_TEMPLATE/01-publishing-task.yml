@@ -1,0 +1,84 @@
+name: Publishing / Design System Task
+description: 퍼블리싱, 디자인 시스템, UI 컴포넌트 작업을 구조화합니다.
+title: "[Publishing]: "
+labels: ["enhancement", "client"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Repo-V2 퍼블리싱 작업은 Figma 기준, 문서화된 디자인 시스템, 검증 명령을 함께 고정합니다.
+  - type: dropdown
+    id: work-type
+    attributes:
+      label: 작업 유형
+      description: 이번 이슈의 주된 성격을 선택합니다.
+      options:
+        - Design System
+        - Publishing Page
+        - UI Component
+        - Documentation
+        - Refactor
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경 / 목적
+      description: 이 작업이 필요한 이유와 제품 맥락을 적습니다.
+      placeholder: 예) 퍼블리싱 시작 전 typography token을 코드 기준으로 고정한다.
+    validations:
+      required: true
+  - type: textarea
+    id: design-spec
+    attributes:
+      label: 디자인 / 구현 기준
+      description: Figma 값, token, 화면 기준, reference URL을 적습니다.
+      placeholder: 예) Title Large / 600 / 48px / 120%
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 작업 범위
+      description: 이번 이슈에서 수정할 파일/영역과 제외할 영역을 구분합니다.
+      value: |
+        ## 포함
+        - 
+
+        ## 제외
+        - 
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: 완료 기준
+      description: 완료 여부를 판단할 수 있는 체크리스트를 작성합니다.
+      value: |
+        - [ ] 문서와 코드 기준이 일치한다.
+        - [ ] `pnpm lint`가 통과한다.
+        - [ ] `pnpm build`가 통과한다.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 검증 방법
+      description: 실행할 명령, 화면 확인 기준, 리뷰 기준을 작성합니다.
+      value: |
+        - `pnpm lint`
+        - `pnpm exec tsc --noEmit`
+        - `pnpm build`
+    validations:
+      required: true
+  - type: checkboxes
+    id: agreements
+    attributes:
+      label: 작업 전 확인
+      options:
+        - label: 관련 docs를 확인하고 필요한 결정은 `docs/DECISIONS.md`에 기록합니다.
+          required: true
+        - label: 디자인 token과 컴포넌트 내부에 비즈니스 로직을 섞지 않습니다.
+          required: true
+        - label: 작업 단위 커밋과 검증 결과를 남깁니다.
+          required: true

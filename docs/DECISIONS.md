@@ -157,6 +157,29 @@
 - Risk: API 에러/지연/실패 시나리오 검증은 부족할 수 있다.
 - Follow-up: API 연동 또는 E2E 시나리오가 구체화되면 MSW 도입을 재검토한다.
 
+## 2026-06-09 — 퍼블리싱 작업은 GitHub Issue Form으로 관리한다
+
+- Decision: 퍼블리싱/디자인 시스템/UI 컴포넌트 작업은 `.github/ISSUE_TEMPLATE/01-publishing-task.yml` Issue Form을 기본 템플릿으로 사용한다.
+- Context: 퍼블리싱 작업은 디자인 기준, 구현 범위, 완료 기준, 검증 명령이 매번 함께 고정되어야 한다.
+- Alternatives:
+  - Markdown issue template만 사용한다.
+  - blank issue를 허용한다.
+- Reason: GitHub Issue Form은 필수 입력과 체크박스를 통해 작업 기준 누락을 줄일 수 있어 Repo-V2의 AI native 작업 흐름에 더 적합하다.
+- Risk: template chooser 반영은 해당 파일이 GitHub 기본 브랜치에 push된 뒤 웹 UI에서 확인할 수 있다.
+- Follow-up: 실제 작업 흐름을 보며 field와 label을 조정한다.
+
+## 2026-06-09 — typography token을 CSS variable과 utility class로 시작한다
+
+- Decision: 1차 퍼블리싱 typography token은 `src/shared/styles/typography.css`의 CSS variable과 utility class로 관리한다.
+- Context: 퍼블리싱 첫 작업은 Figma typography 표를 코드 기준으로 고정하는 디자인 시스템 작업이다.
+- Alternatives:
+  - 문서에만 typography 표를 둔다.
+  - TypeScript token object만 둔다.
+  - CSS-in-JS 또는 styling library 도입 후 token을 정의한다.
+- Reason: 현재 styling library가 확정되지 않았으므로 CSS variable은 Next.js 전역 style과 잘 맞고, utility class는 퍼블리싱 중 빠르게 적용하기 쉽다.
+- Risk: 색상/spacing/radius token과 component variant 체계는 아직 별도 확정이 필요하다.
+- Follow-up: Figma 전체 token이 확정되면 typography 외 token도 같은 방식으로 확장한다.
+
 ## Open Questions
 
 - 관리자 역할 분리가 필요한가?

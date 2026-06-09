@@ -102,3 +102,11 @@ Issue와 PR은 가능하면 GitHub CLI 또는 GitHub UI로 생성합니다.
 - 제목은 명사형 또는 작업 결과 중심의 짧은 구문으로 작성한다.
 - 본문은 선택이며, 필요할 때만 짧게 작성한다.
 - Issue 템플릿은 추후 작성 후 이 문서에 반영한다.
+
+## GitHub Issue Template
+
+퍼블리싱, 디자인 시스템, UI 컴포넌트 작업은 `.github/ISSUE_TEMPLATE/01-publishing-task.yml` Issue Form을 사용합니다.
+
+- 작업 유형, 배경/목적, 디자인 기준, 범위, 완료 기준, 검증 방법을 필수로 남깁니다.
+- blank issue는 기본적으로 비활성화합니다.
+- template chooser 반영은 해당 파일이 GitHub 기본 브랜치에 push된 뒤 확인합니다.
