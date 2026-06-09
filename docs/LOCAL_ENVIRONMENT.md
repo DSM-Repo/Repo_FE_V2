@@ -8,7 +8,7 @@
 
 - Node.js: `v20.20.2`
 
-현재 Vite scaffold와 향후 Next.js 전환 모두를 고려해 Node.js 20.19+ 또는 22.12+ 계열 이상을 기준으로 둡니다. 팀 표준 Node.js 버전은 추후 `.nvmrc`, `.node-version`, Volta, mise 등 중 하나로 고정할 수 있습니다.
+Next.js 공식 요구사항과 현재 로컬 확인 결과를 고려해 Node.js 20.9+ 이상을 기준으로 둡니다. 팀 표준 Node.js 버전은 추후 `.nvmrc`, `.node-version`, Volta, mise 등 중 하나로 고정할 수 있습니다.
 
 ## Package Manager
 
@@ -21,7 +21,7 @@ Repo-V2는 패키지 매니저로 `pnpm`을 사용합니다.
 
 ## Frontend Base Stack
 
-Repo-V2는 다음 프론트엔드 기본 스택으로 전환합니다.
+Repo-V2는 다음 프론트엔드 기본 스택으로 실행합니다.
 
 - Next.js App Router
 - React
@@ -30,7 +30,7 @@ Repo-V2는 다음 프론트엔드 기본 스택으로 전환합니다.
 - ESLint
 - Playwright
 
-현재 repository는 Vite scaffold 상태입니다. Next.js와 Playwright 설정은 별도 마이그레이션 작업 단위에서 반영합니다.
+Next.js 전환은 완료되었습니다. Playwright 설정은 별도 작업 단위에서 반영합니다.
 
 ## Environment Variables
 
@@ -50,6 +50,8 @@ TODO: 실제 변수명은 백엔드/배포 설계 후 확정한다.
 pnpm install
 pnpm dev
 ```
+
+`pnpm dev`는 Next.js dev server를 실행합니다.
 
 ## Backend 연결
 

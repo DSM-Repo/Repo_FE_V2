@@ -59,7 +59,7 @@
 ## 2026-06-04 — 패키지 매니저는 pnpm을 사용한다
 
 - Decision: Repo-V2는 패키지 매니저로 `pnpm`을 사용한다.
-- Context: 현재 프로젝트는 Vite + React + TypeScript 단일 앱이며, 기술 스택을 확정하고 퍼블리싱을 시작할 준비를 하고 있다.
+- Context: 초기에는 Vite + React + TypeScript 단일 앱이었고, 이후 Next.js App Router로 전환했다.
 - Alternatives:
   - 기존 `npm`과 `package-lock.json`을 유지한다.
   - `yarn` 또는 `bun`을 사용한다.
@@ -70,13 +70,13 @@
 ## 2026-06-04 — 초기 프론트엔드 scaffold는 React + TypeScript + Vite였다
 
 - Decision: Repo-V2의 초기 scaffold는 React + TypeScript + Vite 기반이었다.
-- Context: 현재 프로젝트가 이미 Vite, React, TypeScript, ESLint 기반으로 구성되어 있고, 퍼블리싱을 시작할 수 있는 상태다.
+- Context: 당시 프로젝트가 Vite, React, TypeScript, ESLint 기반으로 구성되어 있었다.
 - Alternatives:
   - Next.js로 전환한 뒤 퍼블리싱을 시작한다.
   - 프레임워크 후보 비교를 끝낼 때까지 퍼블리싱을 보류한다.
-- Reason: 현재 핵심 과제는 학생/선생님/도서관 화면을 빠르게 퍼블리싱하며 제품 흐름을 검증하는 것이고, Vite 기반 React 앱은 초기 구현 속도와 단순성이 좋다.
+- Reason: 초기 scaffold로는 빠른 시작과 단순성이 좋았다.
 - Risk: 이후 SSR/SSG, 서버 컴포넌트, 파일/이미지 처리, 라우팅 정책에서 Next.js가 더 적합하다고 판단되면 전환 비용이 생길 수 있다.
-- Status: Narrowed by `2026-06-04 — Next.js App Router로 전환한다`.
+- Status: Superseded by `2026-06-09 — Next.js App Router 전환 구현`.
 - Follow-up: 문서형 에디터, PDF 변환, 상태 관리, form/validation은 순차적으로 결정한다.
 
 ## 2026-06-04 — Next.js App Router로 전환한다
@@ -88,7 +88,19 @@
   - React Router 또는 TanStack Router를 도입한다.
 - Reason: Next.js는 라우팅뿐 아니라 metadata, sitemap, robots, server/static rendering, structured data 전략을 함께 가져갈 수 있어 공개 포트폴리오/레주메북 제품 방향에 더 적합하다.
 - Risk: 기존 Vite scaffold에서 전환 비용이 생기고, 내부 인증/에디터 화면에서 Client Component 경계 관리가 필요하다.
-- Follow-up: Next.js 마이그레이션 작업에서 App Router route group, public/internal layout, metadata, sitemap, robots, JSON-LD 기준을 반영한다.
+- Follow-up: public/internal layout, sitemap, robots, JSON-LD 기준을 구체화한다.
+
+## 2026-06-09 — Next.js App Router 전환 구현
+
+- Decision: Vite scaffold를 제거하고 Next.js App Router 기반 실행 환경으로 전환했다.
+- Context: 퍼블리싱을 시작하기 전 프레임워크 기준을 고정해야 재작업을 줄일 수 있다.
+- Changed:
+  - `next dev`, `next build`, `next start` scripts로 전환
+  - `src/app/layout.tsx`, `src/app/(public)/page.tsx`, `src/app/(public)/[portfolioSlug]/page.tsx` 생성
+  - Vite config/entry 제거
+- Reason: 공개 페이지 SEO/GEO/AEO와 slug 기반 공개 URL을 Next.js App Router 기준으로 시작하기 위함이다.
+- Risk: Playwright, sitemap, robots, JSON-LD, public/internal layout 세부 기준은 아직 별도 작업이 필요하다.
+- Follow-up: 퍼블리싱 첫 화면 전 Playwright smoke 설정과 metadata/structured data 기준을 확정한다.
 
 ## 2026-06-04 — 테스트 도구는 Playwright로 시작한다
 

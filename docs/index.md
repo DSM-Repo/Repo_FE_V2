@@ -9,7 +9,7 @@
 - 제품 기능 구현 전
 - 기본 프론트 스택 확정 완료
   - `pnpm`
-  - Next.js App Router 전환 방향
+  - Next.js App Router
   - React
   - TypeScript
   - ESLint

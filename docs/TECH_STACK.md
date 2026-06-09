@@ -4,9 +4,7 @@
 
 ## 확정된 기본 프론트엔드 스택
 
-2026-06-04 기준, Repo-V2는 장기적으로 외부에 보여주는 포트폴리오/레주메북 제품을 지향하므로 SEO/GEO/AEO 대응이 가능한 Next.js App Router 기반으로 전환합니다.
-
-현재 repository는 Vite scaffold 상태입니다. 따라서 이 결정은 **기술 방향 확정**이며, 실제 Vite → Next.js 전환은 별도 작업 단위로 수행합니다.
+2026-06-09 기준, Repo-V2는 장기적으로 외부에 보여주는 포트폴리오/레주메북 제품을 지향하므로 SEO/GEO/AEO 대응이 가능한 Next.js App Router 기반으로 전환 완료했습니다.
 
 | 영역 | 결정 | 근거 |
 | --- | --- | --- |
@@ -14,21 +12,20 @@
 | Framework | Next.js App Router | 공개 포트폴리오/레주메북의 SEO/GEO/AEO, metadata, sitemap, server rendering 전략에 적합 |
 | App Runtime | React | Next.js의 기반 런타임이며 컴포넌트 기반 퍼블리싱에 적합 |
 | Language | TypeScript | 타입 안정성과 AI/사람 모두의 코드 이해 가능성 향상 |
-| Current Scaffold | Vite | 현재 repository 상태. Next.js 전환 전까지의 임시 scaffold |
 | Lint | ESLint | 현재 프로젝트 검증 명령으로 사용 |
 | E2E / Acceptance Test | Playwright | 사용자 흐름, 권한별 라우팅, 공개 페이지, PDF/도서관 흐름 검증에 적합 |
 
 현재 `package.json` 기준 주요 버전 범위:
 
+- `next`: `^16.2.7`
 - `react`: `^19.2.6`
 - `react-dom`: `^19.2.6`
 - `typescript`: `~6.0.2`
-- `vite`: `^8.0.12`
-- `@vitejs/plugin-react`: `^6.0.1`
-- `eslint`: `^10.3.0`
+- `eslint`: `^9.39.4`
+- `eslint-config-next`: `^16.2.7`
 - `pnpm`: `packageManager` 필드로 고정
 
-TODO: Next.js 전환 작업에서 `next`, `eslint-config-next`, Playwright 설정과 scripts를 반영한다.
+TODO: Playwright 설정과 `test:e2e` script는 다음 작업 단위에서 반영한다.
 
 ## 아직 확정하지 않은 항목
 
@@ -86,7 +83,6 @@ Repo-V2는 UI/UX 변화가 크므로 디자인 구현 정확도가 중요합니�
 - 문서형 에디터 후보 정리
 - PDF 변환 방식 후보 정리
 - 상태 관리/form 라이브러리 후보 정리
-- Next.js 전환 실행 계획 작성
 - Playwright 설정 및 테스트 스크립트 추가
 
 ## Next.js 결정 메모
@@ -118,20 +114,20 @@ Next.js에서 우선 활용할 영역:
 ### 2026-06-04 — Frontend Base Stack
 
 - Decision: 초기 scaffold는 React + TypeScript + Vite 기반이었다.
-- Reason: 현재 프로젝트가 이미 해당 조합으로 구성되어 있고, 초기 퍼블리싱 속도와 컴포넌트 기반 구현에 적합하다.
-- Status: Narrowed by `2026-06-04 — Next.js App Router 전환 결정`.
+- Reason: 당시 프로젝트가 이미 해당 조합으로 구성되어 있었고, 초기 scaffold로 빠르게 시작하기에 적합했다.
+- Status: Superseded by `2026-06-09 — Next.js App Router 전환 구현`.
 - Follow-up: 문서형 에디터, PDF 변환, 상태 관리, form/validation, 테스트 도구를 순차적으로 결정한다.
 
 ### 2026-06-04 — Next.js App Router 전환 결정
 
 - Decision: Repo-V2는 Vite scaffold에서 Next.js App Router 기반으로 전환한다.
 - Reason: 장기적으로 학생 포트폴리오/레주메북을 외부에 보여주는 제품이므로 SEO/GEO/AEO 대응, metadata, sitemap, structured data, server/static rendering 전략이 중요하다.
-- Constraint: 실제 마이그레이션은 별도 작업 단위로 수행한다.
-- Follow-up: Next.js 전환 후 route group, public/internal layout, metadata, sitemap, robots, JSON-LD 기준을 정리한다.
+- Constraint: 실제 마이그레이션은 `2026-06-09 — Next.js App Router 전환 구현` 작업 단위에서 수행했다.
+- Follow-up: public/internal layout, sitemap, robots, JSON-LD 기준을 구체화한다.
 
 ### 2026-06-04 — Test Tool
 
 - Decision: Repo-V2의 핵심 테스트 도구는 `Playwright`로 시작한다.
 - Reason: 사용자 경험 흐름, 권한별 라우팅, 공개 페이지, PDF/도서관 흐름처럼 제품 관점 acceptance test가 중요하고, 팀 경험도 Playwright에 있다.
 - Constraint: unit/component 테스트 도구는 실제 필요가 생기면 추가 도입한다.
-- Follow-up: Next.js 전환 후 `pnpm test:e2e` 스크립트와 CI 검증에 Playwright를 포함한다.
+- Follow-up: `pnpm test:e2e` 스크립트와 CI 검증에 Playwright를 포함한다.

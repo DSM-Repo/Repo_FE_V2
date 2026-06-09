@@ -6,7 +6,6 @@ Repo-V2는 단일 프론트엔드 앱으로 시작하며, 장기적으로 외부
 
 - 단일 앱
 - Next.js App Router + React + TypeScript 기반
-- 현재 repository는 Vite scaffold이며, Next.js 전환은 별도 작업 단위로 수행
 - 권한별 라우팅
 - feature 단위 분리
 - shared layer로 공통 UI/API/types/utils 관리
@@ -17,10 +16,12 @@ Repo-V2는 단일 프론트엔드 앱으로 시작하며, 장기적으로 외부
 ```txt
 src/
   app/
-    routes/
+    layout.tsx
+    globals.css
+    (public)/
+    (auth)/
     providers/
     guards/
-  pages/
   features/
     auth/
     student/
@@ -38,7 +39,7 @@ src/
     constants/
 ```
 
-이 구조는 최종 확정이 아니라 초기 설계 후보입니다.
+이 구조는 Next.js App Router 전환 후의 초기 설계 후보입니다.
 
 ## 라우팅 방향
 
@@ -52,7 +53,9 @@ src/
 예시:
 
 ```txt
-app/
+src/app/
+  layout.tsx
+  globals.css
   (public)/
     page.tsx
     [portfolioSlug]/page.tsx
