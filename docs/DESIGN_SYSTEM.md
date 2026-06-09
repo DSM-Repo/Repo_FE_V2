@@ -12,7 +12,45 @@
 
 ### Colors
 
-TODO: Figma 색상 토큰을 정리한다.
+2026-06-09 기준, 1차 퍼블리싱에서 사용할 color token을 아래처럼 시작합니다.
+
+| Category | Name | HEX | CSS variable |
+| --- | --- | --- | --- |
+| GRAY | 50 | `#FFFFFF` | `--repo-gray-50` |
+| GRAY | 100 | `#F8F8F8` | `--repo-gray-100` |
+| GRAY | 200 | `#E2E2E2` | `--repo-gray-200` |
+| GRAY | 300 | `#C9C9C9` | `--repo-gray-300` |
+| GRAY | 400 | `#ADADAD` | `--repo-gray-400` |
+| GRAY | 500 | `#919191` | `--repo-gray-500` |
+| GRAY | 600 | `#747474` | `--repo-gray-600` |
+| GRAY | 700 | `#565656` | `--repo-gray-700` |
+| GRAY | 800 | `#3A3A3A` | `--repo-gray-800` |
+| GRAY | 900 | `#1F1F1F` | `--repo-gray-900` |
+| GRAY | 950 | `#111111` | `--repo-gray-950` |
+| MAIN | Disabled | `#C8D7C6` | `--repo-main-disabled` |
+| MAIN | Lighter | `#88EF75` | `--repo-main-lighter` |
+| MAIN | main | `#37E517` | `--repo-main` |
+| MAIN | Darker | `#38C11F` | `--repo-main-darker` |
+| BGMAIN | point | `#C0EF7E` | `--repo-bg-main-point` |
+| BGMAIN | Lighter | `#97BC62` | `--repo-bg-main-lighter` |
+| BGMAIN | main | `#586F37` | `--repo-bg-main` |
+| STATE | Info | `#2F80ED` | `--repo-state-info` |
+| STATE | Success | `#27AE60` | `--repo-state-success` |
+| STATE | Warning | `#E2B93B` | `--repo-state-warning` |
+| STATE | Error | `#EB5757` | `--repo-state-error` |
+| TEXT | Black | `#000000` | `--repo-text-black` |
+
+구현 위치:
+
+- `src/shared/styles/colors.css`
+- `src/app/layout.tsx`에서 전역 style로 import
+
+운영 기준:
+
+- 색상 token은 CSS variable로 관리합니다.
+- 컴포넌트에서는 hex 값을 직접 쓰기보다 semantic alias 또는 token 변수를 우선 사용합니다.
+- 현재 전역 placeholder 화면은 gray/main/bgmain token을 기반으로 연결합니다.
+- 색상 의미가 명확해지는 시점에 `surface`, `border`, `text`, `brand`, `state` 계열 semantic token을 추가할 수 있습니다.
 
 ### Typography
 
@@ -104,7 +142,7 @@ TODO:
 
 ## Open Questions
 
-- 디자인 토큰을 CSS variables로 관리할 것인가?
+- spacing/radius/shadow token도 CSS variables로 확장할 것인가?
 - 컴포넌트 variant 명명 규칙은 어떻게 할 것인가?
 - Figma 컴포넌트명과 코드 컴포넌트명을 얼마나 맞출 것인가?
 - Radix UI를 기본 primitive로 채택할 것인가?

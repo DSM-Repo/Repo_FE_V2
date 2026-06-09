@@ -1,13 +1,13 @@
 :root {
-  --background: #f7f8fb;
-  --surface: #ffffff;
-  --surface-muted: #f0f3f8;
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #6b7280;
-  --border: #e5e7eb;
-  --brand: #111827;
-  --brand-soft: #eef2f7;
+  --background: var(--repo-gray-100);
+  --surface: var(--repo-gray-50);
+  --surface-muted: var(--repo-gray-100);
+  --text-primary: var(--repo-gray-950);
+  --text-secondary: var(--repo-gray-700);
+  --text-muted: var(--repo-gray-500);
+  --border: var(--repo-gray-200);
+  --brand: var(--repo-main);
+  --brand-soft: var(--repo-bg-main-point);
 
   color: var(--text-primary);
   background: var(--background);
@@ -118,7 +118,7 @@ main {
 }
 
 .action-link.primary {
-  color: #fff;
+  color: var(--repo-text-black);
   border-color: var(--brand);
   background: var(--brand);
 }
