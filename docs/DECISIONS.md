@@ -180,6 +180,18 @@
 - Risk: 색상/spacing/radius token과 component variant 체계는 아직 별도 확정이 필요하다.
 - Follow-up: Figma 전체 token이 확정되면 typography 외 token도 같은 방식으로 확장한다.
 
+## 2026-06-09 — color token을 CSS variable로 시작한다
+
+- Decision: 1차 퍼블리싱 color token은 `src/shared/styles/colors.css`의 CSS variable로 관리한다.
+- Context: 퍼블리싱을 진행하려면 Figma 색상표를 코드와 문서의 단일 기준으로 고정해야 한다.
+- Alternatives:
+  - 색상표를 문서에만 둔다.
+  - 컴포넌트별로 hex 값을 직접 사용한다.
+  - styling library 확정 후 token을 정의한다.
+- Reason: CSS variable은 현재 Next.js 전역 style과 잘 맞고, styling library 결정 전에도 안정적으로 재사용할 수 있다.
+- Risk: semantic color alias와 component state color 체계는 실제 컴포넌트 구현 중 추가 정리가 필요하다.
+- Follow-up: Button/Input/Status 등 공통 컴포넌트 구현 시 semantic token을 보강한다.
+
 ## Open Questions
 
 - 관리자 역할 분리가 필요한가?
