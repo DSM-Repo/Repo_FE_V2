@@ -101,6 +101,28 @@
 - Risk: 세밀한 unit test가 필요한 영역에서는 Playwright만으로 테스트 비용이 커질 수 있다.
 - Follow-up: unit/component test가 필요한 시점에 Vitest 또는 Testing Library 추가 도입을 검토한다.
 
+## 2026-06-09 — 1차 퍼블리싱은 웹 데스크톱 기준으로 진행한다
+
+- Decision: Repo-V2 1차 퍼블리싱은 `1440 × 900`부터 `1920 × 1080`까지의 웹 데스크톱 화면을 기준으로 한다.
+- Context: 사용자는 모바일/태블릿보다 웹 데스크톱 기준의 완성도를 우선하고 싶다.
+- Alternatives:
+  - 모바일까지 MVP 반응형 범위에 포함한다.
+  - 모든 breakpoint를 동시에 설계한다.
+- Reason: 초기 퍼블리싱 속도와 화면 완성도를 높이기 위해 우선 기준을 좁힌다.
+- Risk: 모바일/태블릿 사용성은 후속 작업으로 밀린다.
+- Follow-up: 1차 퍼블리싱 후 모바일/태블릿 최적화 필요성을 재검토한다.
+
+## 2026-06-09 — UI 참고 영상과 headless 컴포넌트 전략을 참고한다
+
+- Decision: UI 논의에는 `https://www.youtube.com/watch?v=fR8tsJ2r7Eg` 참고 영상을 사용하고, 컴포넌트는 headless/primitive 기반 전략을 우선 검토한다.
+- Context: 사용자는 UI 컴포넌트 내부에 비즈니스 로직을 최소화하는 방향을 선호한다.
+- Alternatives:
+  - 모든 UI를 직접 구현한다.
+  - shadcn/ui 같은 완성형 조합을 그대로 사용한다.
+- Reason: 접근성과 재사용성을 확보하면서 feature 로직과 UI primitive를 분리하기 좋다.
+- Risk: primitive 기반 구현은 초기 조립 비용이 생길 수 있다.
+- Follow-up: Radix UI 도입 여부와 shared UI wrapper 기준을 확정한다.
+
 ## Open Questions
 
 - 관리자 역할 분리가 필요한가?
