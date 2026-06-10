@@ -1,19 +1,27 @@
 .preview {
+  display: grid;
+  gap: 72px;
   min-height: 100vh;
-  padding: 32px 36px;
+  padding: 32px 36px 80px;
   color: var(--repo-text-black);
   background: var(--repo-gray-600);
 }
 
+.section {
+  display: grid;
+  gap: 28px;
+  width: fit-content;
+}
+
 .sectionTitle {
-  margin: 0 0 54px;
+  margin: 0;
   color: var(--repo-text-black);
   font-size: var(--repo-font-title-s-medium-size);
   font-weight: var(--repo-font-title-s-medium-weight);
   line-height: var(--repo-font-title-s-medium-line-height);
 }
 
-.frameWrap {
+.buttonFrameWrap {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 28px;
@@ -34,16 +42,20 @@
   line-height: var(--repo-font-title-small-line-height);
 }
 
-.frame {
+.buttonFrame,
+.inputFrame {
   display: grid;
-  gap: 28px;
   width: fit-content;
-  padding: 32px 38px 28px;
   border: 2px dashed #9747FF;
   border-radius: 8px;
 }
 
-.grid {
+.buttonFrame {
+  gap: 28px;
+  padding: 32px 38px 28px;
+}
+
+.buttonGrid {
   display: grid;
   grid-template-columns: repeat(4, max-content);
   gap: 38px 52px;
@@ -78,4 +90,10 @@
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
   text-align: center;
+}
+
+.inputFrame {
+  gap: 38px;
+  width: 353px;
+  padding: 52px 56px;
 }
