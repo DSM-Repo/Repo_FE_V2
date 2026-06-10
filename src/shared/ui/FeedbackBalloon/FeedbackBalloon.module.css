@@ -1,8 +1,9 @@
 .balloon {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   width: fit-content;
+  outline: none;
 }
 
 .avatar,
@@ -31,16 +32,32 @@
   align-items: center;
   gap: 10px;
   min-height: 42px;
+  max-width: 320px;
   padding: 12px 12px 12px 36px;
   color: var(--repo-gray-50);
 }
 
 .title {
+  max-width: 150px;
+  min-width: 0;
+  overflow: hidden;
   color: var(--repo-gray-50);
   font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.balloon:hover .title,
+.balloon:focus .title,
+.balloon:focus-within .title {
+  max-width: 240px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .checkIcon {

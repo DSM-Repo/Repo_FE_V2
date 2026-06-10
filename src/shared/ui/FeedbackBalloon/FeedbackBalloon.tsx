@@ -16,12 +16,13 @@ export function FeedbackBalloon({
   checked = true,
   className,
   title,
+  tabIndex = 0,
   ...props
 }: FeedbackBalloonProps) {
   const balloonClassName = [styles.balloon, className].filter(Boolean).join(' ')
 
   return (
-    <div className={balloonClassName} {...props}>
+    <div className={balloonClassName} tabIndex={tabIndex} {...props}>
       <div className={styles.avatar} aria-hidden={avatarAlt ? undefined : true}>
         <Image alt={avatarAlt} className={styles.avatarImage} height={32} src={avatarSrc} width={32} />
       </div>

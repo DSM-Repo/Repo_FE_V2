@@ -171,14 +171,13 @@ export function ComponentPreview() {
         </div>
       </section>
 
-
       <section aria-labelledby="feedback-balloon-preview-title" className={styles.section}>
         <h1 className={styles.sectionTitle} id="feedback-balloon-preview-title">
           Feedback Balloon
         </h1>
 
         <div className={styles.feedbackBalloonFrame}>
-          <FeedbackBalloon title="피드백 제목" />
+          <FeedbackBalloon title="피드백 내용이 길어지면 이 자리에서 자연스럽게 줄바꿈됩니다" />
         </div>
       </section>
 
