@@ -1,6 +1,6 @@
 import type { SVGProps, ReactNode } from 'react'
 
-import { Button, Input } from '@/shared/ui'
+import { Button, Input, Logo } from '@/shared/ui'
 
 import styles from './ComponentPreview.module.css'
 
@@ -67,6 +67,17 @@ export function ComponentPreview() {
               <span>아이콘 on</span>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="logo-preview-title" className={styles.section}>
+        <h1 className={styles.sectionTitle} id="logo-preview-title">
+          Logo
+        </h1>
+
+        <div className={styles.logoFrame}>
+          <Logo />
+          <Logo tone="dark" />
         </div>
       </section>
 

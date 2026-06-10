@@ -97,3 +97,12 @@
   width: 353px;
   padding: 52px 56px;
 }
+
+.logoFrame {
+  display: grid;
+  gap: 48px;
+  width: fit-content;
+  padding: 64px 96px;
+  border: 2px dashed #9747FF;
+  border-radius: 8px;
+}
