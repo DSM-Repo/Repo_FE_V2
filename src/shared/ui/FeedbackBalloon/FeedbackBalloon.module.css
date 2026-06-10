@@ -1,9 +1,10 @@
 .balloon {
+  position: relative;
   display: inline-flex;
   align-items: flex-start;
-  gap: 16px;
-  width: fit-content;
-  outline: none;
+  width: 42px;
+  min-height: 42px;
+  overflow: visible;
 }
 
 .avatar,
@@ -14,12 +15,20 @@
 }
 
 .avatar {
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 42px;
   height: 42px;
   overflow: hidden;
+  outline: none;
+}
+
+.avatar:focus-visible {
+  box-shadow:
+    0 3px 4px 1px rgba(0, 0, 0, 0.25),
+    0 0 0 2px var(--repo-gray-50);
 }
 
 .avatarImage {
@@ -28,6 +37,9 @@
 }
 
 .message {
+  position: absolute;
+  top: 0;
+  left: 58px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -35,26 +47,28 @@
   max-width: 320px;
   padding: 12px 12px 12px 36px;
   color: var(--repo-gray-50);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-8px) scaleX(0.72);
+  transform-origin: left center;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.balloon:hover .message,
+.balloon:focus-within .message {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0) scaleX(1);
 }
 
 .title {
-  max-width: 150px;
   min-width: 0;
-  overflow: hidden;
   color: var(--repo-gray-50);
   font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.balloon:hover .title,
-.balloon:focus .title,
-.balloon:focus-within .title {
-  max-width: 240px;
-  overflow: visible;
-  text-overflow: clip;
   white-space: normal;
   word-break: keep-all;
   overflow-wrap: anywhere;

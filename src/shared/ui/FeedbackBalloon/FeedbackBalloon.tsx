@@ -11,19 +11,18 @@ export interface FeedbackBalloonProps extends Omit<HTMLAttributes<HTMLDivElement
 }
 
 export function FeedbackBalloon({
-  avatarAlt = '',
+  avatarAlt = '피드백 작성자 프로필',
   avatarSrc = '/person.svg',
   checked = true,
   className,
   title,
-  tabIndex = 0,
   ...props
 }: FeedbackBalloonProps) {
   const balloonClassName = [styles.balloon, className].filter(Boolean).join(' ')
 
   return (
-    <div className={balloonClassName} tabIndex={tabIndex} {...props}>
-      <div className={styles.avatar} aria-hidden={avatarAlt ? undefined : true}>
+    <div className={balloonClassName} {...props}>
+      <div aria-label="피드백 내용 보기" className={styles.avatar} tabIndex={0}>
         <Image alt={avatarAlt} className={styles.avatarImage} height={32} src={avatarSrc} width={32} />
       </div>
 
