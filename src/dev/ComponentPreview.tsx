@@ -3,7 +3,7 @@
 import type { SVGProps, ReactNode } from 'react'
 import { useState } from 'react'
 
-import { Button, Checkbox, CheckboxOption, Feedback, FeedbackBalloon, Input, Logo, Switch } from '@/shared/ui'
+import { Button, Checkbox, CheckboxOption, Feedback, FeedbackBalloon, Input, Logo, Switch, Toast } from '@/shared/ui'
 
 import styles from './ComponentPreview.module.css'
 
@@ -178,6 +178,17 @@ export function ComponentPreview() {
 
         <div className={styles.feedbackBalloonFrame}>
           <FeedbackBalloon title="피드백 내용이 길어지면 이 자리에서 자연스럽게 줄바꿈됩니다" />
+        </div>
+      </section>
+
+      <section aria-labelledby="toast-preview-title" className={styles.section}>
+        <h1 className={styles.sectionTitle} id="toast-preview-title">
+          Toast
+        </h1>
+
+        <div className={styles.toastFrame}>
+          <Toast variant="error">오류 메시지</Toast>
+          <Toast variant="success">확인 메시지</Toast>
         </div>
       </section>
 
