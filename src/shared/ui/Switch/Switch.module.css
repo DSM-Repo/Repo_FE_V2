@@ -1,0 +1,38 @@
+.switch {
+  position: relative;
+  width: 76px;
+  height: 39px;
+  padding: 0;
+  border: 0;
+  border-radius: 50px;
+  background: #43434B;
+  box-shadow:
+    -3px -6px 8px 0 rgba(0, 0, 0, 0.25),
+    1px 4px 6px 0 rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: background-color 180ms ease;
+}
+
+.switch[data-checked='true'] {
+  background: #38C11F;
+}
+
+.switch:disabled {
+  cursor: default;
+}
+
+.thumb {
+  position: absolute;
+  top: 3.5px;
+  left: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 3px 4px 0 rgba(0, 0, 0, 0.25);
+  transition: transform 180ms ease;
+}
+
+.switch[data-checked='true'] .thumb {
+  transform: translateX(36px);
+}

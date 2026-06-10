@@ -3,13 +3,14 @@
 import type { SVGProps, ReactNode } from 'react'
 import { useState } from 'react'
 
-import { Button, Checkbox, CheckboxOption, Input, Logo } from '@/shared/ui'
+import { Button, Checkbox, CheckboxOption, Input, Logo, Switch } from '@/shared/ui'
 
 import styles from './ComponentPreview.module.css'
 
 export function ComponentPreview() {
   const [interactiveCheckboxChecked, setInteractiveCheckboxChecked] = useState(false)
   const [interactiveOptionChecked, setInteractiveOptionChecked] = useState(false)
+  const [interactiveSwitchChecked, setInteractiveSwitchChecked] = useState(false)
 
   return (
     <main className={styles.preview}>
@@ -116,6 +117,27 @@ export function ComponentPreview() {
               비활성 선택지
             </CheckboxOption>
           </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="switch-preview-title" className={styles.section}>
+        <h1 className={styles.sectionTitle} id="switch-preview-title">
+          Switch
+        </h1>
+
+        <div className={styles.switchFrame}>
+          <Switch checked={false} onCheckedChange={() => undefined} aria-label="off 상태 스위치" />
+          <Switch checked onCheckedChange={() => undefined} aria-label="on 상태 스위치" />
+          <div className={styles.switchInteractiveRow}>
+            <Switch
+              checked={interactiveSwitchChecked}
+              onCheckedChange={setInteractiveSwitchChecked}
+              aria-label="클릭 가능한 스위치"
+            />
+            <span className={styles.switchStateText}>{interactiveSwitchChecked ? 'on' : 'off'}</span>
+          </div>
+          <Switch checked={false} disabled onCheckedChange={() => undefined} aria-label="disabled off 상태 스위치" />
+          <Switch checked disabled onCheckedChange={() => undefined} aria-label="disabled on 상태 스위치" />
         </div>
       </section>
 

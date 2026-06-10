@@ -140,3 +140,27 @@
   font-weight: var(--repo-font-body-small-weight);
   line-height: var(--repo-font-body-small-line-height);
 }
+
+.switchFrame {
+  display: grid;
+  gap: 48px;
+  justify-items: center;
+  width: 320px;
+  padding: 56px 0;
+  border: 2px dashed #9747FF;
+  border-radius: 32px;
+}
+
+.switchInteractiveRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.switchStateText {
+  min-width: 24px;
+  color: var(--repo-text-black);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+}
