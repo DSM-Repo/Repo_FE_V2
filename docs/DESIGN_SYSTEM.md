@@ -114,6 +114,16 @@ TODO: radius와 shadow 기준을 정리한다.
 
 ### Button
 
+#### Button 운영 규칙
+
+- Button 내부에 API 호출 로직을 넣지 않습니다.
+- 페이지별로 다른 버튼 스타일을 임의로 만들지 않습니다.
+- 비슷한 버튼을 새로 만들기 전에 이 Button 컴포넌트의 variant로 해결 가능한지 먼저 확인합니다.
+- Figma canvas 위치값인 Top, Left를 버튼 스타일로 구현하지 않습니다.
+- 아이콘은 우선 오른쪽 배치만 지원합니다.
+- 아이콘 색상은 버튼 text color와 동일하게 `currentColor`를 따릅니다.
+- disabled 상태에서도 아이콘 색상은 disabled text color와 동일하게 처리합니다.
+
 #### Button 1 / Default
 
 프로젝트 내부에서 공통으로 사용하는 기본 클릭 버튼입니다.
@@ -159,6 +169,7 @@ Button 1과 동일한 치수와 텍스트 스타일을 사용하되 배경색, d
 
 - `src/shared/ui/Button`
 - 사용 예시: `<Button variant="button2">버튼</Button>`
+- 오른쪽 아이콘 사용 예시: `<Button variant="button2" iconRight="right-arrow">버튼</Button>`
 
 시각값:
 
@@ -189,6 +200,60 @@ Button 1과 동일한 치수와 텍스트 스타일을 사용하되 배경색, d
 
 - 클릭 가능한 기본 버튼입니다.
 - 버튼 내부에 API 호출이나 페이지 전용 비즈니스 로직을 넣지 않습니다.
+
+### Icon
+
+구현 위치:
+
+- `src/shared/ui/Icon`
+
+운영 기준:
+
+- 공통 컴포넌트에서 사용하는 아이콘만 필요한 순서대로 추가합니다.
+- 아이콘 색상은 기본적으로 `currentColor`를 사용해 부모 텍스트 색상을 따릅니다.
+- Button 내부 아이콘은 우선 `right` 위치만 지원합니다.
+
+#### RightArrow
+
+Button right icon으로 사용하는 오른쪽 화살표 아이콘입니다.
+
+| Section | Property | Value |
+| --- | --- | --- |
+| Icon | Name | `RightArrow` |
+| Icon | Usage | Button right icon |
+| Parent component | Size | `24px` |
+| Vector layout | Width | `6px` |
+| Vector layout | Height | `12px` |
+| Vector layout | Top | `6px` |
+| Vector layout | Left | `9px` |
+| Border / Stroke | Width | `1.8px` |
+| Border / Stroke | Sides | All sides |
+| Border / Stroke | Color Token | `GRAY/50` |
+| Border / Stroke | HEX | `#FFFFFF` |
+| Alignment | Position | Center alignment |
+
+코드에서는 `currentColor`를 사용하므로 Button의 text color를 따릅니다. 현재 색상 토큰에는 `GRAY/0`이 없어서 동일 HEX인 `GRAY/50 (#FFFFFF)`로 기록합니다.
+
+#### Plus
+
+Button right icon으로 사용할 Plus 아이콘 후보입니다.
+
+제공된 값:
+
+| Property | Value |
+| --- | --- |
+| icon size | `16px × 16px` |
+| text와 icon 사이 gap | `10px` |
+| icon 위치 | 우선 `right` 기준 |
+| icon color | text color와 동일 |
+| disabled일 때 icon color | disabled text color와 동일 |
+
+누락된 값:
+
+- Plus vector stroke width
+- Plus stroke linecap/linejoin
+
+위 값이 제공되면 `plus` 아이콘을 추가합니다.
 
 ## Component Strategy
 

@@ -2,6 +2,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   width: fit-content;
   min-width: 92px;
   min-height: 43px;
@@ -40,4 +41,11 @@
 
 .button2:disabled {
   background: var(--repo-gray-300);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  color: currentColor;
 }
