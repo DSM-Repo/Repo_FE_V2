@@ -3,7 +3,7 @@
 import type { SVGProps, ReactNode } from 'react'
 import { useState } from 'react'
 
-import { Button, Checkbox, CheckboxOption, Feedback, Input, Logo, Switch } from '@/shared/ui'
+import { Button, Checkbox, CheckboxOption, Feedback, FeedbackBalloon, Input, Logo, Switch } from '@/shared/ui'
 
 import styles from './ComponentPreview.module.css'
 
@@ -168,6 +168,17 @@ export function ComponentPreview() {
             onExpandedChange={setFeedbackExpanded}
             title="인터랙션 확인"
           />
+        </div>
+      </section>
+
+
+      <section aria-labelledby="feedback-balloon-preview-title" className={styles.section}>
+        <h1 className={styles.sectionTitle} id="feedback-balloon-preview-title">
+          Feedback Balloon
+        </h1>
+
+        <div className={styles.feedbackBalloonFrame}>
+          <FeedbackBalloon title="피드백 제목" />
         </div>
       </section>
 

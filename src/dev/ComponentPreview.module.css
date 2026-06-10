@@ -173,3 +173,10 @@
   border: 2px dashed #9747FF;
   border-radius: 8px;
 }
+
+.feedbackBalloonFrame {
+  width: fit-content;
+  padding: 46px 96px;
+  border: 2px dashed #9747FF;
+  border-radius: 20px;
+}
