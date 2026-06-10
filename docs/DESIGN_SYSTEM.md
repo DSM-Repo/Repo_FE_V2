@@ -112,6 +112,43 @@ TODO: radius와 shadow 기준을 정리한다.
 - Student List Item
 - Feedback Marker
 
+### Button
+
+#### Button 1 / Default
+
+프로젝트 내부에서 공통으로 사용하는 기본 클릭 버튼입니다.
+
+구현 위치:
+
+- `src/shared/ui/Button`
+
+시각값:
+
+| 항목 | 값 |
+| --- | --- |
+| Width | `Hug(92px)` / 코드에서는 `width: fit-content`, `min-width: 92px` |
+| Height | `Hug(43px)` / 코드에서는 `min-height: 43px` |
+| Radius | `12px` |
+| Padding | `12px 32px` |
+| Background | `BGMAIN/point` / `--repo-bg-main-point` |
+| Text color | `GRAY/50 (#FFFFFF)` / `--repo-gray-50` |
+| Typography | `Title Tiny` |
+| Font | `Pretendard` |
+| Weight | `600` |
+| Size | `16px` |
+| Line Height | `120%` |
+| Letter Spacing | `0` |
+
+상태:
+
+- `default`만 구현합니다.
+- `hover`, `pressed`, `focus`, `disabled`, `loading`은 아직 시각값이 제공되지 않았으므로 구현하지 않습니다.
+
+동작:
+
+- 클릭 가능한 기본 버튼입니다.
+- 버튼 내부에 API 호출이나 페이지 전용 비즈니스 로직을 넣지 않습니다.
+
 ## Component Strategy
 
 - UI 컴포넌트는 headless/primitive 기반 사고를 우선합니다.
