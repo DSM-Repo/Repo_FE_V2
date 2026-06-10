@@ -3,7 +3,7 @@
 import type { SVGProps, ReactNode } from 'react'
 import { useState } from 'react'
 
-import { Button, Checkbox, CheckboxOption, Dropdown, Feedback, FeedbackBalloon, Input, Logo, Switch, Toast } from '@/shared/ui'
+import { Button, Checkbox, CheckboxOption, Dropdown, Feedback, FeedbackBalloon, Input, Logo, Switch, Tag, Toast } from '@/shared/ui'
 
 import styles from './ComponentPreview.module.css'
 
@@ -179,6 +179,22 @@ export function ComponentPreview() {
 
         <div className={styles.feedbackBalloonFrame}>
           <FeedbackBalloon title="피드백 내용이 길어지면 이 자리에서 자연스럽게 줄바꿈됩니다" />
+        </div>
+      </section>
+
+
+      <section aria-labelledby="tag-preview-title" className={styles.section}>
+        <h1 className={styles.sectionTitle} id="tag-preview-title">
+          Tag
+        </h1>
+
+        <div className={styles.tagFrame}>
+          <Tag onRemove={() => undefined}>태그</Tag>
+          <Tag onRemove={() => undefined} tone="light">
+            태그
+          </Tag>
+          <Tag>태그</Tag>
+          <Tag tone="light">태그</Tag>
         </div>
       </section>
 

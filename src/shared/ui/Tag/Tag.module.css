@@ -1,0 +1,58 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 24px;
+  padding: 2px 12px;
+  border: 1px solid transparent;
+  border-radius: 50px;
+}
+
+.dark {
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main-lighter);
+  border-color: var(--repo-bg-main-point);
+}
+
+.light {
+  color: var(--repo-text-black);
+  background: var(--repo-gray-50);
+  border-color: var(--repo-gray-50);
+}
+
+.text {
+  color: currentColor;
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  white-space: nowrap;
+}
+
+.removeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: currentColor;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.light .removeButton {
+  color: var(--repo-gray-600);
+}
+
+.removeButton:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 2px;
+}
+
+.removeIcon {
+  width: 18px;
+  height: 18px;
+}
