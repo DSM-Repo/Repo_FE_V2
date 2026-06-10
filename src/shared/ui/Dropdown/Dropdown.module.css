@@ -1,0 +1,91 @@
+.dropdown {
+  display: grid;
+  width: max-content;
+  min-width: 89px;
+}
+
+.trigger,
+.option {
+  width: 100%;
+  min-height: 29px;
+  padding: 6px 12px;
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main-point);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--repo-gray-500);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.triggerOpen {
+  border: 0;
+  border-bottom: 1px solid var(--repo-gray-500);
+  border-radius: 0;
+}
+
+.trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.label {
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  color: var(--repo-gray-50);
+}
+
+.panel {
+  width: 100%;
+  overflow: hidden;
+  background: var(--repo-bg-main-point);
+  border: 1px solid var(--repo-gray-500);
+  border-radius: 6px;
+}
+
+.listbox {
+  display: grid;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.option {
+  display: block;
+  min-width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.listbox li + li .option {
+  border-top: 1px solid var(--repo-gray-500);
+}
+
+.option:hover,
+.option:focus-visible,
+.trigger:hover,
+.trigger:focus-visible {
+  outline: none;
+  background: var(--repo-bg-main-lighter);
+}
+
+.option:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

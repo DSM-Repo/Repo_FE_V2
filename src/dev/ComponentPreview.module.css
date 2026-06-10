@@ -190,3 +190,13 @@
   border: 2px dashed #9747FF;
   border-radius: 20px;
 }
+
+.dropdownFrame {
+  display: grid;
+  gap: 42px;
+  justify-items: center;
+  width: fit-content;
+  padding: 56px 76px;
+  border: 2px dashed #9747FF;
+  border-radius: 20px;
+}

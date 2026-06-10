@@ -3,7 +3,7 @@
 import type { SVGProps, ReactNode } from 'react'
 import { useState } from 'react'
 
-import { Button, Checkbox, CheckboxOption, Feedback, FeedbackBalloon, Input, Logo, Switch, Toast } from '@/shared/ui'
+import { Button, Checkbox, CheckboxOption, Dropdown, Feedback, FeedbackBalloon, Input, Logo, Switch, Toast } from '@/shared/ui'
 
 import styles from './ComponentPreview.module.css'
 
@@ -12,6 +12,7 @@ export function ComponentPreview() {
   const [interactiveOptionChecked, setInteractiveOptionChecked] = useState(false)
   const [interactiveSwitchChecked, setInteractiveSwitchChecked] = useState(false)
   const [feedbackExpanded, setFeedbackExpanded] = useState(false)
+  const [selectedGrade, setSelectedGrade] = useState('all')
 
   return (
     <main className={styles.preview}>
@@ -181,6 +182,17 @@ export function ComponentPreview() {
         </div>
       </section>
 
+      <section aria-labelledby="dropdown-preview-title" className={styles.section}>
+        <h1 className={styles.sectionTitle} id="dropdown-preview-title">
+          Dropdown
+        </h1>
+
+        <div className={styles.dropdownFrame}>
+          <Dropdown defaultOpen onValueChange={setSelectedGrade} options={gradeOptions} value={selectedGrade} />
+          <Dropdown onValueChange={setSelectedGrade} options={gradeOptions} value={selectedGrade} />
+        </div>
+      </section>
+
       <section aria-labelledby="toast-preview-title" className={styles.section}>
         <h1 className={styles.sectionTitle} id="toast-preview-title">
           Toast
@@ -224,6 +236,13 @@ export function ComponentPreview() {
     </main>
   )
 }
+
+const gradeOptions = [
+  { label: '전체', value: 'all' },
+  { label: '1학년', value: 'grade-1' },
+  { label: '2학년', value: 'grade-2' },
+  { label: '3학년', value: 'grade-3' },
+]
 
 type PreviewColumnProps = {
   children: ReactNode

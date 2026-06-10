@@ -1,5 +1,6 @@
 export { Button } from './Button';
 export { Checkbox, CheckboxOption } from './Checkbox';
+export { Dropdown } from './Dropdown';
 export { Feedback } from './Feedback';
 export { FeedbackBalloon } from './FeedbackBalloon';
 export { Icon } from './Icon';
@@ -8,6 +9,7 @@ export { Logo } from './Logo';
 export { Switch } from './Switch';
 export { Toast } from './Toast';
 export type { CheckboxProps } from './Checkbox';
+export type { DropdownOption, DropdownProps } from './Dropdown';
 export type { FeedbackProps } from './Feedback';
 export type { FeedbackBalloonProps } from './FeedbackBalloon';
 export type { IconName } from './Icon';
