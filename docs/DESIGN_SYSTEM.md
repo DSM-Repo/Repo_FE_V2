@@ -132,6 +132,7 @@ TODO: radius와 shadow 기준을 정리한다.
 | Padding | `12px 32px` |
 | Background | `BGMAIN/point` / `--repo-bg-main-point` |
 | Hover background | `BGMAIN/Lighter` / `--repo-bg-main-lighter` |
+| Disabled background | `GRAY/400` / `--repo-gray-400` |
 | Text color | `GRAY/50 (#FFFFFF)` / `--repo-gray-50` |
 | Typography | `Title Tiny` |
 | Font | `Pretendard` |
@@ -142,8 +143,47 @@ TODO: radius와 shadow 기준을 정리한다.
 
 상태:
 
-- `default`와 `hover`를 구현합니다.
-- `pressed`, `focus`, `disabled`, `loading`은 아직 시각값이 제공되지 않았으므로 구현하지 않습니다.
+- `default`, `hover`, `disabled`를 구현합니다.
+- `pressed`, `focus`, `loading`은 아직 시각값이 제공되지 않았으므로 구현하지 않습니다.
+
+동작:
+
+- 클릭 가능한 기본 버튼입니다.
+- 버튼 내부에 API 호출이나 페이지 전용 비즈니스 로직을 넣지 않습니다.
+
+#### Button 2 / Default
+
+Button 1과 동일한 치수와 텍스트 스타일을 사용하되 배경색, disabled 색상, border를 분리한 버튼입니다.
+
+구현 위치:
+
+- `src/shared/ui/Button`
+- 사용 예시: `<Button variant="button2">버튼</Button>`
+
+시각값:
+
+| 항목 | 값 |
+| --- | --- |
+| Width | `Hug(92px)` / 코드에서는 `width: fit-content`, `min-width: 92px` |
+| Height | `Hug(43px)` / 코드에서는 `min-height: 43px` |
+| Radius | `12px` |
+| Padding | `12px 32px` |
+| Background | `BGMAIN/main` / `--repo-bg-main` |
+| Hover background | `BGMAIN/Lighter` / `--repo-bg-main-lighter` |
+| Disabled background | `GRAY/300` / `--repo-gray-300` |
+| Border | `1px solid GRAY/500` / `--repo-gray-500` |
+| Text color | `GRAY/50 (#FFFFFF)` / `--repo-gray-50` |
+| Typography | `Title Tiny` |
+| Font | `Pretendard` |
+| Weight | `600` |
+| Size | `16px` |
+| Line Height | `120%` |
+| Letter Spacing | `0` |
+
+상태:
+
+- `default`, `hover`, `disabled`를 구현합니다.
+- `pressed`, `focus`, `loading`은 아직 시각값이 제공되지 않았으므로 구현하지 않습니다.
 
 동작:
 
