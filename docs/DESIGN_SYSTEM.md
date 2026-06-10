@@ -131,6 +131,7 @@ TODO: radius와 shadow 기준을 정리한다.
 | Radius | `12px` |
 | Padding | `12px 32px` |
 | Background | `BGMAIN/point` / `--repo-bg-main-point` |
+| Hover background | `BGMAIN/Lighter` / `--repo-bg-main-lighter` |
 | Text color | `GRAY/50 (#FFFFFF)` / `--repo-gray-50` |
 | Typography | `Title Tiny` |
 | Font | `Pretendard` |
@@ -141,8 +142,8 @@ TODO: radius와 shadow 기준을 정리한다.
 
 상태:
 
-- `default`만 구현합니다.
-- `hover`, `pressed`, `focus`, `disabled`, `loading`은 아직 시각값이 제공되지 않았으므로 구현하지 않습니다.
+- `default`와 `hover`를 구현합니다.
+- `pressed`, `focus`, `disabled`, `loading`은 아직 시각값이 제공되지 않았으므로 구현하지 않습니다.
 
 동작:
 

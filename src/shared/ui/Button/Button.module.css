@@ -17,3 +17,7 @@
   letter-spacing: 0;
   cursor: pointer;
 }
+
+.button:hover:not(:disabled) {
+  background: var(--repo-bg-main-lighter);
+}
