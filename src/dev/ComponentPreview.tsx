@@ -1,10 +1,16 @@
-import type { SVGProps, ReactNode } from 'react'
+'use client'
 
-import { Button, Input, Logo } from '@/shared/ui'
+import type { SVGProps, ReactNode } from 'react'
+import { useState } from 'react'
+
+import { Button, Checkbox, CheckboxOption, Input, Logo } from '@/shared/ui'
 
 import styles from './ComponentPreview.module.css'
 
 export function ComponentPreview() {
+  const [interactiveCheckboxChecked, setInteractiveCheckboxChecked] = useState(false)
+  const [interactiveOptionChecked, setInteractiveOptionChecked] = useState(false)
+
   return (
     <main className={styles.preview}>
       <section aria-labelledby="button-preview-title" className={styles.section}>
@@ -66,6 +72,49 @@ export function ComponentPreview() {
               <span>아이콘 off</span>
               <span>아이콘 on</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="checkbox-preview-title" className={styles.section}>
+        <h1 className={styles.sectionTitle} id="checkbox-preview-title">
+          Checkbox
+        </h1>
+
+        <div className={styles.checkboxFrame}>
+          <div className={styles.checkboxGroup}>
+            <p className={styles.previewLabel}>Primitive</p>
+            <Checkbox checked={false} onCheckedChange={() => undefined} aria-label="unchecked checkbox" />
+            <Checkbox checked onCheckedChange={() => undefined} aria-label="checked checkbox" />
+            <label className={styles.inlineControl}>
+              <Checkbox
+                checked={interactiveCheckboxChecked}
+                onCheckedChange={setInteractiveCheckboxChecked}
+                aria-label="interactive checkbox"
+              />
+              <span>{interactiveCheckboxChecked ? 'checked' : 'unchecked'}</span>
+            </label>
+            <Checkbox checked={false} disabled onCheckedChange={() => undefined} aria-label="disabled unchecked checkbox" />
+            <Checkbox checked disabled onCheckedChange={() => undefined} aria-label="disabled checked checkbox" />
+          </div>
+
+          <div className={styles.checkboxGroup}>
+            <p className={styles.previewLabel}>Checkbox Option</p>
+            <CheckboxOption checked={false} onCheckedChange={() => undefined}>
+              선택지
+            </CheckboxOption>
+            <CheckboxOption checked onCheckedChange={() => undefined}>
+              선택지
+            </CheckboxOption>
+            <CheckboxOption checked={interactiveOptionChecked} onCheckedChange={setInteractiveOptionChecked}>
+              클릭 가능한 선택지
+            </CheckboxOption>
+            <CheckboxOption checked={false} disabled onCheckedChange={() => undefined}>
+              비활성 선택지
+            </CheckboxOption>
+            <CheckboxOption checked disabled onCheckedChange={() => undefined}>
+              비활성 선택지
+            </CheckboxOption>
           </div>
         </div>
       </section>
