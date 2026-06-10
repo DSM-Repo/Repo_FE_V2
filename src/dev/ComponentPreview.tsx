@@ -3,7 +3,7 @@
 import type { SVGProps, ReactNode } from 'react'
 import { useState } from 'react'
 
-import { Button, Checkbox, CheckboxOption, Input, Logo, Switch } from '@/shared/ui'
+import { Button, Checkbox, CheckboxOption, Feedback, Input, Logo, Switch } from '@/shared/ui'
 
 import styles from './ComponentPreview.module.css'
 
@@ -11,6 +11,7 @@ export function ComponentPreview() {
   const [interactiveCheckboxChecked, setInteractiveCheckboxChecked] = useState(false)
   const [interactiveOptionChecked, setInteractiveOptionChecked] = useState(false)
   const [interactiveSwitchChecked, setInteractiveSwitchChecked] = useState(false)
+  const [feedbackExpanded, setFeedbackExpanded] = useState(false)
 
   return (
     <main className={styles.preview}>
@@ -138,6 +139,35 @@ export function ComponentPreview() {
           </div>
           <Switch checked={false} disabled onCheckedChange={() => undefined} aria-label="disabled off 상태 스위치" />
           <Switch checked disabled onCheckedChange={() => undefined} aria-label="disabled on 상태 스위치" />
+        </div>
+      </section>
+
+      <section aria-labelledby="feedback-preview-title" className={styles.section}>
+        <h1 className={styles.sectionTitle} id="feedback-preview-title">
+          Feedback
+        </h1>
+
+        <div className={styles.feedbackFrame}>
+          <Feedback
+            createdAtLabel="1일 전"
+            expanded={false}
+            onExpandedChange={() => undefined}
+            title="피드백 제목"
+          />
+          <Feedback
+            content="피드백에 대한 상세 내용"
+            createdAtLabel="1일 전"
+            expanded
+            onExpandedChange={() => undefined}
+            title="피드백 제목"
+          />
+          <Feedback
+            content="클릭하면 열리고 닫히는 피드백입니다."
+            createdAtLabel="방금 전"
+            expanded={feedbackExpanded}
+            onExpandedChange={setFeedbackExpanded}
+            title="인터랙션 확인"
+          />
         </div>
       </section>
 

@@ -164,3 +164,12 @@
   font-weight: var(--repo-font-body-small-weight);
   line-height: var(--repo-font-body-small-line-height);
 }
+
+.feedbackFrame {
+  display: grid;
+  gap: 32px;
+  width: fit-content;
+  padding: 40px 48px;
+  border: 2px dashed #9747FF;
+  border-radius: 8px;
+}
