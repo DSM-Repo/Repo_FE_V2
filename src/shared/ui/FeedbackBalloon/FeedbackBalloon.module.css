@@ -43,35 +43,38 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  width: max-content;
   min-height: 42px;
   max-width: 320px;
   padding: 12px 12px 12px 36px;
   color: var(--repo-gray-50);
+  clip-path: inset(0 100% 0 0);
   opacity: 0;
   pointer-events: none;
-  transform: translateX(-8px) scaleX(0.72);
   transform-origin: left center;
   transition:
-    opacity 160ms ease,
-    transform 160ms ease;
+    clip-path 160ms ease,
+    opacity 120ms ease;
 }
 
 .balloon:hover .message,
 .balloon:focus-within .message {
+  clip-path: inset(0 0 0 0);
   opacity: 1;
   pointer-events: auto;
-  transform: translateX(0) scaleX(1);
 }
 
 .title {
+  display: block;
+  max-width: 240px;
   min-width: 0;
   color: var(--repo-gray-50);
   font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
   white-space: normal;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .checkIcon {
