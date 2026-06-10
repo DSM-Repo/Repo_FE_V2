@@ -1,29 +1,29 @@
 :root {
-  --repo-gray-50: #ffffff;
-  --repo-gray-100: #f8f8f8;
-  --repo-gray-200: #e2e2e2;
-  --repo-gray-300: #c9c9c9;
-  --repo-gray-400: #adadad;
+  --repo-gray-50: #FFFFFF;
+  --repo-gray-100: #F8F8F8;
+  --repo-gray-200: #E2E2E2;
+  --repo-gray-300: #C9C9C9;
+  --repo-gray-400: #ADADAD;
   --repo-gray-500: #919191;
   --repo-gray-600: #747474;
   --repo-gray-700: #565656;
-  --repo-gray-800: #3a3a3a;
-  --repo-gray-900: #1f1f1f;
+  --repo-gray-800: #3A3A3A;
+  --repo-gray-900: #1F1F1F;
   --repo-gray-950: #111111;
 
-  --repo-main-disabled: #c8d7c6;
-  --repo-main-lighter: #88ef75;
-  --repo-main: #37e517;
-  --repo-main-darker: #38c11f;
+  --repo-main-disabled: #C8D7C6;
+  --repo-main-lighter: #88EF75;
+  --repo-main: #37E517;
+  --repo-main-darker: #38C11F;
 
-  --repo-bg-main-point: #c0ef7e;
-  --repo-bg-main-lighter: #97bc62;
-  --repo-bg-main: #586f37;
+  --repo-bg-main-point: #43434B;
+  --repo-bg-main-lighter: #212124;
+  --repo-bg-main: #181819;
 
-  --repo-state-info: #2f80ed;
-  --repo-state-success: #27ae60;
-  --repo-state-warning: #e2b93b;
-  --repo-state-error: #eb5757;
+  --repo-state-info: #2F80ED;
+  --repo-state-success: #1BB35B;
+  --repo-state-warning: #F1BC19;
+  --repo-state-error: #EB5757;
 
   --repo-text-black: #000000;
 }

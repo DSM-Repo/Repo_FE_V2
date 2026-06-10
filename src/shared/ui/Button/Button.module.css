@@ -18,29 +18,33 @@
   cursor: pointer;
 }
 
-.button1 {
+.filled {
   background: var(--repo-bg-main-point);
 }
 
-.button1:hover:not(:disabled) {
+.filled:hover:not(:disabled),
+.filled[data-preview-state='hover'] {
   background: var(--repo-bg-main-lighter);
 }
 
-.button1:disabled {
+.filled:disabled {
   background: var(--repo-gray-400);
+  cursor: default;
 }
 
-.button2 {
+.borderedDark {
   border: 1px solid var(--repo-gray-500);
   background: var(--repo-bg-main);
 }
 
-.button2:hover:not(:disabled) {
+.borderedDark:hover:not(:disabled),
+.borderedDark[data-preview-state='hover'] {
   background: var(--repo-bg-main-lighter);
 }
 
-.button2:disabled {
+.borderedDark:disabled {
   background: var(--repo-gray-300);
+  cursor: default;
 }
 
 .icon {

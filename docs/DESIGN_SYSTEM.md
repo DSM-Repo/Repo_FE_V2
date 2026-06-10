@@ -31,12 +31,12 @@
 | MAIN | Lighter | `#88EF75` | `--repo-main-lighter` |
 | MAIN | main | `#37E517` | `--repo-main` |
 | MAIN | Darker | `#38C11F` | `--repo-main-darker` |
-| BGMAIN | point | `#C0EF7E` | `--repo-bg-main-point` |
-| BGMAIN | Lighter | `#97BC62` | `--repo-bg-main-lighter` |
-| BGMAIN | main | `#586F37` | `--repo-bg-main` |
+| BGMAIN | point | `#43434B` | `--repo-bg-main-point` |
+| BGMAIN | Lighter | `#212124` | `--repo-bg-main-lighter` |
+| BGMAIN | main | `#181819` | `--repo-bg-main` |
 | STATE | Info | `#2F80ED` | `--repo-state-info` |
-| STATE | Success | `#27AE60` | `--repo-state-success` |
-| STATE | Warning | `#E2B93B` | `--repo-state-warning` |
+| STATE | Success | `#1BB35B` | `--repo-state-success` |
+| STATE | Warning | `#F1BC19` | `--repo-state-warning` |
 | STATE | Error | `#EB5757` | `--repo-state-error` |
 | TEXT | Black | `#000000` | `--repo-text-black` |
 
@@ -114,6 +114,18 @@ TODO: radius와 shadow 기준을 정리한다.
 
 ### Button
 
+
+#### Button 종류 이름
+
+Button은 `button1`, `button2`처럼 번호로 구분하지 않고 의도가 드러나는 이름을 사용합니다.
+
+| Preview name | Code | Icon | 설명 |
+| --- | --- | --- | --- |
+| Filled | `<Button>` | off | 기본 filled 버튼 |
+| Bordered dark | `<Button variant="bordered-dark">` | off | border가 있는 어두운 버튼 |
+| Filled icon | `<Button iconRight="plus">` | on | Filled 버튼의 오른쪽 plus 아이콘 형태 |
+| Bordered dark icon | `<Button variant="bordered-dark" iconRight="right-arrow">` | on | Bordered dark 버튼의 오른쪽 arrow 아이콘 형태 |
+
 #### Button 운영 규칙
 
 - Button 내부에 API 호출 로직을 넣지 않습니다.
@@ -125,9 +137,9 @@ TODO: radius와 shadow 기준을 정리한다.
 - 아이콘 색상은 버튼 text color와 동일하게 `currentColor`를 따릅니다.
 - disabled 상태에서도 아이콘 색상은 disabled text color와 동일하게 처리합니다.
 
-#### Button 1 / Default
+#### Filled
 
-프로젝트 내부에서 공통으로 사용하는 기본 클릭 버튼입니다.
+아이콘이 없는 기본 filled 버튼입니다.
 
 구현 위치:
 
@@ -162,16 +174,16 @@ TODO: radius와 shadow 기준을 정리한다.
 - 클릭 가능한 기본 버튼입니다.
 - 버튼 내부에 API 호출이나 페이지 전용 비즈니스 로직을 넣지 않습니다.
 
-#### Button 2 / Default
+#### Bordered Dark
 
-Button 1과 동일한 치수와 텍스트 스타일을 사용하되 배경색, disabled 색상, border를 분리한 버튼입니다.
+아이콘이 없는 bordered dark 버튼입니다. Filled와 동일한 치수와 텍스트 스타일을 사용하되 배경색, disabled 색상, border를 분리합니다.
 
 구현 위치:
 
 - `src/shared/ui/Button`
-- 사용 예시: `<Button variant="button2">버튼</Button>`
-- Plus 오른쪽 아이콘 사용 예시: `<Button iconRight="plus">버튼</Button>`
-- RightArrow 오른쪽 아이콘 사용 예시: `<Button variant="button2" iconRight="right-arrow">버튼</Button>`
+- 사용 예시: `<Button variant="bordered-dark">버튼</Button>`
+- Filled icon 사용 예시: `<Button iconRight="plus">버튼</Button>`
+- Bordered dark icon 사용 예시: `<Button variant="bordered-dark" iconRight="right-arrow">버튼</Button>`
 
 시각값:
 
