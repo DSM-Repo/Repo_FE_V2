@@ -1,0 +1,99 @@
+.pageShell {
+  width: min(1120px, calc(100% - 64px));
+  margin: 0 auto;
+  padding: 72px 0;
+}
+
+.heroCard {
+  display: grid;
+  gap: 32px;
+  padding: 56px;
+  border: 1px solid var(--border);
+  border-radius: 32px;
+  background: var(--surface);
+}
+
+.eyebrow {
+  width: fit-content;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--text-primary);
+  background: var(--brand-soft);
+  font-size: var(--repo-font-label-medium-size);
+  font-weight: var(--repo-font-label-medium-weight);
+  line-height: var(--repo-font-label-medium-line-height);
+}
+
+.heroTitle {
+  max-width: 760px;
+  margin: 0;
+  font-size: var(--repo-font-title-large-size);
+  font-weight: var(--repo-font-title-large-weight);
+  line-height: var(--repo-font-title-large-line-height);
+  letter-spacing: -0.04em;
+}
+
+.heroDescription {
+  max-width: 720px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--repo-font-body-large-size);
+  font-weight: var(--repo-font-body-large-weight);
+  line-height: var(--repo-font-body-large-line-height);
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.actionLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-muted);
+  font-size: var(--repo-font-title-tiny-size);
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: var(--repo-font-title-tiny-line-height);
+}
+
+.primaryActionLink {
+  color: var(--repo-text-black);
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.infoCard {
+  min-height: 148px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+}
+
+.infoCard h2,
+.infoCard h3 {
+  margin: 0 0 10px;
+  font-size: var(--repo-font-title-tiny-size);
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: var(--repo-font-title-tiny-line-height);
+}
+
+.infoCard p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+}

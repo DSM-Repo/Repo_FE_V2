@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { useId } from 'react'
 
 import styles from './Feedback.module.css'
 
@@ -22,6 +23,7 @@ export function Feedback({
   title,
   ...props
 }: FeedbackProps) {
+  const contentId = useId()
   const feedbackClassName = [styles.feedback, expanded ? styles.expanded : undefined, className]
     .filter(Boolean)
     .join(' ')
@@ -38,7 +40,15 @@ export function Feedback({
 
   return (
     <article className={feedbackClassName}>
-      <button {...props} aria-expanded={expanded} className={styles.trigger} disabled={disabled} onClick={handleClick} type="button">
+      <button
+        {...props}
+        aria-controls={content ? contentId : undefined}
+        aria-expanded={expanded}
+        className={styles.trigger}
+        disabled={disabled}
+        onClick={handleClick}
+        type="button"
+      >
         <span className={styles.summary}>
           <span className={styles.title}>{title}</span>
           <span className={styles.createdAt}>{createdAtLabel}</span>
@@ -46,7 +56,11 @@ export function Feedback({
         <ChevronIcon className={styles.chevron} direction={expanded ? 'up' : 'down'} />
       </button>
 
-      {expanded && content ? <div className={styles.content}>{content}</div> : null}
+      {expanded && content ? (
+        <div className={styles.content} id={contentId}>
+          {content}
+        </div>
+      ) : null}
     </article>
   )
 }

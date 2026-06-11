@@ -33,13 +33,13 @@ export function ComponentPreview() {
               <div className={styles.buttonGrid}>
                 <PreviewColumn title="Filled">
                   <Button>버튼</Button>
-                  <Button data-preview-state="hover">버튼</Button>
+                  <Button className={styles.buttonPreviewHover}>버튼</Button>
                   <Button disabled>버튼</Button>
                 </PreviewColumn>
 
                 <PreviewColumn title="Bordered dark">
                   <Button variant="bordered-dark">버튼</Button>
-                  <Button data-preview-state="hover" variant="bordered-dark">
+                  <Button className={styles.buttonPreviewHover} variant="bordered-dark">
                     버튼
                   </Button>
                   <Button disabled variant="bordered-dark">
@@ -49,7 +49,7 @@ export function ComponentPreview() {
 
                 <PreviewColumn title="Filled icon">
                   <Button iconRight="plus">버튼</Button>
-                  <Button data-preview-state="hover" iconRight="plus">
+                  <Button className={styles.buttonPreviewHover} iconRight="plus">
                     버튼
                   </Button>
                   <Button disabled iconRight="plus">
@@ -61,7 +61,7 @@ export function ComponentPreview() {
                   <Button iconRight="right-arrow" variant="bordered-dark">
                     버튼
                   </Button>
-                  <Button data-preview-state="hover" iconRight="right-arrow" variant="bordered-dark">
+                  <Button className={styles.buttonPreviewHover} iconRight="right-arrow" variant="bordered-dark">
                     버튼
                   </Button>
                   <Button disabled iconRight="right-arrow" variant="bordered-dark">

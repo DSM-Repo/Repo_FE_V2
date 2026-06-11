@@ -22,8 +22,7 @@
   background: var(--repo-bg-main-point);
 }
 
-.filled:hover:not(:disabled),
-.filled[data-preview-state='hover'] {
+.filled:hover:not(:disabled) {
   background: var(--repo-bg-main-lighter);
 }
 
@@ -37,8 +36,7 @@
   background: var(--repo-bg-main);
 }
 
-.borderedDark:hover:not(:disabled),
-.borderedDark[data-preview-state='hover'] {
+.borderedDark:hover:not(:disabled) {
   background: var(--repo-bg-main-lighter);
 }
 

@@ -81,6 +81,10 @@
   gap: 28px;
 }
 
+.buttonPreviewHover.buttonPreviewHover {
+  background: var(--repo-bg-main-lighter);
+}
+
 .groupLabels {
   display: grid;
   grid-template-columns: 1fr 1fr;

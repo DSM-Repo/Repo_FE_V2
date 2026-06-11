@@ -22,9 +22,9 @@ export function FeedbackBalloon({
 
   return (
     <div className={balloonClassName} {...props}>
-      <div aria-label="피드백 내용 보기" className={styles.avatar} tabIndex={0}>
+      <button aria-label="피드백 내용 보기" className={styles.avatar} type="button">
         <Image alt={avatarAlt} className={styles.avatarImage} height={32} src={avatarSrc} width={32} />
-      </div>
+      </button>
 
       <div className={styles.message}>
         <span className={styles.title}>{title}</span>

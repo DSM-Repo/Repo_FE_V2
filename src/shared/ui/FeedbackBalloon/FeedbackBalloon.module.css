@@ -21,7 +21,11 @@
   justify-content: center;
   width: 42px;
   height: 42px;
+  padding: 0;
   overflow: hidden;
+  border: 0;
+  appearance: none;
+  cursor: pointer;
   outline: none;
 }
 

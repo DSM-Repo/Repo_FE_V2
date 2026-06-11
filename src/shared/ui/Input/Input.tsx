@@ -1,26 +1,29 @@
-import type { InputHTMLAttributes, ReactNode } from 'react';
+import type { InputHTMLAttributes, ReactNode } from 'react'
+import { useId } from 'react'
 
-import styles from './Input.module.css';
+import styles from './Input.module.css'
 
 type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'className'> & {
-  error?: boolean;
-  errorMessage?: string;
-  onRightIconClick?: () => void;
-  rightIcon?: ReactNode;
-};
+  error?: boolean
+  errorMessage?: string
+  onRightIconClick?: () => void
+  rightIcon?: ReactNode
+}
 
 export function Input({ error = false, errorMessage, id, onRightIconClick, rightIcon, ...props }: InputProps) {
-  const hasError = error || Boolean(errorMessage);
-  const errorMessageId = id && errorMessage ? `${id}-error` : undefined;
+  const generatedId = useId()
+  const inputId = id ?? generatedId
+  const hasError = error || Boolean(errorMessage)
+  const errorMessageId = errorMessage ? `${inputId}-error` : undefined
   const input = (
     <input
       aria-describedby={errorMessageId}
       aria-invalid={hasError || undefined}
       className={styles.input}
-      id={id}
+      id={inputId}
       {...props}
     />
-  );
+  )
 
   return (
     <div className={styles.root}>
@@ -28,7 +31,12 @@ export function Input({ error = false, errorMessage, id, onRightIconClick, right
         {input}
         {rightIcon ? (
           onRightIconClick ? (
-            <button aria-label="입력창 오른쪽 아이콘" className={styles.iconButton} onClick={onRightIconClick} type="button">
+            <button
+              aria-label="입력창 오른쪽 아이콘"
+              className={styles.iconButton}
+              onClick={onRightIconClick}
+              type="button"
+            >
               {rightIcon}
             </button>
           ) : (
@@ -44,5 +52,5 @@ export function Input({ error = false, errorMessage, id, onRightIconClick, right
         </p>
       ) : null}
     </div>
-  );
+  )
 }
