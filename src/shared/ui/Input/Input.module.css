@@ -1,0 +1,66 @@
+.root {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 43px;
+  padding: 12px 20px;
+  border: 1px solid var(--repo-gray-400);
+  border-radius: 12px;
+  background: transparent;
+}
+
+.field.error {
+  border-color: var(--repo-state-error);
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: var(--repo-text-black);
+  background: transparent;
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  letter-spacing: 0;
+  text-align: left;
+}
+
+.input::placeholder {
+  color: var(--repo-gray-400);
+  opacity: 1;
+}
+
+.icon,
+.iconButton {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  color: var(--repo-gray-400);
+  background: transparent;
+}
+
+.iconButton {
+  cursor: pointer;
+}
+
+.errorMessage {
+  margin: 0;
+  color: var(--repo-state-error);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  letter-spacing: 0;
+}

@@ -1,0 +1,21 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+}
+
+.text {
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: var(--repo-font-title-small-line-height);
+  letter-spacing: 0;
+}
+
+.light {
+  color: var(--repo-gray-50);
+}
+
+.dark {
+  color: var(--repo-text-black);
+}

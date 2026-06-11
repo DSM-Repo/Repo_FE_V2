@@ -31,12 +31,12 @@
 | MAIN | Lighter | `#88EF75` | `--repo-main-lighter` |
 | MAIN | main | `#37E517` | `--repo-main` |
 | MAIN | Darker | `#38C11F` | `--repo-main-darker` |
-| BGMAIN | point | `#C0EF7E` | `--repo-bg-main-point` |
-| BGMAIN | Lighter | `#97BC62` | `--repo-bg-main-lighter` |
-| BGMAIN | main | `#586F37` | `--repo-bg-main` |
+| BGMAIN | point | `#43434B` | `--repo-bg-main-point` |
+| BGMAIN | Lighter | `#212124` | `--repo-bg-main-lighter` |
+| BGMAIN | main | `#181819` | `--repo-bg-main` |
 | STATE | Info | `#2F80ED` | `--repo-state-info` |
-| STATE | Success | `#27AE60` | `--repo-state-success` |
-| STATE | Warning | `#E2B93B` | `--repo-state-warning` |
+| STATE | Success | `#1BB35B` | `--repo-state-success` |
+| STATE | Warning | `#F1BC19` | `--repo-state-warning` |
 | STATE | Error | `#EB5757` | `--repo-state-error` |
 | TEXT | Black | `#000000` | `--repo-text-black` |
 
@@ -111,6 +111,172 @@ TODO: radius와 shadow 기준을 정리한다.
 - PDF Viewer Controls
 - Student List Item
 - Feedback Marker
+
+### Button
+
+
+#### Button 종류 이름
+
+Button은 `button1`, `button2`처럼 번호로 구분하지 않고 의도가 드러나는 이름을 사용합니다.
+
+| Preview name | Code | Icon | 설명 |
+| --- | --- | --- | --- |
+| Filled | `<Button>` | off | 기본 filled 버튼 |
+| Bordered dark | `<Button variant="bordered-dark">` | off | border가 있는 어두운 버튼 |
+| Filled icon | `<Button iconRight="plus">` | on | Filled 버튼의 오른쪽 plus 아이콘 형태 |
+| Bordered dark icon | `<Button variant="bordered-dark" iconRight="right-arrow">` | on | Bordered dark 버튼의 오른쪽 arrow 아이콘 형태 |
+
+#### Button 운영 규칙
+
+- Button 내부에 API 호출 로직을 넣지 않습니다.
+- 페이지별로 다른 버튼 스타일을 임의로 만들지 않습니다.
+- 비슷한 버튼을 새로 만들기 전에 이 Button 컴포넌트의 variant로 해결 가능한지 먼저 확인합니다.
+- Figma canvas 위치값인 Top, Left를 버튼 스타일로 구현하지 않습니다.
+- 아이콘은 우선 오른쪽 배치만 지원합니다.
+- Button icon 공통 규칙을 따릅니다.
+- 아이콘 색상은 버튼 text color와 동일하게 `currentColor`를 따릅니다.
+- disabled 상태에서도 아이콘 색상은 disabled text color와 동일하게 처리합니다.
+
+#### Filled
+
+아이콘이 없는 기본 filled 버튼입니다.
+
+구현 위치:
+
+- `src/shared/ui/Button`
+
+시각값:
+
+| 항목 | 값 |
+| --- | --- |
+| Width | `Hug(92px)` / 코드에서는 `width: fit-content`, `min-width: 92px` |
+| Height | `Hug(43px)` / 코드에서는 `min-height: 43px` |
+| Radius | `12px` |
+| Padding | `12px 32px` |
+| Background | `BGMAIN/point` / `--repo-bg-main-point` |
+| Hover background | `BGMAIN/Lighter` / `--repo-bg-main-lighter` |
+| Disabled background | `GRAY/400` / `--repo-gray-400` |
+| Text color | `GRAY/50 (#FFFFFF)` / `--repo-gray-50` |
+| Typography | `Title Tiny` |
+| Font | `Pretendard` |
+| Weight | `600` |
+| Size | `16px` |
+| Line Height | `120%` |
+| Letter Spacing | `0` |
+
+상태:
+
+- `default`, `hover`, `disabled`를 구현합니다.
+- `pressed`, `focus`, `loading`은 아직 시각값이 제공되지 않았으므로 구현하지 않습니다.
+
+동작:
+
+- 클릭 가능한 기본 버튼입니다.
+- 버튼 내부에 API 호출이나 페이지 전용 비즈니스 로직을 넣지 않습니다.
+
+#### Bordered Dark
+
+아이콘이 없는 bordered dark 버튼입니다. Filled와 동일한 치수와 텍스트 스타일을 사용하되 배경색, disabled 색상, border를 분리합니다.
+
+구현 위치:
+
+- `src/shared/ui/Button`
+- 사용 예시: `<Button variant="bordered-dark">버튼</Button>`
+- Filled icon 사용 예시: `<Button iconRight="plus">버튼</Button>`
+- Bordered dark icon 사용 예시: `<Button variant="bordered-dark" iconRight="right-arrow">버튼</Button>`
+
+시각값:
+
+| 항목 | 값 |
+| --- | --- |
+| Width | `Hug(92px)` / 코드에서는 `width: fit-content`, `min-width: 92px` |
+| Height | `Hug(43px)` / 코드에서는 `min-height: 43px` |
+| Radius | `12px` |
+| Padding | `12px 32px` |
+| Background | `BGMAIN/main` / `--repo-bg-main` |
+| Hover background | `BGMAIN/Lighter` / `--repo-bg-main-lighter` |
+| Disabled background | `GRAY/300` / `--repo-gray-300` |
+| Border | `1px solid GRAY/500` / `--repo-gray-500` |
+| Text color | `GRAY/50 (#FFFFFF)` / `--repo-gray-50` |
+| Typography | `Title Tiny` |
+| Font | `Pretendard` |
+| Weight | `600` |
+| Size | `16px` |
+| Line Height | `120%` |
+| Letter Spacing | `0` |
+
+상태:
+
+- `default`, `hover`, `disabled`를 구현합니다.
+- `pressed`, `focus`, `loading`은 아직 시각값이 제공되지 않았으므로 구현하지 않습니다.
+
+동작:
+
+- 클릭 가능한 기본 버튼입니다.
+- 버튼 내부에 API 호출이나 페이지 전용 비즈니스 로직을 넣지 않습니다.
+
+### Icon
+
+구현 위치:
+
+- `src/shared/ui/Icon`
+
+운영 기준:
+
+- 공통 컴포넌트에서 사용하는 아이콘만 필요한 순서대로 추가합니다.
+- 아이콘 색상은 기본적으로 `currentColor`를 사용해 부모 텍스트 색상을 따릅니다.
+
+#### Button icon 공통 규칙
+
+Button 내부에서 사용하는 아이콘은 Plus와 RightArrow 모두 아래 공통 규칙을 따릅니다.
+
+| Property | Value |
+| --- | --- |
+| icon slot size | `16px × 16px` |
+| gap | `10px` |
+| icon position | 우선 `right` 기준 |
+| color | text color와 동일 |
+| disabled color | disabled text color와 동일 |
+| stroke width | `1.8px` |
+| stroke linecap | `round` |
+| stroke linejoin | `round` |
+| implementation color | `currentColor` |
+
+#### Plus
+
+Button right icon으로 사용하는 plus 아이콘입니다.
+
+| Section | Property | Value |
+| --- | --- | --- |
+| Icon | Name | `Plus` |
+| Icon | Usage | Button right icon |
+| Icon slot | Size | `16px × 16px` |
+| Border / Stroke | Width | `1.8px` |
+| Border / Stroke | Linecap | `round` |
+| Border / Stroke | Linejoin | `round` |
+| Color | Rule | text color와 동일한 `currentColor` |
+| Alignment | Position | Center alignment |
+
+#### RightArrow
+
+Button right icon으로 사용하는 오른쪽 화살표 아이콘입니다.
+
+| Section | Property | Value |
+| --- | --- | --- |
+| Icon | Name | `RightArrow` |
+| Icon | Usage | Button right icon |
+| Icon slot | Size | `16px × 16px` |
+| Vector layout | Width | `6px` |
+| Vector layout | Height | `12px` |
+| Vector layout | Top | `2px` |
+| Vector layout | Left | `5px` |
+| Border / Stroke | Width | `1.8px` |
+| Border / Stroke | Linecap | `round` |
+| Border / Stroke | Linejoin | `round` |
+| Color | Rule | text color와 동일한 `currentColor` |
+| Alignment | Position | Center alignment |
+
+현재 색상 토큰에는 `GRAY/0`이 없으므로 문서에서 흰색이 필요할 때는 동일 HEX인 `GRAY/50 (#FFFFFF)`로 기록합니다.
 
 ## Component Strategy
 
