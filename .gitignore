@@ -34,3 +34,8 @@ out
 .codex/skills/.system/**
 !.codex/prompts/
 !.codex/prompts/**
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
