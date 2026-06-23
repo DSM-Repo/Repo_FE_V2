@@ -3,7 +3,23 @@
 import type { SVGProps, ReactNode } from 'react'
 import { useState } from 'react'
 
-import { Button, Checkbox, CheckboxOption, Dropdown, Feedback, FeedbackBalloon, Input, Logo, Switch, Tag, Toast } from '@/shared/ui'
+import { samplePortfolioResume, samplePortfolioHref, sampleResumeBookHref } from '@/shared/fixtures/examples/publicExamples'
+
+import {
+  Button,
+  Checkbox,
+  CheckboxOption,
+  Dropdown,
+  Feedback,
+  FeedbackBalloon,
+  Input,
+  Logo,
+  LibraryBookCard,
+  PortfolioResumeSheet,
+  Switch,
+  Tag,
+  Toast,
+} from '@/shared/ui'
 
 import styles from './ComponentPreview.module.css'
 
@@ -182,6 +198,27 @@ export function ComponentPreview() {
         </div>
       </section>
 
+
+      <section aria-labelledby="portfolio-resume-sheet-preview-title" className={styles.section}>
+        <h1 className={styles.sectionTitle} id="portfolio-resume-sheet-preview-title">
+          Portfolio Resume Sheet
+        </h1>
+
+        <div className={styles.portfolioResumeSheetFrame}>
+<PortfolioResumeSheet {...samplePortfolioResume} />
+        </div>
+      </section>
+
+      <section aria-labelledby="library-book-card-preview-title" className={styles.section}>
+        <h1 className={styles.sectionTitle} id="library-book-card-preview-title">
+          Library Book Card
+        </h1>
+
+        <div className={styles.libraryBookFrame}>
+          <LibraryBookCard href={samplePortfolioHref} title="2022" batchLabel="9기" gradeLabel="2학년" actionLabel="포트폴리오 열람" />
+          <LibraryBookCard href={sampleResumeBookHref} title="2022" batchLabel="9기" gradeLabel="2학년" actionLabel="레주메북 열람" />
+        </div>
+      </section>
 
       <section aria-labelledby="tag-preview-title" className={styles.section}>
         <h1 className={styles.sectionTitle} id="tag-preview-title">

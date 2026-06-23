@@ -214,3 +214,23 @@
   border: 2px dashed #9747FF;
   border-radius: 20px;
 }
+
+.libraryBookFrame {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 32px;
+  width: fit-content;
+  padding: 48px 56px;
+  border: 2px dashed #9747FF;
+  border-radius: 20px;
+  background: var(--repo-gray-600);
+}
+
+
+.portfolioResumeSheetFrame {
+  width: fit-content;
+  padding: 32px;
+  border: 2px dashed #9747FF;
+  border-radius: 20px;
+  background: var(--repo-gray-600);
+}

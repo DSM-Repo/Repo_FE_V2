@@ -85,6 +85,15 @@
 - 일반 본문 기본값은 `Body Small` 이상을 우선합니다.
 - Figma token명이 바뀌면 CSS utility class 변경 전에 이 문서를 먼저 갱신합니다.
 
+
+### Fixed visual contracts for issue #14
+
+2026-06-23 기준, `LibraryBookCard`와 `PortfolioResumeSheet`는 범용 variant 시스템이 아니라 Figma 예시 화면을 코드로 고정한 초기 shared UI입니다.
+
+- `LibraryBookCard`는 도서관/레주메북 진입용 160×220 책 커버 카드입니다. 현재 커버는 `public/assets/library-book-cover.svg` 고정 asset을 사용하며, 이 파일명/경로는 issue #14 초기 카드 계약입니다. 카드 종류가 늘어나면 `cover` 또는 `variant` 계약을 별도 결정합니다.
+- `PortfolioResumeSheet`는 학생 포트폴리오 첫 자기소개/이력서 시트입니다. 사용자 지정 기준에 따라 이름은 `Title Small`, 전공 상태는 `Body Tiny`, 학번/학과/email 메타는 `Body very Tiny`를 사용합니다. `resume small` / `resume major` token은 PDF/고밀도 출력 기준이 확정될 때 별도 적용 여부를 결정합니다.
+- 공개 route와 `ComponentPreview`에서 쓰는 예시 데이터는 실제 API mock이 아니라 화면 확인용 fixture이므로 `src/shared/fixtures/examples/publicExamples.ts`에 둡니다.
+
 ### Spacing
 
 TODO: spacing scale을 정리한다.
