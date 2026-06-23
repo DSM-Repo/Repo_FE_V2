@@ -20,8 +20,9 @@ test.describe('public route smoke', () => {
     const body = await response.text()
     const normalizedBody = body.replaceAll(/<!--.*?-->/g, '')
 
-    expect(normalizedBody).toContain('오혜민')
-    expect(normalizedBody).toContain('/오혜민')
+    expect(normalizedBody).toContain('홍길동')
+    expect(normalizedBody).toContain('기술스택')
+    expect(normalizedBody).toContain('2415')
   })
 
   test('does not treat the reserved dev slug as a public portfolio', async ({ request }) => {
