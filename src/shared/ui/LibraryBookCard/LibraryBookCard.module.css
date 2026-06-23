@@ -1,0 +1,90 @@
+.card {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 160px;
+  height: 220px;
+  padding: 20px 15px 16px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--repo-gray-50);
+  /* library-book-cover.svg is an issue #14 fixed visual contract; update docs before renaming/moving. */
+  background:
+    linear-gradient(180deg, rgb(57 57 57 / 6%) 0%, rgb(57 57 57 / 0%) 100%),
+    url('/assets/library-book-cover.svg') center / cover no-repeat;
+  text-decoration: none;
+  transform: translateZ(0);
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--repo-main);
+  outline-offset: 4px;
+}
+
+.card[href] {
+  cursor: pointer;
+  transition:
+    filter 160ms ease,
+    transform 160ms ease;
+}
+
+.card[href]:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.title {
+  color: var(--repo-gray-50);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.batchLabel {
+  color: var(--repo-gray-400);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.gradeLabel {
+  display: block;
+  margin-top: 6px;
+  color: var(--repo-gray-50);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.action {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  color: var(--repo-gray-400);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  white-space: nowrap;
+}
+
+.arrow {
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 0.7;
+  transform: translateY(-1px);
+}
