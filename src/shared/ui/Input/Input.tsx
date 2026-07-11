@@ -7,10 +7,19 @@ type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'className'> & {
   error?: boolean
   errorMessage?: string
   onRightIconClick?: () => void
+  rightIconAriaLabel?: string
   rightIcon?: ReactNode
 }
 
-export function Input({ error = false, errorMessage, id, onRightIconClick, rightIcon, ...props }: InputProps) {
+export function Input({
+  error = false,
+  errorMessage,
+  id,
+  onRightIconClick,
+  rightIcon,
+  rightIconAriaLabel = '입력창 오른쪽 아이콘',
+  ...props
+}: InputProps) {
   const generatedId = useId()
   const inputId = id ?? generatedId
   const hasError = error || Boolean(errorMessage)
@@ -32,7 +41,7 @@ export function Input({ error = false, errorMessage, id, onRightIconClick, right
         {rightIcon ? (
           onRightIconClick ? (
             <button
-              aria-label="입력창 오른쪽 아이콘"
+              aria-label={rightIconAriaLabel}
               className={styles.iconButton}
               onClick={onRightIconClick}
               type="button"
