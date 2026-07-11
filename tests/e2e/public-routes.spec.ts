@@ -1,15 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('public route smoke', () => {
-  test('renders the public home route', async ({ request }) => {
-    const response = await request.get('/')
+  test('redirects the public home route to login', async ({ page }) => {
+    await page.goto('/')
 
-    expect(response.status()).toBe(200)
-    await expect(response).toBeOK()
-    const body = await response.text()
-
-    expect(body).toContain('대덕소프트마이스터고 학생을 위한 포트폴리오 플랫폼')
-    expect(body).toContain('공개 포트폴리오 예시')
+    await expect(page).toHaveURL(/\/login$/)
+    await expect(page.getByRole('heading', { name: '학생 로그인' })).toBeVisible()
   })
 
   test('renders a Korean public portfolio slug', async ({ request }) => {
