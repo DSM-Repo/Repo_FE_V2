@@ -18,7 +18,7 @@ export default async function ResumeBookPage({ params }: ResumeBookPageProps) {
             {bookId} 레주메북
           </h1>
           <p className={styles.heroDescription}>
-            학년/전공/주제별 학생 포트폴리오를 모아보는 레주메북 화면의 Next.js route placeholder입니다.
+            학년/전공/주제별 학생 포트폴리오를 모아보는 레주메북 화면입니다.
           </p>
         </section>
       </div>
