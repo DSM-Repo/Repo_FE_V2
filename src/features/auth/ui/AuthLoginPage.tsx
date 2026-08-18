@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 
 import { Button, Icon, Input, Logo } from '@/shared/ui'
@@ -8,6 +9,8 @@ import { Button, Icon, Input, Logo } from '@/shared/ui'
 import styles from './AuthLoginPage.module.css'
 
 type LoginRole = 'student' | 'teacher'
+type LoginField = 'email' | 'password'
+type SubmitState = 'idle' | 'pending'
 
 type LoginContent = {
   description: string
@@ -33,19 +36,88 @@ const oppositeRole: Record<LoginRole, LoginRole> = {
   teacher: 'student',
 }
 
+const emptyTouchedFields: Record<LoginField, boolean> = {
+  email: false,
+  password: false,
+}
+
+const filledTouchedFields: Record<LoginField, boolean> = {
+  email: true,
+  password: true,
+}
+
+function hasValue(value: string) {
+  return value.trim().length > 0
+}
+
 export function AuthLoginPage() {
   const [role, setRole] = useState<LoginRole>('student')
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [touchedFields, setTouchedFields] = useState(emptyTouchedFields)
+  const [submitState, setSubmitState] = useState<SubmitState>('idle')
   const content = LOGIN_CONTENT[role]
   const nextRole = oppositeRole[role]
   const layoutClassName = role === 'student' ? styles.studentLayout : styles.teacherLayout
   const passwordType = showPassword ? 'text' : 'password'
   const passwordToggleLabel = showPassword ? '비밀번호 숨기기' : '비밀번호 보이기'
   const passwordIconName = showPassword ? 'eye' : 'eye-off'
+  const emailHasValue = hasValue(email)
+  const passwordHasValue = hasValue(password)
+  const isFormValid = emailHasValue && passwordHasValue
+  const isSubmitting = submitState === 'pending'
+  const emailErrorMessage = touchedFields.email && !emailHasValue ? '이메일을 입력해주세요.' : undefined
+  const passwordErrorMessage = touchedFields.password && !passwordHasValue ? '비밀번호를 입력해주세요.' : undefined
+
+  const markFieldTouched = (field: LoginField) => {
+    setTouchedFields((currentFields) => ({
+      ...currentFields,
+      [field]: true,
+    }))
+  }
+
+  const resetSubmitState = () => {
+    if (isSubmitting) {
+      setSubmitState('idle')
+    }
+  }
+
+  const handleEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setEmail(event.target.value)
+    resetSubmitState()
+  }
+
+  const handlePasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setPassword(event.target.value)
+    resetSubmitState()
+  }
+
+  const handleRoleSwitch = () => {
+    setRole(nextRole)
+    resetSubmitState()
+  }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setTouchedFields(filledTouchedFields)
+
+    if (!isFormValid || isSubmitting) {
+      return
+    }
+
+    setSubmitState('pending')
+  }
 
   const formPanel = (
     <section className={styles.formPanel} aria-labelledby="login-title">
-      <form className={styles.form} aria-label={content.title}>
+      <form
+        className={styles.form}
+        aria-busy={isSubmitting}
+        aria-label={content.title}
+        noValidate
+        onSubmit={handleSubmit}
+      >
         <h1 className={styles.title} id="login-title">
           {content.title}
         </h1>
@@ -54,7 +126,18 @@ export function AuthLoginPage() {
           <label className={styles.label} htmlFor="login-email">
             이메일
           </label>
-          <Input id="login-email" name="email" placeholder="이메일을 입력해주세요." type="email" />
+          <Input
+            autoComplete="email"
+            errorMessage={emailErrorMessage}
+            id="login-email"
+            name="email"
+            onBlur={() => markFieldTouched('email')}
+            onChange={handleEmailChange}
+            placeholder="이메일을 입력해주세요."
+            required
+            type="email"
+            value={email}
+          />
         </div>
 
         <div className={styles.fieldGroup}>
@@ -62,18 +145,24 @@ export function AuthLoginPage() {
             비밀번호
           </label>
           <Input
+            autoComplete="current-password"
+            errorMessage={passwordErrorMessage}
             id="login-password"
             name="password"
+            onBlur={() => markFieldTouched('password')}
+            onChange={handlePasswordChange}
             onRightIconClick={() => setShowPassword((currentValue) => !currentValue)}
             placeholder="비밀번호를 입력해주세요."
             rightIcon={<Icon className={styles.passwordIcon} name={passwordIconName} />}
             rightIconAriaLabel={passwordToggleLabel}
+            required
             type={passwordType}
+            value={password}
           />
         </div>
 
-        <Button className={styles.submitButton} disabled type="submit">
-          로그인
+        <Button className={styles.submitButton} disabled={!isFormValid || isSubmitting} type="submit">
+          {isSubmitting ? '로그인 중' : '로그인'}
         </Button>
       </form>
     </section>
@@ -88,7 +177,7 @@ export function AuthLoginPage() {
         <p className={styles.description}>{content.description}</p>
       </div>
 
-      <button className={styles.switchButton} onClick={() => setRole(nextRole)} type="button">
+      <button className={styles.switchButton} onClick={handleRoleSwitch} type="button">
         <span>{content.switchLabel}</span>
         <Icon className={styles.switchIcon} name="chevron-right" />
       </button>
