@@ -15,7 +15,7 @@ type LibraryBookCardBaseProps = {
 }
 
 /**
- * Fixed 160×220 library-entry book cover card for the current Figma-derived library/resume-book entry pattern.
+ * Fixed 166×228 library-entry book cover card for the current Figma-derived library/resume-book entry pattern.
  * Keep this API intentionally narrow until multiple cover variants or sizes are approved.
  */
 export type LibraryBookCardProps = LibraryBookCardBaseProps & Omit<ComponentPropsWithoutRef<'a'>, keyof LibraryBookCardBaseProps | 'href'>
