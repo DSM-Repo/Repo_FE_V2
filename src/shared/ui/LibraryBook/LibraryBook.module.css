@@ -2,24 +2,21 @@
   position: relative;
   display: grid;
   align-content: space-between;
-  width: min(220px, 100%);
-  min-height: 300px;
-  padding: var(--space-6);
+  width: min(160px, 100%);
+  aspect-ratio: 8 / 11;
+  padding: var(--space-5) 15px var(--space-4);
   overflow: hidden;
-  border-radius: var(--repo-radius-panel);
+  border-radius: var(--repo-radius-control);
   color: var(--repo-gray-50);
-  background:
-    linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.08) 72%, rgba(0, 0, 0, 0.18) 100%),
-    var(--repo-bg-main-point);
-  box-shadow: var(--repo-shadow-book);
+  background: url('/assets/library-book-cover.svg') center / cover no-repeat;
   transition:
     transform 120ms ease-out,
-    box-shadow 120ms ease-out;
+    filter 120ms ease-out;
 }
 
 .book:hover {
+  filter: brightness(1.08);
   transform: translateY(-2px);
-  box-shadow: 0 18px var(--space-10) rgba(17, 17, 17, 0.32);
 }
 
 .book:focus-visible {
@@ -27,51 +24,50 @@
   outline-offset: 3px;
 }
 
-.bookmark {
-  position: absolute;
-  top: 0;
-  right: 20px;
-  width: 34px;
-  height: 108px;
-  background: rgba(17, 17, 17, 0.28);
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 86%, 0 100%);
-}
-
 .year {
   position: relative;
-  display: grid;
+  display: flex;
+  align-items: baseline;
   gap: 4px;
-  font-size: var(--repo-font-title-s-medium-size);
-  font-weight: var(--repo-font-title-s-medium-weight);
-  line-height: var(--repo-font-title-s-medium-line-height);
+  font-size: var(--repo-font-title-small-size);
+  font-weight: 700;
+  line-height: 1;
   letter-spacing: 0;
 }
 
 .year span {
   color: var(--repo-gray-500);
-  font-size: var(--repo-font-body-large-size);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: 600;
 }
 
 .grade {
-  align-self: start;
-  font-size: var(--repo-font-body-large-size);
-  font-weight: var(--repo-font-body-large-weight);
-  line-height: var(--repo-font-body-large-line-height);
+  position: absolute;
+  top: 50px;
+  left: 15px;
+  font-size: var(--repo-font-body-small-size);
+  font-weight: 500;
+  line-height: 1;
   letter-spacing: 0;
 }
 
 .action {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
   color: var(--repo-gray-400);
-  font-size: var(--repo-font-body-medium-size);
-  font-weight: var(--repo-font-body-medium-weight);
-  line-height: var(--repo-font-body-medium-line-height);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: 500;
+  line-height: 1;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }

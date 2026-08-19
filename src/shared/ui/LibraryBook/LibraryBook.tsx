@@ -12,7 +12,6 @@ export type LibraryBookProps = {
 export function LibraryBook({ generation, grade, href, year }: LibraryBookProps) {
   return (
     <a className={styles.book} href={href}>
-      <span className={styles.bookmark} aria-hidden="true" />
       <span className={styles.year}>
         {year} <span>{generation}</span>
       </span>

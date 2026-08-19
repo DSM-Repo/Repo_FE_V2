@@ -6,19 +6,9 @@
   overflow: hidden;
   padding: 96px 32px 64px;
   color: var(--repo-gray-50);
-  background: linear-gradient(180deg, var(--repo-bg-main-lighter) 0%, var(--repo-gray-950) 100%);
-}
-
-.page::before {
-  position: absolute;
-  inset: 0;
-  content: '';
   background:
-    radial-gradient(circle at 50% 42%, rgb(255 255 255 / 18%) 0 1px, transparent 1px 7px),
-    radial-gradient(ellipse at 50% 42%, rgb(255 255 255 / 16%) 0, transparent 35%);
-  background-size: 7px 7px, 100% 100%;
-  mask-image: radial-gradient(ellipse 44% 35% at 50% 42%, black 0 52%, transparent 76%);
-  pointer-events: none;
+    url('/assets/auth-bg.svg') center / cover no-repeat,
+    var(--repo-gray-950);
 }
 
 .header {

@@ -115,7 +115,7 @@ All spacing derives from 4px.
 - **Accessibility**: footer landmark
 
 ### LibraryBook
-- **Structure**: tonal book card with year, generation, grade, bookmark mark, action
+- **Structure**: fixed-ratio book cover link using `/assets/library-book-cover.svg` as the cover source, with year, generation, grade, and action text layered above it
 - **States**: default, hover, focus
 
 ### PortfolioUrlModal
