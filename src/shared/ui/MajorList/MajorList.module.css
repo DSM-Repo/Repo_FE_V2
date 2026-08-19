@@ -1,0 +1,20 @@
+.section {
+  display: grid;
+  gap: var(--space-5);
+  width: 100%;
+}
+
+.label {
+  margin: 0;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-body-large-size);
+  font-weight: var(--repo-font-body-large-weight);
+  line-height: var(--repo-font-body-large-line-height);
+  letter-spacing: 0;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-5);
+  width: 100%;
+}

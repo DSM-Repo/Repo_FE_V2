@@ -1,0 +1,79 @@
+.slot {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-10);
+  min-height: 240px;
+  padding: var(--space-10);
+  color: var(--repo-gray-50);
+}
+
+.compact {
+  max-width: 360px;
+}
+
+.wide {
+  max-width: 880px;
+}
+
+.label,
+.value {
+  margin: 0;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-title-s-medium-size);
+  font-weight: var(--repo-font-title-s-medium-weight);
+  line-height: var(--repo-font-title-s-medium-line-height);
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.value {
+  color: var(--repo-gray-400);
+}
+
+.line {
+  width: min(180px, 100%);
+  height: 3px;
+  background: var(--repo-gray-50);
+}
+
+.wide .line {
+  width: min(620px, 100%);
+}
+
+.editable {
+  width: min(620px, 100%);
+  min-height: 72px;
+  padding: var(--space-5) var(--space-7);
+  color: var(--repo-gray-500);
+  background: var(--repo-gray-50);
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: var(--repo-font-title-small-line-height);
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.errorMessage {
+  margin: 0;
+  justify-self: start;
+  color: var(--repo-state-error);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  letter-spacing: 0;
+}
+
+@media (max-width: 720px) {
+  .slot {
+    gap: var(--space-6);
+    min-height: 200px;
+    padding: var(--space-7) var(--space-4);
+  }
+
+  .label,
+  .value,
+  .editable {
+    font-size: var(--repo-font-title-small-size);
+  }
+}

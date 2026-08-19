@@ -1,0 +1,73 @@
+.book {
+  position: relative;
+  display: grid;
+  align-content: space-between;
+  width: min(160px, 100%);
+  aspect-ratio: 8 / 11;
+  padding: var(--space-5) 15px var(--space-4);
+  overflow: hidden;
+  border-radius: var(--repo-radius-control);
+  color: var(--repo-gray-50);
+  background: url('/assets/library-book-cover.svg') center / cover no-repeat;
+  transition:
+    transform 120ms ease-out,
+    filter 120ms ease-out;
+}
+
+.book:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+}
+
+.book:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 3px;
+}
+
+.year {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: var(--repo-font-title-small-size);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.year span {
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: 600;
+}
+
+.grade {
+  position: absolute;
+  top: 50px;
+  left: 15px;
+  font-size: var(--repo-font-body-small-size);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.action {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  color: var(--repo-gray-400);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+}

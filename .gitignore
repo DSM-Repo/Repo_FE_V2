@@ -26,6 +26,7 @@ out
 *.njsproj
 *.sln
 *.sw?
+.omo/
 .omx/
 .codex/*
 !.codex/agents/

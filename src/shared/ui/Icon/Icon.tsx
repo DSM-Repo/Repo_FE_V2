@@ -1,12 +1,16 @@
 import type { SVGProps } from 'react'
 
-export type IconName = 'chevron-right' | 'eye' | 'eye-off' | 'login' | 'plus' | 'right-arrow'
+export type IconName = 'bell' | 'chevron-right' | 'eye' | 'eye-off' | 'login' | 'plus' | 'right-arrow' | 'search'
 
 type IconProps = Omit<SVGProps<SVGSVGElement>, 'children'> & {
   name: IconName
 }
 
 export function Icon({ name, 'aria-hidden': ariaHidden = true, focusable = false, ...props }: IconProps) {
+  if (name === 'bell') {
+    return <BellIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
+  }
+
   if (name === 'chevron-right') {
     return <ChevronRightIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
   }
@@ -31,7 +35,24 @@ export function Icon({ name, 'aria-hidden': ariaHidden = true, focusable = false
     return <RightArrowIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
   }
 
+  if (name === 'search') {
+    return <SearchIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
+  }
+
   return null
+}
+
+function BellIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
+  return (
+    <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M8 14.17C8.74 14.17 9.33 13.57 9.33 12.83H6.67C6.67 13.57 7.26 14.17 8 14.17ZM12 6.67C12 4.6 10.89 2.87 9 2.41V1.83C9 1.28 8.55.83 8 .83S7 1.28 7 1.83V2.41C5.1 2.87 4 4.59 4 6.67V9.67L2.67 11V11.67H13.33V11L12 9.67V6.67Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.25"
+      />
+    </svg>
+  )
 }
 
 function ChevronRightIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
@@ -103,6 +124,20 @@ function RightArrowIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
   return (
     <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path d="M5 2L11 8L5 14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+    </svg>
+  )
+}
+
+function SearchIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
+  return (
+    <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path
+        d="M7.33 12.67A5.33 5.33 0 1 0 7.33 2A5.33 5.33 0 0 0 7.33 12.67ZM14 14L11.1 11.1"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.6"
+      />
     </svg>
   )
 }

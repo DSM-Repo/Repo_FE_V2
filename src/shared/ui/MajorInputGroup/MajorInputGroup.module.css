@@ -1,0 +1,43 @@
+.group {
+  display: grid;
+  gap: var(--space-5);
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  min-height: var(--repo-size-input-min-height);
+  padding: var(--space-4) var(--space-6);
+  border: 0;
+  border-radius: var(--repo-radius-control);
+  outline: 0;
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main-point);
+  font-size: var(--repo-font-body-large-size);
+  font-weight: var(--repo-font-body-medium-weight);
+  line-height: var(--repo-font-body-large-line-height);
+  letter-spacing: 0;
+}
+
+.input::placeholder {
+  color: var(--repo-gray-400);
+  opacity: 1;
+}
+
+.input:focus {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 2px;
+}
+
+.inputError {
+  outline: 1px solid var(--repo-state-error);
+}
+
+.errorMessage {
+  margin: calc(var(--space-3) * -1) 0 0;
+  color: var(--repo-state-error);
+  font-size: var(--repo-font-body-medium-size);
+  font-weight: var(--repo-font-body-medium-weight);
+  line-height: var(--repo-font-body-medium-line-height);
+  letter-spacing: 0;
+}
