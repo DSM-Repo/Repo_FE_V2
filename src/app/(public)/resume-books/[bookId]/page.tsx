@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 
 import type { AppHeaderItem } from '@/shared/ui'
-import { AppHeader, Button, CheckboxOption, SearchField, Tag } from '@/shared/ui'
+import { AppHeader, Button, CheckboxOption, SearchField, Tag, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -58,10 +59,22 @@ const defaultExpandedFilterSections: Record<FilterSectionKey, boolean> = {
 }
 
 export default function ResumeBookPage() {
+  const router = useRouter()
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showsDownloadToast, setShowsDownloadToast] = useState(false)
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters)
   const [draftFilters, setDraftFilters] = useState<FilterState>(defaultFilters)
   const [expandedFilterSections, setExpandedFilterSections] = useState(defaultExpandedFilterSections)
+  const downloadToastTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (downloadToastTimerId.current) {
+        clearTimeout(downloadToastTimerId.current)
+      }
+    }
+  }, [])
 
   const openFilter = () => {
     setDraftFilters(appliedFilters)
@@ -125,7 +138,21 @@ export default function ResumeBookPage() {
     }))
   }
 
+  const showDownloadToast = () => {
+    if (downloadToastTimerId.current) {
+      clearTimeout(downloadToastTimerId.current)
+    }
+
+    setShowsDownloadToast(true)
+    downloadToastTimerId.current = setTimeout(() => {
+      setShowsDownloadToast(false)
+      downloadToastTimerId.current = null
+    }, 2500)
+  }
+
   const hasAppliedFilters = appliedFilters.majors.length > 0 || appliedFilters.classes.length > 0
+  const normalizedSearchQuery = searchQuery.trim()
+  const showsEmptySearchResult = normalizedSearchQuery.length > 0
 
   return (
     <main className={styles.page} data-filter-open={isFilterOpen}>
@@ -144,12 +171,25 @@ export default function ResumeBookPage() {
               >
                 <FilterIcon />
               </button>
-              <SearchField className={styles.searchField} />
+              <SearchField
+                className={styles.searchField}
+                spellCheck={false}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
             </div>
-            <Button className={styles.downloadButton}>전체 PDF 다운로드</Button>
+            <Button className={styles.downloadButton} onClick={showDownloadToast}>
+              전체 PDF 다운로드
+            </Button>
           </div>
 
-          {hasAppliedFilters ? (
+          {showsDownloadToast ? (
+            <div className={styles.toastLayer}>
+              <Toast variant="success">PDF 다운로드에 성공했습니다.</Toast>
+            </div>
+          ) : null}
+
+          {hasAppliedFilters && !showsEmptySearchResult ? (
             <div className={styles.activeFilters} aria-label="적용된 필터">
               {appliedFilters.classes.map((className) => (
                 <Tag key={className} removeLabel={`${className} 필터 삭제`} onRemove={() => removeClassFilter(className)}>
@@ -168,22 +208,28 @@ export default function ResumeBookPage() {
             </div>
           ) : null}
 
-          <div className={styles.viewer}>
-            <button className={`${styles.pageArrow} ${styles.previousArrow}`} type="button" aria-label="이전 페이지">
-              ‹
-            </button>
-            <div className={styles.sheets} aria-label="포트폴리오 문서 페이지">
-              <ResumeSheet />
-              <ResumeSheet />
-            </div>
-            <button className={`${styles.pageArrow} ${styles.nextArrow}`} type="button" aria-label="다음 페이지">
-              ›
-            </button>
-          </div>
+          {showsEmptySearchResult ? (
+            <SearchEmptyState searchQuery={normalizedSearchQuery} onReturn={() => router.push('/library')} />
+          ) : (
+            <>
+              <div className={styles.viewer}>
+                <button className={`${styles.pageArrow} ${styles.previousArrow}`} type="button" aria-label="이전 페이지">
+                  ‹
+                </button>
+                <div className={styles.sheets} aria-label="포트폴리오 문서 페이지">
+                  <ResumeSheet />
+                  <ResumeSheet />
+                </div>
+                <button className={`${styles.pageArrow} ${styles.nextArrow}`} type="button" aria-label="다음 페이지">
+                  ›
+                </button>
+              </div>
 
-          <p className={styles.pageIndicator} aria-label="현재 페이지">
-            <strong>4</strong> / 126
-          </p>
+              <p className={styles.pageIndicator} aria-label="현재 페이지">
+                <strong>4</strong> / 126
+              </p>
+            </>
+          )}
         </div>
 
         {isFilterOpen ? (
@@ -244,6 +290,27 @@ export default function ResumeBookPage() {
   )
 }
 
+function SearchEmptyState({
+  onReturn,
+  searchQuery,
+}: {
+  readonly onReturn: () => void
+  readonly searchQuery: string
+}) {
+  return (
+    <section className={styles.emptyState} aria-live="polite">
+      <p className={styles.emptyMessage}>
+        입력하신 &apos;{searchQuery}&apos;와(과) 일치하는 학생이 없습니다.
+        <br />
+        이름을 다시 확인해주세요.
+      </p>
+      <Button className={styles.returnButton} iconRight="chevron-right" variant="bordered-dark" onClick={onReturn}>
+        도서관 돌아가기
+      </Button>
+    </section>
+  )
+}
+
 function FilterSection({
   children,
   expanded,
@@ -286,9 +353,8 @@ function ResumeSheet() {
       <section className={styles.introBox}>
         <h2>안녕하세요 저는 디자이너가 되고 싶은 인간입니다</h2>
         <p>
-          새벽잠실너무 졸립니다. 웹 적지.. 한줄소개는 이런식으로 쭉쭉 들어갑니다.
-          줄넘김 가능합니다. 자기소개자기소개자기소개까지소개까지소개까지소개까지... 최대 4줄이면 충분하겠지만..
-          줄이 이런식으로 길어지면 폼도 자동으로 늘어납니다.
+          새벽자습너무 졸립니다. 뭘 적지.. 한줄소개는 이런식으로 쭉쭉 들어갑니다.
+          줄넘김 가능합니다. 자기소개자기소개자기소개자기소개자기소개자기소개.. 최대 4줄이면 충분하겠지만..
         </p>
       </section>
 
