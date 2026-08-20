@@ -1,5 +1,9 @@
+'use client'
+
+import { useState, type ReactNode } from 'react'
+
 import type { AppHeaderItem } from '@/shared/ui'
-import { AppHeader, Button, SearchField } from '@/shared/ui'
+import { AppHeader, Button, CheckboxOption, SearchField, Tag } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -19,47 +23,248 @@ const activities = [
 const contests = ['제4회 2026 블레이버스 MVP 개발 해커톤', '제 1회 SCSC온라인 해커톤', '2025 교내 해커톤']
 const projects = ['TEENS', '스플', 'D-ask', 'DSG', 'Studiz', 'hear', '마음씨', 'Repo']
 
-type ResumeBookPageProps = {
-  readonly params: Promise<{
-    readonly bookId: string
-  }>
+const majorFilters = [
+  { chipLabel: 'Frontend', label: 'Frontend Developer', value: 'frontend' },
+  { chipLabel: 'Backend', label: 'Backend Developer', value: 'backend' },
+  { chipLabel: 'UI/UX', label: 'UI/UX Engineer', value: 'ui-ux' },
+  { chipLabel: 'AI', label: 'AI Developer', value: 'ai' },
+  { chipLabel: 'Blockchain', label: 'Blockchain Developer', value: 'blockchain' },
+  { chipLabel: 'Embedded', label: 'Embedded Developer', value: 'embedded' },
+  { chipLabel: 'Android', label: 'Android Developer', value: 'android' },
+  { chipLabel: 'iOS', label: 'iOS Developer', value: 'ios' },
+  { chipLabel: 'QA', label: 'QA Master', value: 'qa' },
+] as const
+
+const classFilters = ['1반', '2반', '3반', '4반'] as const
+
+type MajorFilterValue = (typeof majorFilters)[number]['value']
+type ClassFilterValue = (typeof classFilters)[number]
+
+type FilterState = {
+  readonly classes: readonly ClassFilterValue[]
+  readonly majors: readonly MajorFilterValue[]
 }
 
-export default async function ResumeBookPage({ params }: ResumeBookPageProps) {
-  await params
+type FilterSectionKey = 'classes' | 'majors'
+
+const defaultFilters: FilterState = {
+  classes: ['4반'],
+  majors: ['frontend', 'ui-ux'],
+}
+
+const defaultExpandedFilterSections: Record<FilterSectionKey, boolean> = {
+  classes: false,
+  majors: false,
+}
+
+export default function ResumeBookPage() {
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters)
+  const [draftFilters, setDraftFilters] = useState<FilterState>(defaultFilters)
+  const [expandedFilterSections, setExpandedFilterSections] = useState(defaultExpandedFilterSections)
+
+  const openFilter = () => {
+    setDraftFilters(appliedFilters)
+    setExpandedFilterSections(defaultExpandedFilterSections)
+    setIsFilterOpen(true)
+  }
+
+  const closeFilter = () => {
+    setDraftFilters(appliedFilters)
+    setIsFilterOpen(false)
+  }
+
+  const applyFilters = () => {
+    setAppliedFilters(draftFilters)
+    setIsFilterOpen(false)
+  }
+
+  const resetFilters = () => {
+    const emptyFilters: FilterState = { classes: [], majors: [] }
+
+    setDraftFilters(emptyFilters)
+    setAppliedFilters(emptyFilters)
+  }
+
+  const toggleFilterSection = (sectionKey: FilterSectionKey) => {
+    setExpandedFilterSections((currentSections) => ({
+      ...currentSections,
+      [sectionKey]: !currentSections[sectionKey],
+    }))
+  }
+
+  const removeMajorFilter = (value: MajorFilterValue) => {
+    setAppliedFilters((currentFilters) => ({
+      ...currentFilters,
+      majors: currentFilters.majors.filter((major) => major !== value),
+    }))
+  }
+
+  const removeClassFilter = (value: ClassFilterValue) => {
+    setAppliedFilters((currentFilters) => ({
+      ...currentFilters,
+      classes: currentFilters.classes.filter((className) => className !== value),
+    }))
+  }
+
+  const toggleMajorFilter = (value: MajorFilterValue, checked: boolean) => {
+    setDraftFilters((currentFilters) => ({
+      ...currentFilters,
+      majors: checked
+        ? [...currentFilters.majors, value]
+        : currentFilters.majors.filter((major) => major !== value),
+    }))
+  }
+
+  const toggleClassFilter = (value: ClassFilterValue, checked: boolean) => {
+    setDraftFilters((currentFilters) => ({
+      ...currentFilters,
+      classes: checked
+        ? [...currentFilters.classes, value]
+        : currentFilters.classes.filter((className) => className !== value),
+    }))
+  }
+
+  const hasAppliedFilters = appliedFilters.majors.length > 0 || appliedFilters.classes.length > 0
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-filter-open={isFilterOpen}>
       <AppHeader activeItem="library" items={navigationItems} />
       <section className={styles.workspace} aria-label="레주메북 포트폴리오 열람">
-        <div className={styles.toolbar}>
-          <div className={styles.searchGroup}>
-            <button className={styles.filterButton} type="button" aria-label="필터 열기">
-              <FilterIcon />
+        <div className={styles.contentLayer}>
+          <div className={styles.toolbar}>
+            <div className={styles.searchGroup}>
+              <button
+                aria-label="필터 열기"
+                aria-expanded={isFilterOpen}
+                aria-haspopup="dialog"
+                className={styles.filterButton}
+                type="button"
+                onClick={openFilter}
+              >
+                <FilterIcon />
+              </button>
+              <SearchField className={styles.searchField} />
+            </div>
+            <Button className={styles.downloadButton}>전체 PDF 다운로드</Button>
+          </div>
+
+          {hasAppliedFilters ? (
+            <div className={styles.activeFilters} aria-label="적용된 필터">
+              {appliedFilters.classes.map((className) => (
+                <Tag key={className} removeLabel={`${className} 필터 삭제`} onRemove={() => removeClassFilter(className)}>
+                  {className}
+                </Tag>
+              ))}
+              {appliedFilters.majors.map((major) => {
+                const option = majorFilters.find((filter) => filter.value === major)
+
+                return option ? (
+                  <Tag key={major} removeLabel={`${option.chipLabel} 필터 삭제`} onRemove={() => removeMajorFilter(major)}>
+                    {option.chipLabel}
+                  </Tag>
+                ) : null
+              })}
+            </div>
+          ) : null}
+
+          <div className={styles.viewer}>
+            <button className={`${styles.pageArrow} ${styles.previousArrow}`} type="button" aria-label="이전 페이지">
+              ‹
             </button>
-            <SearchField className={styles.searchField} />
+            <div className={styles.sheets} aria-label="포트폴리오 문서 페이지">
+              <ResumeSheet />
+              <ResumeSheet />
+            </div>
+            <button className={`${styles.pageArrow} ${styles.nextArrow}`} type="button" aria-label="다음 페이지">
+              ›
+            </button>
           </div>
-          <Button className={styles.downloadButton}>전체 PDF 다운로드</Button>
+
+          <p className={styles.pageIndicator} aria-label="현재 페이지">
+            <strong>4</strong> / 126
+          </p>
         </div>
 
-        <div className={styles.viewer}>
-          <button className={`${styles.pageArrow} ${styles.previousArrow}`} type="button" aria-label="이전 페이지">
-            ‹
-          </button>
-          <div className={styles.sheets} aria-label="포트폴리오 문서 페이지">
-            <ResumeSheet />
-            <ResumeSheet />
-          </div>
-          <button className={`${styles.pageArrow} ${styles.nextArrow}`} type="button" aria-label="다음 페이지">
-            ›
-          </button>
-        </div>
+        {isFilterOpen ? (
+          <aside className={styles.filterPanel} role="dialog" aria-label="필터링" aria-modal="true">
+            <header className={styles.filterHeader}>
+              <h2>필터링</h2>
+              <button className={styles.closeButton} type="button" aria-label="필터 닫기" onClick={closeFilter}>
+                ×
+              </button>
+            </header>
 
-        <p className={styles.pageIndicator} aria-label="현재 페이지">
-          <strong>4</strong> / 126
-        </p>
+            <div className={styles.filterBody}>
+              <FilterSection
+                expanded={expandedFilterSections.majors}
+                title="전공"
+                onToggle={() => toggleFilterSection('majors')}
+              >
+                {majorFilters.map((filter) => (
+                  <CheckboxOption
+                    checked={draftFilters.majors.includes(filter.value)}
+                    key={filter.value}
+                    onCheckedChange={(checked) => toggleMajorFilter(filter.value, checked)}
+                  >
+                    {filter.label}
+                  </CheckboxOption>
+                ))}
+              </FilterSection>
+
+              <FilterSection
+                expanded={expandedFilterSections.classes}
+                title="반"
+                onToggle={() => toggleFilterSection('classes')}
+              >
+                {classFilters.map((className) => (
+                  <CheckboxOption
+                    checked={draftFilters.classes.includes(className)}
+                    key={className}
+                    onCheckedChange={(checked) => toggleClassFilter(className, checked)}
+                  >
+                    {className}
+                  </CheckboxOption>
+                ))}
+              </FilterSection>
+            </div>
+
+            <footer className={styles.filterActions}>
+              <Button className={styles.resetButton} variant="bordered-dark" onClick={resetFilters}>
+                초기화
+              </Button>
+              <Button className={styles.applyButton} onClick={applyFilters}>
+                적용하기
+              </Button>
+            </footer>
+          </aside>
+        ) : null}
       </section>
     </main>
+  )
+}
+
+function FilterSection({
+  children,
+  expanded,
+  onToggle,
+  title,
+}: {
+  readonly children: ReactNode
+  readonly expanded: boolean
+  readonly onToggle: () => void
+  readonly title: string
+}) {
+  return (
+    <section className={styles.filterSection}>
+      <button className={styles.filterSectionTitle} type="button" aria-expanded={expanded} onClick={onToggle}>
+        <span>{title}</span>
+        <span className={styles.filterSectionIcon} aria-hidden="true">
+          ⌃
+        </span>
+      </button>
+      {expanded ? <div className={styles.filterOptions}>{children}</div> : null}
+    </section>
   )
 }
 
