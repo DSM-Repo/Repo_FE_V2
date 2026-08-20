@@ -22,6 +22,10 @@ Repo-V2 is a dark, quiet school-work surface: compact, direct, and built for rep
 
 ### Rules
 
+- 모든 글자 크기, 굵기, 행간은 `--repo-font-*` 토큰 또는 해당 토큰을 사용하는 텍스트 유틸리티만 사용합니다.
+- 모든 색상은 이 문서의 color token 또는 `src/shared/styles/colors.css`에 선언된 `--repo-*` 토큰만 사용합니다.
+- 기능 구현 중 필요한 글자/색상 값이 토큰에 없으면 CSS에 임의 값을 쓰지 말고 먼저 디자인 토큰을 추가하고 이 문서에 용도를 기록합니다.
+- 예외적으로 SVG/이미지 내부 표현, QR/픽셀 패턴, 외부 에셋 원본 색처럼 디자인 토큰으로 제어할 수 없는 값만 raw value를 허용합니다.
 - Dark primitives use tonal-shift depth before shadows.
 - Green is reserved for submitted/success status.
 - Error red appears only with validation feedback.
@@ -49,6 +53,7 @@ Repo-V2 is a dark, quiet school-work surface: compact, direct, and built for rep
 
 - Letter spacing remains `0`.
 - Body text stays at or above 14px.
+- 새 UI에서 `font-size`, `font-weight`, `line-height`를 직접 숫자로 지정하는 것은 금지합니다. 반드시 typography token을 참조합니다.
 
 ## 4. Spacing & Layout
 
