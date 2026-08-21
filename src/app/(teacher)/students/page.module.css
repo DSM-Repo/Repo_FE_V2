@@ -1,0 +1,307 @@
+.page {
+  min-height: 100dvh;
+  overflow: hidden;
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main);
+}
+
+.content {
+  position: relative;
+  min-height: calc(100dvh - var(--repo-size-header-min-height));
+  overflow: hidden;
+  padding: var(--space-14) 64px var(--space-20);
+}
+
+.contentLayer {
+  display: flex;
+  min-height: calc(100dvh - var(--repo-size-header-min-height) - 136px);
+  flex-direction: column;
+  align-items: center;
+  transition:
+    filter 200ms ease-in-out,
+    opacity 200ms ease-in-out;
+}
+
+.page[data-dialog-open='true'] .contentLayer {
+  filter: blur(6px);
+  opacity: 0.35;
+  pointer-events: none;
+  user-select: none;
+}
+
+.toastLayer {
+  position: fixed;
+  z-index: 12;
+  top: 84px;
+  left: 50%;
+  display: flex;
+  width: min(calc(100% - 48px), 600px);
+  justify-content: center;
+  transform: translateX(-50%);
+}
+
+.hero {
+  display: grid;
+  width: min(100%, 640px);
+  justify-items: center;
+  gap: var(--space-4);
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-title-medium-size);
+  font-weight: var(--repo-font-title-medium-weight);
+  line-height: var(--repo-font-title-medium-line-height);
+  letter-spacing: 0;
+}
+
+.description {
+  margin: 0 0 var(--space-10);
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-large-size);
+  font-weight: var(--repo-font-body-large-weight);
+  line-height: var(--repo-font-body-large-line-height);
+  letter-spacing: 0;
+}
+
+.searchField {
+  width: min(580px, 100%);
+}
+
+.searchField:focus-within {
+  outline: 0;
+}
+
+.gradeGrid {
+  display: grid;
+  width: min(100%, 1200px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 56px;
+  margin-top: var(--space-18);
+}
+
+.gradeColumn {
+  min-width: 0;
+}
+
+.gradeTitle {
+  margin: 0;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: var(--repo-font-title-small-line-height);
+  letter-spacing: 0;
+}
+
+.divider {
+  height: 1px;
+  margin-top: var(--space-5);
+  background: var(--repo-bg-main-point);
+}
+
+.classList {
+  display: grid;
+  gap: var(--space-6);
+  margin-top: var(--space-10);
+}
+
+.classList > button {
+  min-height: 52px;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: var(--repo-radius-control);
+  background: var(--repo-bg-main-lighter);
+}
+
+.classList > button:hover {
+  background: var(--repo-bg-main-point);
+}
+
+.classList > button span:first-child {
+  gap: var(--space-2);
+}
+
+.classList > button span span:first-child {
+  font-size: var(--repo-font-body-medium-2-size);
+  font-weight: var(--repo-font-body-medium-2-weight);
+  line-height: var(--repo-font-body-medium-2-line-height);
+}
+
+.classList > button span span:nth-child(2) {
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.classList > button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.dialogLayer {
+  position: fixed;
+  z-index: 10;
+  inset: var(--repo-size-header-min-height) 0 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-10);
+  background: color-mix(in srgb, var(--repo-bg-main) 76%, transparent);
+}
+
+.dialog {
+  position: relative;
+  width: min(900px, calc(100vw - 128px));
+  min-height: 562px;
+  padding: 52px 56px 56px;
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: var(--repo-radius-panel);
+  background: var(--repo-bg-main-lighter);
+  box-shadow: var(--repo-shadow-modal);
+}
+
+.closeButton {
+  position: absolute;
+  top: 50px;
+  right: 56px;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  color: var(--repo-gray-50);
+  background: transparent;
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: var(--repo-font-title-small-line-height);
+  cursor: pointer;
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 2px;
+}
+
+.dialogHeader {
+  padding-right: var(--space-12);
+}
+
+.dialogTitle {
+  margin: 0;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: var(--repo-font-title-small-line-height);
+  letter-spacing: 0;
+}
+
+.updatedAt {
+  margin: var(--space-2) 0 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  letter-spacing: 0;
+}
+
+.dialogDivider {
+  height: 1px;
+  margin-top: var(--space-4);
+  background: var(--repo-bg-main-point);
+}
+
+.studentRows {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-8);
+}
+
+.studentRows > a {
+  min-height: 42px;
+  padding: var(--space-2) 0;
+  background: transparent;
+}
+
+.studentRows > a:hover {
+  transform: none;
+  background: var(--repo-bg-main);
+}
+
+.studentRow > span:first-child > span:first-child {
+  font-size: var(--repo-font-body-medium-2-size);
+  font-weight: var(--repo-font-body-medium-2-weight);
+  line-height: var(--repo-font-body-medium-2-line-height);
+}
+
+.studentRow > span:first-child > span:nth-child(2),
+.studentRow > span:nth-child(2) span {
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+@media (max-width: 1080px) {
+  .content {
+    padding-inline: var(--space-8);
+  }
+
+  .gradeGrid {
+    grid-template-columns: 1fr;
+    gap: var(--space-10);
+    overflow-y: auto;
+    padding-bottom: var(--space-10);
+  }
+
+  .dialog {
+    width: min(720px, calc(100vw - 48px));
+    padding: var(--space-10);
+  }
+
+  .closeButton {
+    top: var(--space-8);
+    right: var(--space-8);
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    overflow: auto;
+  }
+
+  .content {
+    overflow: visible;
+    padding: var(--space-10) var(--space-6);
+  }
+
+  .contentLayer {
+    min-height: auto;
+  }
+
+  .hero {
+    align-items: center;
+  }
+
+  .description {
+    margin-bottom: var(--space-6);
+    font-size: var(--repo-font-body-small-size);
+    line-height: var(--repo-font-body-small-line-height);
+  }
+
+  .gradeGrid {
+    margin-top: var(--space-10);
+  }
+
+  .dialogLayer {
+    inset: 0;
+    align-items: start;
+    overflow-y: auto;
+    padding: var(--space-6);
+  }
+
+  .dialog {
+    min-height: auto;
+    padding: var(--space-8) var(--space-5);
+  }
+}
