@@ -176,7 +176,7 @@ function TeacherStudentsContent() {
                   <LinkRow
                     actionLabel="레주메 보러가기"
                     className={styles.studentRow}
-                    href={`/resume-books/${student.id}`}
+                    href={`/students/${student.id}`}
                     key={student.id}
                     status={statusLabel[student.status]}
                     title={`${student.number} ${student.name}`}

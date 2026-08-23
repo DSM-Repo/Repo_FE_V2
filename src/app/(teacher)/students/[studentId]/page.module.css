@@ -1,0 +1,237 @@
+.page {
+  height: 100dvh;
+  overflow: hidden;
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main);
+}
+
+.workspace {
+  position: relative;
+  display: flex;
+  height: calc(100dvh - var(--repo-size-header-min-height));
+  min-height: 700px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 44px 88px 24px;
+}
+
+.toastLayer {
+  position: absolute;
+  z-index: 8;
+  top: 42px;
+  left: 50%;
+  display: flex;
+  width: min(calc(100% - 48px), 600px);
+  justify-content: center;
+  transform: translateX(-50%);
+}
+
+.saveActions {
+  position: absolute;
+  z-index: 4;
+  top: 26px;
+  right: 64px;
+  display: flex;
+  gap: 12px;
+}
+
+.saveActions button {
+  min-width: 100px;
+}
+
+.viewer {
+  position: relative;
+  display: grid;
+  width: 100%;
+  align-items: center;
+}
+
+.sheets {
+  display: grid;
+  grid-template-columns: repeat(2, 550px);
+  justify-content: center;
+  gap: 24px;
+}
+
+.sheetFrame {
+  position: relative;
+  width: 550px;
+  height: 779px;
+}
+
+.sheetFrame > article {
+  transform: scale(1.3);
+  transform-origin: top left;
+}
+
+.pageArrow {
+  position: absolute;
+  z-index: 3;
+  top: 48%;
+  border: 0;
+  color: var(--repo-gray-50);
+  background: transparent;
+  font-size: 41px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pageArrow:disabled,
+.compactPager button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.pageArrow:focus-visible,
+.compactPager button:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 3px;
+}
+
+.previousArrow {
+  left: calc(50% - 650px);
+}
+
+.nextArrow {
+  right: calc(50% - 650px);
+}
+
+.feedbackMarker {
+  position: absolute;
+  z-index: 2;
+}
+
+.feedbackMarkerLeft {
+  top: 293px;
+  left: 101px;
+}
+
+.feedbackMarkerTop {
+  top: 81px;
+  left: 345px;
+}
+
+.feedbackMarkerBottom {
+  top: 411px;
+  left: 228px;
+}
+
+.pageIndicator {
+  margin: 18px 0 0;
+  color: var(--repo-bg-main-point);
+  font-size: var(--repo-font-body-large-size);
+  font-weight: var(--repo-font-body-large-weight);
+  line-height: var(--repo-font-body-large-line-height);
+}
+
+.pageIndicator strong {
+  font: inherit;
+}
+
+.bottomControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.compactPager {
+  display: flex;
+  min-height: 43px;
+  align-items: center;
+  border-radius: var(--repo-radius-pill);
+  background: var(--repo-bg-main-point);
+}
+
+.compactPager button {
+  width: 43px;
+  height: 43px;
+  padding: 0;
+  border: 0;
+  color: var(--repo-gray-50);
+  background: transparent;
+  font-size: 30px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.feedbackButton {
+  min-width: 144px;
+  padding-inline: 22px;
+}
+
+.feedbackButton span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.reviewSettings {
+  position: absolute;
+  right: 64px;
+  bottom: 28px;
+  display: grid;
+  gap: 14px;
+}
+
+.settingRow {
+  display: flex;
+  min-width: 145px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-title-tiny-size);
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: var(--repo-font-title-tiny-line-height);
+}
+
+.switchFrame {
+  position: relative;
+  display: block;
+  width: 38px;
+  height: 20px;
+}
+
+.switchFrame > button {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: scale(0.5);
+  transform-origin: top left;
+}
+
+@media (max-height: 880px) {
+  .workspace {
+    padding-top: 48px;
+  }
+
+  .sheets {
+    transform: scale(0.82);
+  }
+
+  .viewer {
+    margin-block: -70px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .workspace {
+    align-items: start;
+    overflow-x: auto;
+  }
+
+  .viewer,
+  .pageIndicator,
+  .bottomControls {
+    min-width: 1020px;
+  }
+
+  .reviewSettings,
+  .saveActions {
+    position: fixed;
+  }
+}
