@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import type { AppHeaderItem, LinkRowTone } from '@/shared/ui'
@@ -75,12 +75,16 @@ function TeacherStudentsContent() {
   const searchParams = useSearchParams()
   const [selectedClass, setSelectedClass] = useState<SelectedClass | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const dialogCloseButtonRef = useRef<HTMLButtonElement | null>(null)
+  const dialogTriggerRef = useRef<HTMLButtonElement | null>(null)
   const showsLoadError = searchParams.get('error') === 'students'
 
   useEffect(() => {
     if (!selectedClass) {
       return undefined
     }
+
+    dialogCloseButtonRef.current?.focus()
 
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -92,6 +96,8 @@ function TeacherStudentsContent() {
 
     return () => {
       window.removeEventListener('keydown', closeOnEscape)
+      dialogTriggerRef.current?.focus()
+      dialogTriggerRef.current = null
     }
   }, [selectedClass])
 
@@ -113,7 +119,7 @@ function TeacherStudentsContent() {
       ) : null}
 
       <section className={styles.content} aria-labelledby="students-title">
-        <div className={styles.contentLayer}>
+        <div className={styles.contentLayer} inert={selectedClass ? true : undefined}>
           <div className={styles.hero}>
             <h1 className={styles.title} id="students-title">
               학생 관리
@@ -140,7 +146,10 @@ function TeacherStudentsContent() {
                       count={classSize}
                       key={`${grade.value}-${classNumber}`}
                       title={`${classNumber}반`}
-                      onClick={() => setSelectedClass({ classNumber, grade: grade.value })}
+                      onClick={(event) => {
+                        dialogTriggerRef.current = event.currentTarget
+                        setSelectedClass({ classNumber, grade: grade.value })
+                      }}
                     />
                   ))}
                 </div>
@@ -158,7 +167,13 @@ function TeacherStudentsContent() {
               role="dialog"
               onMouseDown={(event) => event.stopPropagation()}
             >
-              <button className={styles.closeButton} type="button" aria-label="반 상세 닫기" onClick={() => setSelectedClass(null)}>
+              <button
+                aria-label="반 상세 닫기"
+                className={styles.closeButton}
+                ref={dialogCloseButtonRef}
+                type="button"
+                onClick={() => setSelectedClass(null)}
+              >
                 ×
               </button>
 
