@@ -24,7 +24,7 @@ export function ResumeBookSheet({ ariaLabel = '최하은 포트폴리오', class
         <div className={styles.profileImage} aria-label="프로필 이미지" />
         <div className={styles.identity}>
           <div className={styles.nameRow}>
-            <h1 className={styles.name}>최하은</h1>
+            <h2 className={styles.name}>최하은</h2>
             <span className={styles.major}>Frontend Developer</span>
           </div>
           <p className={styles.meta}>2415 인공지능소프트웨어과 | mare2mare6@gmail.com</p>
@@ -33,7 +33,7 @@ export function ResumeBookSheet({ ariaLabel = '최하은 포트폴리오', class
       </header>
 
       <section className={styles.introBox}>
-        <h2>안녕하세요 저는 디자이너가 되고 싶은 인간입니다</h2>
+        <h3>안녕하세요 저는 디자이너가 되고 싶은 인간입니다</h3>
         <p>
           새벽자습너무 졸립니다. 뭘 적지.. 한줄소개는 이런식으로 쭉쭉 들어갑니다.
           줄넘김 가능합니다. 자기소개자기소개자기소개자기소개자기소개자기소개.. 최대 4줄이면 충분하겠지만..
@@ -41,7 +41,7 @@ export function ResumeBookSheet({ ariaLabel = '최하은 포트폴리오', class
       </section>
 
       <section className={styles.section}>
-        <h2>기술스택</h2>
+        <h3>기술스택</h3>
         <ul className={styles.skillList}>
           {defaultSkills.map((skill) => (
             <li key={skill}>{skill}</li>
@@ -50,7 +50,7 @@ export function ResumeBookSheet({ ariaLabel = '최하은 포트폴리오', class
       </section>
 
       <section className={styles.section}>
-        <h2>활동</h2>
+        <h3>활동</h3>
         <ol className={styles.activityList}>
           {defaultActivities.map((activity) => (
             <li key={activity.title}>
@@ -62,7 +62,7 @@ export function ResumeBookSheet({ ariaLabel = '최하은 포트폴리오', class
       </section>
 
       <section className={styles.detailSection}>
-        <h3>대회</h3>
+        <h4>대회</h4>
         <ul>
           {defaultContests.map((contest) => (
             <li key={contest}>{contest}</li>
@@ -71,7 +71,7 @@ export function ResumeBookSheet({ ariaLabel = '최하은 포트폴리오', class
       </section>
 
       <section className={styles.detailSection}>
-        <h3>Project</h3>
+        <h4>Project</h4>
         <ul>
           {defaultProjects.map((project) => (
             <li key={project}>{project}</li>

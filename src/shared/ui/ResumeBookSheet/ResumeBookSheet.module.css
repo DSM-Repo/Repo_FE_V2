@@ -86,8 +86,8 @@
   background: var(--repo-gray-100);
 }
 
-.introBox h2,
-.section h2 {
+.introBox h3,
+.section h3 {
   margin: 0;
   color: var(--repo-text-black);
   font-size: var(--repo-font-body-tiny-size);
@@ -147,7 +147,7 @@
 }
 
 .activityList time,
-.detailSection h3 {
+.detailSection h4 {
   color: var(--repo-gray-500);
   font-size: 12px;
   font-weight: 500;
@@ -162,7 +162,7 @@
   margin-top: 9px;
 }
 
-.detailSection h3 {
+.detailSection h4 {
   margin: 0 0 4px;
 }
 
