@@ -109,6 +109,16 @@ function TeacherStudentsContent() {
     return `2026 ${selectedClass.grade}학년 ${selectedClass.classNumber}반`
   }, [selectedClass])
 
+  const filteredStudents = useMemo(() => {
+    const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase('ko-KR')
+
+    if (!normalizedSearchQuery) {
+      return students
+    }
+
+    return students.filter((student) => student.name.toLocaleLowerCase('ko-KR').includes(normalizedSearchQuery))
+  }, [searchQuery])
+
   return (
     <main className={styles.page} data-dialog-open={selectedClass ? 'true' : 'false'}>
       <AppHeader activeItem="students" items={navigationItems} />
@@ -187,7 +197,7 @@ function TeacherStudentsContent() {
               <div className={styles.dialogDivider} />
 
               <div className={styles.studentRows} aria-label={`${selectedClassLabel} 학생 제출 현황`}>
-                {students.map((student) => (
+                {filteredStudents.map((student) => (
                   <LinkRow
                     actionLabel="레주메 보러가기"
                     className={styles.studentRow}
