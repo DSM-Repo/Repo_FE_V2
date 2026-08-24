@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import type { AppHeaderItem, ToastVariant } from '@/shared/ui'
-import { AppHeader, Button, FeedbackBalloon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
+import { AppHeader, Button, Feedback, FeedbackBalloon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -21,12 +21,20 @@ type Notice = {
 
 const totalPages = 5
 
+const feedbackItems = Array.from({ length: 8 }, (_, index) => ({
+  content: index === 1 ? '피드백에 대한 상세 내용' : '학생에게 전달할 피드백 상세 내용입니다.',
+  createdAtLabel: '1일 전',
+  id: index + 1,
+  title: '피드백 제목',
+}))
+
 export default function TeacherStudentReviewPage() {
   const searchParams = useSearchParams()
   const [currentPage, setCurrentPage] = useState(2)
   const [isFeedbackMode, setIsFeedbackMode] = useState(false)
   const [isFeedbackVisible, setIsFeedbackVisible] = useState(false)
   const [isResumePublic, setIsResumePublic] = useState(false)
+  const [expandedFeedbackId, setExpandedFeedbackId] = useState<number | null>(2)
   const [notice, setNotice] = useState<Notice | null>(null)
   const noticeTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -81,7 +89,7 @@ export default function TeacherStudentReviewPage() {
   }
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-feedback-panel-open={isFeedbackVisible ? 'true' : 'false'}>
       <AppHeader activeItem="students" items={navigationItems} />
 
       <section className={styles.workspace} aria-label="학생 포트폴리오 검토">
@@ -172,6 +180,40 @@ export default function TeacherStudentReviewPage() {
             </span>
           </label>
         </div>
+
+        {isFeedbackVisible ? (
+          <aside className={styles.feedbackPanel} aria-labelledby="feedback-panel-title">
+            <header className={styles.feedbackPanelHeader}>
+              <h2 id="feedback-panel-title">피드백 목록</h2>
+              <button
+                aria-label="피드백 목록 닫기"
+                className={styles.feedbackPanelClose}
+                type="button"
+                onClick={() => setIsFeedbackVisible(false)}
+              >
+                ×
+              </button>
+            </header>
+
+            <div className={styles.feedbackPanelToolbar}>
+              <button type="button">선택하기</button>
+            </div>
+
+            <div className={styles.feedbackList}>
+              {feedbackItems.map((feedback) => (
+                <Feedback
+                  className={styles.feedbackItem}
+                  content={feedback.content}
+                  createdAtLabel={feedback.createdAtLabel}
+                  expanded={expandedFeedbackId === feedback.id}
+                  key={feedback.id}
+                  title={feedback.title}
+                  onExpandedChange={(expanded) => setExpandedFeedbackId(expanded ? feedback.id : null)}
+                />
+              ))}
+            </div>
+          </aside>
+        ) : null}
       </section>
     </main>
   )
