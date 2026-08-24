@@ -207,8 +207,8 @@ export default function ResumeBookPage() {
                   ‹
                 </button>
                 <div className={styles.sheets} aria-label="포트폴리오 문서 페이지">
-                  <ResumeBookSheet />
-                  <ResumeBookSheet />
+                  <ResumeBookSheet ariaLabel="최하은 포트폴리오 왼쪽 페이지" />
+                  <ResumeBookSheet ariaLabel="최하은 포트폴리오 오른쪽 페이지" />
                 </div>
                 <button className={`${styles.pageArrow} ${styles.nextArrow}`} type="button" aria-label="다음 페이지">
                   ›
