@@ -1,0 +1,330 @@
+.page {
+  min-height: 100dvh;
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main);
+}
+
+.content {
+  position: relative;
+  width: min(100%, 1268px);
+  margin: 0 auto;
+  padding: 76px 32px 96px;
+}
+
+.toastLayer {
+  position: fixed;
+  z-index: 12;
+  top: 84px;
+  left: 50%;
+  display: flex;
+  width: min(calc(100% - 48px), 600px);
+  justify-content: center;
+  transform: translateX(-50%);
+}
+
+.hero {
+  display: grid;
+  justify-items: center;
+  gap: 24px;
+  text-align: center;
+}
+
+.hero h1 {
+  margin: 0;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-title-medium-size);
+  font-weight: var(--repo-font-title-medium-weight);
+  line-height: var(--repo-font-title-medium-line-height);
+  letter-spacing: 0;
+}
+
+.hero p {
+  margin: 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-large-size);
+  font-weight: var(--repo-font-body-large-weight);
+  line-height: var(--repo-font-body-large-line-height);
+  letter-spacing: 0;
+}
+
+.majorForm {
+  display: grid;
+  width: min(100%, 1032px);
+  grid-template-columns: minmax(0, 1fr) 160px;
+  align-items: start;
+  gap: 16px;
+  margin: 28px auto 0;
+}
+
+.addButton {
+  width: 160px;
+  min-height: 56px;
+  border-radius: var(--repo-radius-control);
+}
+
+.management {
+  display: grid;
+  width: 100%;
+  margin-top: 60px;
+}
+
+.page[data-major-selected='true'] .management {
+  grid-template-columns: 296px minmax(0, 1fr);
+  gap: 40px;
+}
+
+.majorList {
+  min-width: 0;
+}
+
+.majorList section {
+  gap: 0;
+}
+
+.majorList section > h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  padding: 0;
+  margin: -1px;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.majorList section > div {
+  gap: 16px;
+}
+
+.majorList button {
+  min-height: 56px;
+  padding: 14px 24px;
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: 8px;
+  background: var(--repo-bg-main-lighter);
+}
+
+.majorList button:hover {
+  transform: none;
+  background: var(--repo-bg-main-point);
+}
+
+.majorList button span:first-child > span:first-child {
+  font-size: var(--repo-font-body-large-size);
+  font-weight: var(--repo-font-body-large-weight);
+  line-height: var(--repo-font-body-large-line-height);
+}
+
+.detailPanel {
+  position: relative;
+  min-width: 0;
+  min-height: 628px;
+  padding: 24px 38px 72px;
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: var(--repo-radius-control);
+  background: var(--repo-bg-main-lighter);
+}
+
+.detailHeader {
+  display: grid;
+  gap: 3px;
+}
+
+.detailHeader h2 {
+  margin: 0;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: var(--repo-font-title-small-line-height);
+  letter-spacing: 0;
+}
+
+.detailHeader p {
+  margin: 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.detailDivider {
+  height: 1px;
+  margin-top: 12px;
+  background: var(--repo-bg-main-point);
+}
+
+.filters {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.yearTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.yearTabs button {
+  min-width: 48px;
+  padding: 8px 0 10px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: var(--repo-gray-500);
+  background: transparent;
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  cursor: pointer;
+}
+
+.yearTabs button:hover,
+.yearTabs button:focus-visible,
+.yearTabs .activeYear {
+  border-bottom-color: var(--repo-gray-50);
+  outline: 0;
+  color: var(--repo-gray-50);
+}
+
+.classDropdown {
+  min-width: 96px;
+}
+
+.studentContent {
+  min-height: 414px;
+}
+
+.studentList {
+  display: grid;
+  gap: 2px;
+  margin-top: 12px;
+}
+
+.studentRow {
+  min-height: 39px;
+  padding: 8px 0;
+  background: transparent;
+}
+
+.studentRow:hover {
+  transform: none;
+  background: var(--repo-bg-main-point);
+}
+
+.studentRow > span:first-child > span:first-child {
+  font-size: var(--repo-font-body-medium-2-size);
+  font-weight: var(--repo-font-body-medium-2-weight);
+  line-height: var(--repo-font-body-medium-2-line-height);
+}
+
+.studentRow > span:nth-child(2) span {
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.emptyMessage {
+  display: grid;
+  min-height: 410px;
+  place-items: center;
+  margin: 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.deleteButton {
+  position: absolute;
+  right: 38px;
+  bottom: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border: 0;
+  color: var(--repo-state-error);
+  background: transparent;
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  cursor: pointer;
+}
+
+.deleteButton:focus-visible {
+  outline: 2px solid var(--repo-state-error);
+  outline-offset: 3px;
+}
+
+@media (max-width: 1080px) {
+  .content {
+    padding-top: 56px;
+  }
+
+  .page[data-major-selected='true'] .management {
+    grid-template-columns: minmax(220px, 0.42fr) minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .detailPanel {
+    padding-inline: 24px;
+  }
+
+  .yearTabs {
+    gap: 2px;
+  }
+
+  .yearTabs button {
+    min-width: 42px;
+  }
+}
+
+@media (max-width: 760px) {
+  .content {
+    padding: 40px 20px 64px;
+  }
+
+  .hero {
+    gap: 16px;
+  }
+
+  .hero p {
+    font-size: var(--repo-font-body-small-size);
+    line-height: var(--repo-font-body-small-line-height);
+  }
+
+  .majorForm {
+    grid-template-columns: 1fr;
+  }
+
+  .addButton {
+    width: 100%;
+  }
+
+  .management,
+  .page[data-major-selected='true'] .management {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    margin-top: 40px;
+  }
+
+  .detailPanel {
+    min-height: 560px;
+    padding: 24px 20px 72px;
+  }
+
+  .filters {
+    gap: 16px;
+    overflow-x: auto;
+  }
+
+  .yearTabs {
+    flex: 0 0 auto;
+  }
+
+  .deleteButton {
+    right: 20px;
+  }
+}
