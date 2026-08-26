@@ -7,7 +7,7 @@
 .content {
   width: min(100%, 1492px);
   margin: 0 auto;
-  padding: 126px 32px 120px;
+  padding: 64px 32px 120px;
 }
 
 .profileHero {
@@ -218,7 +218,7 @@
 
 @media (max-width: 1180px) {
   .content {
-    padding-top: 88px;
+    padding-top: 44px;
   }
 
   .dashboard {
@@ -233,7 +233,7 @@
 
 @media (max-width: 720px) {
   .content {
-    padding: 56px 20px 80px;
+    padding: 28px 20px 80px;
   }
 
   .profileHero {
