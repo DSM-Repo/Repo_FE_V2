@@ -1,0 +1,135 @@
+.card {
+  position: relative;
+  display: block;
+  min-height: 209px;
+  overflow: hidden;
+  padding: 23px 20px;
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: var(--repo-radius-control);
+  background: var(--repo-bg-main-lighter);
+  isolation: isolate;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 3px;
+}
+
+.title {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: fit-content;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+}
+
+.card[data-variant='resume'] .title {
+  max-width: 210px;
+}
+
+.title span {
+  color: var(--repo-main);
+}
+
+.action {
+  position: absolute;
+  z-index: 3;
+  right: 26px;
+  bottom: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-body-small-size);
+  line-height: var(--repo-font-body-small-line-height);
+}
+
+.action svg {
+  width: 18px;
+  height: 18px;
+}
+
+.art {
+  position: absolute;
+  right: 9px;
+  bottom: -53px;
+  z-index: 1;
+  width: 252px;
+  height: 220px;
+  pointer-events: none;
+}
+
+.assetBack,
+.assetFront {
+  position: absolute;
+  display: block;
+  max-width: none;
+  height: auto;
+  user-select: none;
+}
+
+.assetBack {
+  right: 81px;
+  bottom: 6px;
+  width: 154px;
+}
+
+.assetFront {
+  right: 6px;
+  bottom: 0;
+  width: 163px;
+}
+
+.card[data-variant='resume'] .art {
+  right: -18px;
+  bottom: -64px;
+}
+
+.card[data-variant='resume'] .assetBack {
+  right: 86px;
+  bottom: 4px;
+  width: 142px;
+}
+
+.card[data-variant='resume'] .assetFront {
+  right: -2px;
+  bottom: -2px;
+  width: 150px;
+}
+
+.card[data-variant='library'] .art {
+  right: -6px;
+  bottom: -54px;
+  width: 274px;
+}
+
+.card[data-variant='library'] .assetBack {
+  right: 118px;
+  bottom: 4px;
+  width: 143px;
+}
+
+.card[data-variant='library'] .assetFront {
+  right: 4px;
+  bottom: -3px;
+  width: 178px;
+}
+
+@media (max-width: 460px) {
+  .card {
+    min-height: 230px;
+  }
+
+  .art {
+    right: -10px;
+    opacity: 0.78;
+  }
+
+  .card[data-variant='library'] .art {
+    right: -26px;
+  }
+}
