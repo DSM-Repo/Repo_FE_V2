@@ -5,7 +5,7 @@
   overflow: hidden;
   padding: 23px 20px;
   border: 1px solid var(--repo-bg-main-point);
-  border-radius: var(--repo-radius-control);
+  border-radius: 12px;
   background: var(--repo-bg-main-lighter);
   isolation: isolate;
 }

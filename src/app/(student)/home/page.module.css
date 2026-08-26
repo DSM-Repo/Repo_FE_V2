@@ -61,7 +61,8 @@
 .dashboard {
   display: grid;
   grid-template-columns: minmax(0, 799px) minmax(360px, 535px);
-  gap: 54px;
+  column-gap: 54px;
+  row-gap: 48px;
   align-items: start;
   margin-top: 54px;
 }
@@ -158,7 +159,6 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 40px;
-  margin-top: 48px;
 }
 
 .notificationPanel {
