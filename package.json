@@ -7,27 +7,44 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run build:vinext",
     "start": "next start",
     "test:e2e": "playwright test",
-    "test:unit": "rm -rf /tmp/repo-v2-unit && tsc --ignoreConfig --types node --module NodeNext --moduleResolution NodeNext --target ES2022 --outDir /tmp/repo-v2-unit --rootDir . tests/unit/internalHref.test.ts src/shared/lib/internalHref.ts && node --test /tmp/repo-v2-unit/tests/unit/*.test.js"
+    "test:unit": "rm -rf /tmp/repo-v2-unit && tsc --ignoreConfig --types node --module NodeNext --moduleResolution NodeNext --target ES2022 --outDir /tmp/repo-v2-unit --rootDir . tests/unit/internalHref.test.ts src/shared/lib/internalHref.ts && node --test /tmp/repo-v2-unit/tests/unit/*.test.js",
+    "dev:vinext": "vinext dev --port 3001",
+    "build:vinext": "vinext build",
+    "start:vinext": "wrangler dev --config dist/server/wrangler.json",
+    "deploy:vinext": "vinext-cloudflare deploy --config dist/server/wrangler.json --experimental-warm-cdn-cache"
   },
   "dependencies": {
+    "@vinext/cloudflare": "1.0.0-beta.6",
     "next": "^16.2.7",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "react-server-dom-webpack": "^19.2.8",
+    "vinext": "1.0.0-beta.8"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.54.0",
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.60.0",
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.1.0",
+    "@vitejs/plugin-rsc": "^0.5.34",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.7",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.6.0",
     "typescript": "~6.0.2",
-    "typescript-eslint": "^8.59.2"
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.2.2",
+    "wrangler": "^4.126.0"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"
 }
