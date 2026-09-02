@@ -41,3 +41,5 @@ out
 /test-results/
 /playwright-report/
 /blob-report/
+.vinext/
+.wrangler/

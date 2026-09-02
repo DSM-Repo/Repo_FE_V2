@@ -6,9 +6,9 @@
 
 현재 로컬 확인 기준:
 
-- Node.js: `v20.20.2`
+- Node.js: `v22.23.2`
 
-Next.js 공식 요구사항과 현재 로컬 확인 결과를 고려해 Node.js 20.9+ 이상을 기준으로 둡니다. 팀 표준 Node.js 버전은 추후 `.nvmrc`, `.node-version`, Volta, mise 등 중 하나로 고정할 수 있습니다.
+vinext와 Wrangler의 실행 요구사항에 맞춰 Node.js 22 이상을 기준으로 둡니다. 저장소의 `.node-version`을 사용해 팀 표준 버전을 맞춥니다.
 
 ## Package Manager
 
