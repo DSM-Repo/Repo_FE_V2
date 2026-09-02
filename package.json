@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "start": "next start",
     "test:e2e": "playwright test",
     "test:unit": "rm -rf /tmp/repo-v2-unit && tsc --ignoreConfig --types node --module NodeNext --moduleResolution NodeNext --target ES2022 --outDir /tmp/repo-v2-unit --rootDir . tests/unit/internalHref.test.ts src/shared/lib/internalHref.ts && node --test /tmp/repo-v2-unit/tests/unit/*.test.js"
