@@ -13,6 +13,14 @@ test.describe('auth login route', () => {
     await expect(passwordInput).toBeVisible()
     await expect(passwordInput).toHaveAttribute('type', 'password')
     await expect(loginButton).toBeDisabled()
+    await expect(page.getByText('계정이 없으신가요?')).toBeVisible()
+    const signupLink = page.getByRole('link', { name: '회원가입' })
+    await expect(signupLink).toHaveAttribute('href', '/signup')
+    await expect(signupLink.locator('..')).toHaveCSS('font-size', '14px')
+
+    const authCard = page.locator('main > div')
+    await expect(authCard).toHaveCSS('width', '810px')
+    await expect(authCard).toHaveCSS('height', '484px')
 
     await emailInput.focus()
     await passwordInput.focus()
@@ -43,9 +51,24 @@ test.describe('auth login route', () => {
     await expect(emailInput).toHaveValue('student@dsm.hs.kr')
     await expect(passwordInput).toHaveValue('repo-password')
     await expect(loginButton).toBeEnabled()
+    await expect(authCard).toHaveCSS('width', '810px')
+    await expect(authCard).toHaveCSS('height', '484px')
+  })
 
-    await loginButton.click()
+  test('stacks the brand and login form without overlap on mobile', async ({ page }) => {
+    await page.setViewportSize({ height: 812, width: 375 })
+    await page.goto('/login')
 
-    await expect(page.getByRole('button', { name: '로그인 중' })).toBeDisabled()
+    const brandBox = await page.getByLabel('Repo 소개').boundingBox()
+    const formBox = await page.getByRole('form', { name: '학생 로그인' }).boundingBox()
+
+    expect(brandBox).not.toBeNull()
+    expect(formBox).not.toBeNull()
+    const brandBottom = (brandBox?.y ?? 0) + (brandBox?.height ?? 0)
+    const formBottom = (formBox?.y ?? 0) + (formBox?.height ?? 0)
+    const panelsDoNotOverlap = formBottom <= (brandBox?.y ?? 0) || brandBottom <= (formBox?.y ?? 0)
+
+    expect(panelsDoNotOverlap).toBe(true)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
   })
 })
