@@ -1,6 +1,15 @@
 import type { SVGProps } from 'react'
 
-export type IconName = 'bell' | 'chevron-right' | 'eye' | 'eye-off' | 'login' | 'plus' | 'right-arrow' | 'search'
+export type IconName =
+  | 'bell'
+  | 'chevron-left'
+  | 'chevron-right'
+  | 'eye'
+  | 'eye-off'
+  | 'login'
+  | 'plus'
+  | 'right-arrow'
+  | 'search'
 
 type IconProps = Omit<SVGProps<SVGSVGElement>, 'children'> & {
   name: IconName
@@ -9,6 +18,10 @@ type IconProps = Omit<SVGProps<SVGSVGElement>, 'children'> & {
 export function Icon({ name, 'aria-hidden': ariaHidden = true, focusable = false, ...props }: IconProps) {
   if (name === 'bell') {
     return <BellIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
+  }
+
+  if (name === 'chevron-left') {
+    return <ChevronLeftIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
   }
 
   if (name === 'chevron-right') {
@@ -51,6 +64,14 @@ function BellIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
         strokeLinejoin="round"
         strokeWidth="1.25"
       />
+    </svg>
+  )
+}
+
+function ChevronLeftIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
+  return (
+    <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M10 3.5L5.5 8L10 12.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
     </svg>
   )
 }
