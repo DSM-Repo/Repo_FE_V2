@@ -128,6 +128,18 @@ All spacing derives from 4px.
 - **States**: default, error, pending through disabled actions
 - **Accessibility**: dialog role and labelled title
 
+### AuthCard
+- **Structure**: 340px dark brand panel + 470px light form panel
+- **Variants**: login, signup step, reversed teacher login
+- **States**: default, pending, error, success
+- **Responsive**: desktop uses a stable 810px by 484px card; mobile reflows to a single 430px column
+
+### AuthAccountPrompt
+- **Structure**: 14px muted prompt plus semibold route link below the primary action
+- **Variants**: signup link from login, login link from signup
+- **Layout**: positioned outside the form flow so adding it does not resize the authentication card
+- **Accessibility**: visible link text names the destination action
+
 ## 6. Motion & Interaction
 
 | Type | Duration | Easing | Usage |

@@ -146,17 +146,6 @@
 - Risk: 한글 slug는 내부적으로 percent-encoding될 수 있고, 중복/예약어/변경/redirect 정책이 필요하다.
 - Follow-up: slug unique 정책, 예약어, 변경 이력, redirect 정책을 백엔드/API 설계 때 결정한다.
 
-## 2026-06-09 — 퍼블리싱 mock data는 단순 object로 시작한다
-
-- Decision: 백엔드/API 설계 전 퍼블리싱 단계의 mock data는 단순 object로 시작하고, MSW는 바로 도입하지 않는다.
-- Context: 현재 목적은 화면 구조와 상태 표현을 빠르게 확인하는 것이다.
-- Alternatives:
-  - MSW를 즉시 도입한다.
-  - mock API 서버를 별도로 만든다.
-- Reason: 초기 퍼블리싱에는 네트워크 계층 시뮬레이션보다 단순하고 빠른 mock object가 더 적합하다.
-- Risk: API 에러/지연/실패 시나리오 검증은 부족할 수 있다.
-- Follow-up: API 연동 또는 E2E 시나리오가 구체화되면 MSW 도입을 재검토한다.
-
 ## 2026-06-09 — 퍼블리싱 작업은 GitHub Issue Form으로 관리한다
 
 - Decision: 퍼블리싱/디자인 시스템/UI 컴포넌트 작업은 `.github/ISSUE_TEMPLATE/01-publishing-task.yml` Issue Form을 기본 템플릿으로 사용한다.
