@@ -54,9 +54,9 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 324px) minmax(0, 450px);
-  width: min(774px, 100%);
-  min-height: 448px;
+  grid-template-columns: minmax(0, 340px) minmax(0, 470px);
+  width: min(810px, 100%);
+  height: 484px;
   border-radius: 11px;
   overflow: hidden;
   box-shadow: 0 18px 34px rgb(0 0 0 / 34%);
@@ -66,8 +66,8 @@
 }
 
 .teacherLayout {
-  grid-template-columns: minmax(0, 432px) minmax(0, 310px);
-  width: min(742px, 100%);
+  grid-template-columns: minmax(0, 470px) minmax(0, 340px);
+  width: min(810px, 100%);
 }
 
 .brandPanel {
@@ -76,7 +76,7 @@
   justify-content: space-between;
   grid-column: 1;
   grid-row: 1;
-  min-height: 448px;
+  min-height: 484px;
   padding: 33px 27px 42px;
   background: var(--repo-bg-main-lighter);
   transition:
@@ -147,7 +147,7 @@
   grid-column: 2;
   grid-row: 1;
   place-items: center;
-  min-height: 448px;
+  min-height: 484px;
   padding: 64px 64px 70px;
   color: var(--repo-text-black);
   background: var(--repo-gray-50);
@@ -175,8 +175,9 @@
 }
 
 .form {
+  position: relative;
   display: grid;
-  width: min(322px, 100%);
+  width: min(338px, 100%);
   align-content: start;
 }
 
@@ -210,9 +211,33 @@
   height: 16px;
 }
 
-.submitButton {
+.errorFeedback {
+  margin: 0;
+  color: var(--repo-state-error);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  letter-spacing: 0;
+}
+
+.submitGroup {
+  position: relative;
   width: 100%;
   margin-top: 58px;
+}
+
+.submitGroupWithFeedback {
+  margin-top: 32px;
+}
+
+.submitButton {
+  width: 100%;
+}
+
+.accountPrompt {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
 }
 
 @media (max-width: 820px) {
@@ -231,14 +256,17 @@
   .teacherLayout {
     grid-template-columns: 1fr;
     width: min(430px, 100%);
+    height: auto;
   }
 
   .brandPanel {
+    grid-row: auto;
     min-height: 252px;
     padding: 28px 24px;
   }
 
   .formPanel {
+    grid-row: auto;
     min-height: 430px;
     padding: 44px 28px 52px;
   }

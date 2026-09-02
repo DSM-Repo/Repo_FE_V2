@@ -1,16 +1,24 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 
+import { loginWithAuthApi, type AuthLoginResult, type AuthLoginRole } from '@/features/auth/api'
 import { Button, Icon, Input, Logo } from '@/shared/ui'
 
+import { AuthAccountPrompt } from './AuthAccountPrompt'
 import styles from './AuthLoginPage.module.css'
 
-type LoginRole = 'student' | 'teacher'
+type LoginRole = AuthLoginRole
 type LoginField = 'email' | 'password'
 type SubmitState = 'idle' | 'pending'
+type AuthFeedback = {
+  readonly message: string
+}
+
+type AuthLoginFailure = Exclude<AuthLoginResult, { readonly kind: 'success' }>
 
 type LoginContent = {
   description: string
@@ -50,13 +58,21 @@ function hasValue(value: string) {
   return value.trim().length > 0
 }
 
+function toAuthFeedback(result: AuthLoginFailure): AuthFeedback {
+  return {
+    message: result.message,
+  }
+}
+
 export function AuthLoginPage() {
+  const router = useRouter()
   const [role, setRole] = useState<LoginRole>('student')
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [touchedFields, setTouchedFields] = useState(emptyTouchedFields)
   const [submitState, setSubmitState] = useState<SubmitState>('idle')
+  const [feedback, setFeedback] = useState<AuthFeedback>()
   const content = LOGIN_CONTENT[role]
   const nextRole = oppositeRole[role]
   const layoutClassName = role === 'student' ? styles.studentLayout : styles.teacherLayout
@@ -69,6 +85,7 @@ export function AuthLoginPage() {
   const isSubmitting = submitState === 'pending'
   const emailErrorMessage = touchedFields.email && !emailHasValue ? '이메일을 입력해주세요.' : undefined
   const passwordErrorMessage = touchedFields.password && !passwordHasValue ? '비밀번호를 입력해주세요.' : undefined
+  const loginErrorMessage = feedback?.message
 
   const markFieldTouched = (field: LoginField) => {
     setTouchedFields((currentFields) => ({
@@ -81,6 +98,7 @@ export function AuthLoginPage() {
     if (isSubmitting) {
       setSubmitState('idle')
     }
+    setFeedback(undefined)
   }
 
   const handleEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -98,15 +116,29 @@ export function AuthLoginPage() {
     resetSubmitState()
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setTouchedFields(filledTouchedFields)
+    setFeedback(undefined)
 
     if (!isFormValid || isSubmitting) {
       return
     }
 
     setSubmitState('pending')
+    const result = await loginWithAuthApi({
+      email: email.trim(),
+      password,
+    })
+
+    setSubmitState('idle')
+
+    if (result.kind === 'success') {
+      router.push('/library')
+      return
+    }
+
+    setFeedback(toAuthFeedback(result))
   }
 
   const formPanel = (
@@ -159,11 +191,24 @@ export function AuthLoginPage() {
             type={passwordType}
             value={password}
           />
+          {loginErrorMessage ? (
+            <p className={styles.errorFeedback} role="alert">
+              {loginErrorMessage}
+            </p>
+          ) : null}
         </div>
 
-        <Button className={styles.submitButton} disabled={!isFormValid || isSubmitting} type="submit">
-          {isSubmitting ? '로그인 중' : '로그인'}
-        </Button>
+        <div className={`${styles.submitGroup} ${loginErrorMessage ? styles.submitGroupWithFeedback : ''}`}>
+          <Button className={styles.submitButton} disabled={!isFormValid || isSubmitting} type="submit">
+            {isSubmitting ? '로그인 중' : '로그인'}
+          </Button>
+          <AuthAccountPrompt
+            className={styles.accountPrompt}
+            href="/signup"
+            linkLabel="회원가입"
+            prompt="계정이 없으신가요?"
+          />
+        </div>
       </form>
     </section>
   )
