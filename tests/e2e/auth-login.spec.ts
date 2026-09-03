@@ -71,4 +71,29 @@ test.describe('auth login route', () => {
     expect(panelsDoNotOverlap).toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
   })
+
+  for (const responseBody of ['', '{']) {
+    const responseDescription = responseBody ? 'invalid JSON' : 'no JSON body'
+
+    test(`shows a handled error when a successful login response has ${responseDescription}`, async ({ page }) => {
+      await page.route('**/user/login', async (route) => {
+        await route.fulfill({
+          body: responseBody,
+          contentType: 'application/json',
+          headers: {
+            'access-control-allow-origin': '*',
+          },
+          status: 200,
+        })
+      })
+      await page.goto('/login')
+
+      await page.getByLabel('이메일').fill('student@dsm.hs.kr')
+      await page.getByLabel('비밀번호', { exact: true }).fill('repo-password')
+      await page.getByRole('button', { name: '로그인' }).click()
+
+      await expect(page.getByText('로그인 응답 형식이 올바르지 않습니다.')).toBeVisible()
+      await expect(page).toHaveURL(/\/login$/)
+    })
+  }
 })

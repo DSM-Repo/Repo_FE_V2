@@ -13,6 +13,8 @@ jobs:
   verify:
     name: Lint, build, and E2E smoke
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_AUTH_API_BASE_URL: http://127.0.0.1:8080
 
     steps:
       - name: Checkout

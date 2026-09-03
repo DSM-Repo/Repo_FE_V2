@@ -102,6 +102,10 @@ type JsonRecord = {
 
 const AUTH_REQUEST_TIMEOUT_MS = 8_000
 const AUTH_API_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL?.trim()
+const INVALID_LOGIN_RESPONSE = {
+  kind: 'server-error',
+  message: '로그인 응답 형식이 올바르지 않습니다.',
+} as const satisfies AuthLoginResult
 
 function getAuthApiConfig(): AuthApiConfig {
   if (!AUTH_API_BASE_URL) {
@@ -202,14 +206,22 @@ export async function loginWithAuthApi(input: AuthLoginInput): Promise<AuthLogin
   }
 
   if (response.value.ok) {
-    const responseBody: unknown = await response.value.json()
+    let responseBody: unknown
+
+    try {
+      responseBody = await response.value.json()
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return INVALID_LOGIN_RESPONSE
+      }
+
+      throw error
+    }
+
     const token = parseAuthLoginToken(responseBody)
 
     if (!token) {
-      return {
-        kind: 'server-error',
-        message: '로그인 응답 형식이 올바르지 않습니다.',
-      }
+      return INVALID_LOGIN_RESPONSE
     }
 
     return {
