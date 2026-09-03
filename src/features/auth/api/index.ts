@@ -1,4 +1,4 @@
-export { loginWithAuthApi, sendEmailVerificationCode, signupWithAuthApi, verifyEmailCode } from './authApi'
+export { loginWithAuthApi, refreshAuthToken, sendEmailVerificationCode, signupWithAuthApi, verifyEmailCode } from './authApi'
 export type {
   AuthEmailSendInput,
   AuthEmailSendResult,
@@ -8,7 +8,10 @@ export type {
   AuthLoginResult,
   AuthLoginRole,
   AuthLoginToken,
+  AuthRefreshInput,
+  AuthRefreshResult,
+  AuthRefreshToken,
   AuthSignupInput,
   AuthSignupResult,
   AuthSignupRole,
-} from './authApi'
+} from './authApi.types'

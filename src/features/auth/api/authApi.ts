@@ -1,140 +1,33 @@
 'use client'
 
-export type AuthLoginRole = 'student' | 'teacher'
-export type AuthSignupRole = 'STUDENT'
+import type {
+  AuthEmailSendInput,
+  AuthEmailSendResult,
+  AuthEmailVerifyInput,
+  AuthEmailVerifyResult,
+  AuthLoginInput,
+  AuthLoginResult,
+  AuthLoginToken,
+  AuthRefreshInput,
+  AuthRefreshResult,
+  AuthRefreshToken,
+  AuthSignupInput,
+  AuthSignupResult,
+} from './authApi.types'
+import { postAuthJsonRequest, postAuthRefreshRequest } from './authHttpClient'
 
-export type AuthEmailSendInput = {
-  readonly email: string
-}
-
-export type AuthEmailVerifyInput = {
-  readonly code: string
-  readonly email: string
-}
-
-export type AuthEmailSendResult =
-  | {
-      readonly kind: 'success'
-      readonly message: string
-    }
-  | {
-      readonly kind: 'configuration-error' | 'network-error' | 'server-error'
-      readonly message: string
-    }
-
-export type AuthEmailVerifyResult =
-  | {
-      readonly kind: 'success'
-      readonly message: string
-    }
-  | {
-      readonly kind: 'configuration-error' | 'invalid-code' | 'network-error' | 'server-error'
-      readonly message: string
-    }
-
-export type AuthLoginInput = {
-  readonly email: string
-  readonly password: string
-}
-
-export type AuthLoginToken = {
-  readonly accessToken: string
-  readonly refreshToken: string
-  readonly tokenType: string
-}
-
-export type AuthLoginResult =
-  | {
-      readonly kind: 'success'
-      readonly message: string
-      readonly token: AuthLoginToken
-    }
-  | {
-      readonly kind: 'configuration-error' | 'invalid-credentials' | 'network-error' | 'server-error'
-      readonly message: string
-    }
-
-export type AuthSignupInput = {
-  readonly email: string
-  readonly password: string
-  readonly role: AuthSignupRole
-  readonly studentClass: number
-  readonly studentGrade: number
-  readonly studentName: string
-  readonly studentNumber: number
-}
-
-export type AuthSignupResult =
-  | {
-      readonly kind: 'success'
-      readonly message: string
-    }
-  | {
-      readonly kind: 'configuration-error' | 'network-error' | 'server-error'
-      readonly message: string
-    }
-
-type AuthApiConfig =
-  | {
-      readonly kind: 'ready'
-      readonly baseUrl: string
-    }
-  | {
-      readonly kind: 'invalid'
-      readonly message: string
-    }
-
-type AuthRequestInput = AuthEmailSendInput | AuthEmailVerifyInput | AuthLoginInput | AuthSignupInput
-type AuthRequestPath = 'user/email/send' | 'user/email/verify' | 'user/login' | 'user/signup'
-type AuthRequestFailure = {
-  readonly kind: 'configuration-error' | 'network-error'
-  readonly message: string
-}
-type AuthRequestResponse =
-  | AuthRequestFailure
-  | {
-      readonly kind: 'response'
-      readonly value: Response
-    }
 type JsonRecord = {
   readonly [key: string]: unknown
 }
 
-const AUTH_REQUEST_TIMEOUT_MS = 8_000
-const AUTH_API_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL?.trim()
 const INVALID_LOGIN_RESPONSE = {
   kind: 'server-error',
   message: '로그인 응답 형식이 올바르지 않습니다.',
 } as const satisfies AuthLoginResult
-
-function getAuthApiConfig(): AuthApiConfig {
-  if (!AUTH_API_BASE_URL) {
-    return {
-      kind: 'invalid',
-      message: 'auth API 주소가 설정되지 않았습니다.',
-    }
-  }
-
-  try {
-    return {
-      kind: 'ready',
-      baseUrl: new URL(AUTH_API_BASE_URL).href,
-    }
-  } catch (error) {
-    if (error instanceof TypeError) {
-      return {
-        kind: 'invalid',
-        message: 'auth API 주소 형식이 올바르지 않습니다.',
-      }
-    }
-
-    throw error
-  }
-}
-
-function buildAuthUrl(baseUrl: string, path: AuthRequestPath) {
-  return new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).href
-}
+const INVALID_REFRESH_RESPONSE = {
+  kind: 'server-error',
+  message: '토큰 재발급 응답 형식이 올바르지 않습니다.',
+} as const satisfies AuthRefreshResult
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -157,49 +50,18 @@ function parseAuthLoginToken(value: unknown): AuthLoginToken | undefined {
   }
 }
 
-async function postAuthRequest(path: AuthRequestPath, input: AuthRequestInput): Promise<AuthRequestResponse> {
-  const config = getAuthApiConfig()
-
-  if (config.kind === 'invalid') {
-    return {
-      kind: 'configuration-error',
-      message: config.message,
-    }
+function parseAuthRefreshToken(value: unknown): AuthRefreshToken | undefined {
+  if (!isJsonRecord(value) || typeof value['accessToken'] !== 'string') {
+    return undefined
   }
 
-  const controller = new AbortController()
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS)
-
-  try {
-    const response = await fetch(buildAuthUrl(config.baseUrl, path), {
-      body: JSON.stringify(input),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
-      signal: controller.signal,
-    })
-
-    return {
-      kind: 'response',
-      value: response,
-    }
-  } catch (error) {
-    if (error instanceof DOMException || error instanceof TypeError) {
-      return {
-        kind: 'network-error',
-        message: 'auth API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
-      }
-    }
-
-    throw error
-  } finally {
-    globalThis.clearTimeout(timeoutId)
+  return {
+    accessToken: value['accessToken'],
   }
 }
 
 export async function loginWithAuthApi(input: AuthLoginInput): Promise<AuthLoginResult> {
-  const response = await postAuthRequest('user/login', input)
+  const response = await postAuthJsonRequest('user/login', input)
 
   if (response.kind !== 'response') {
     return response
@@ -244,8 +106,54 @@ export async function loginWithAuthApi(input: AuthLoginInput): Promise<AuthLogin
   }
 }
 
+export async function refreshAuthToken(input: AuthRefreshInput): Promise<AuthRefreshResult> {
+  const response = await postAuthRefreshRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    let responseBody: unknown
+
+    try {
+      responseBody = await response.value.json()
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return INVALID_REFRESH_RESPONSE
+      }
+
+      throw error
+    }
+
+    const token = parseAuthRefreshToken(responseBody)
+
+    if (!token) {
+      return INVALID_REFRESH_RESPONSE
+    }
+
+    return {
+      kind: 'success',
+      message: '토큰을 재발급했습니다.',
+      token,
+    }
+  }
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'invalid-refresh-token',
+      message: '다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '토큰 재발급 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
 export async function signupWithAuthApi(input: AuthSignupInput): Promise<AuthSignupResult> {
-  const response = await postAuthRequest('user/signup', input)
+  const response = await postAuthJsonRequest('user/signup', input)
 
   if (response.kind !== 'response') {
     return response
@@ -265,7 +173,7 @@ export async function signupWithAuthApi(input: AuthSignupInput): Promise<AuthSig
 }
 
 export async function sendEmailVerificationCode(input: AuthEmailSendInput): Promise<AuthEmailSendResult> {
-  const response = await postAuthRequest('user/email/send', input)
+  const response = await postAuthJsonRequest('user/email/send', input)
 
   if (response.kind !== 'response') {
     return response
@@ -285,7 +193,7 @@ export async function sendEmailVerificationCode(input: AuthEmailSendInput): Prom
 }
 
 export async function verifyEmailCode(input: AuthEmailVerifyInput): Promise<AuthEmailVerifyResult> {
-  const response = await postAuthRequest('user/email/verify', input)
+  const response = await postAuthJsonRequest('user/email/verify', input)
 
   if (response.kind !== 'response') {
     return response
