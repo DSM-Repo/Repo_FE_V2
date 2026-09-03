@@ -43,3 +43,7 @@ out
 /blob-report/
 .vinext/
 .wrangler/
+!.wrangler/
+.wrangler/*
+!.wrangler/deploy/
+!.wrangler/deploy/config.json

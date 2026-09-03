@@ -1,0 +1,299 @@
+.page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  overflow: hidden;
+  padding: 96px 32px 64px;
+  color: var(--repo-gray-50);
+  background:
+    url('/assets/auth-bg.svg') center / cover no-repeat,
+    var(--repo-gray-950);
+}
+
+.authCard {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 470px);
+  width: min(810px, 100%);
+  height: 484px;
+  overflow: hidden;
+  border-radius: 11px;
+  box-shadow: 0 18px 34px rgb(0 0 0 / 34%);
+}
+
+.brandPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 484px;
+  padding: 33px 27px 42px;
+  background: var(--repo-bg-main-lighter);
+}
+
+.brandIntro {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+}
+
+.divider {
+  width: 41px;
+  height: 1px;
+  margin: 18px 0 22px;
+  background: var(--repo-bg-main-point);
+}
+
+.welcome {
+  margin: 0;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  letter-spacing: 0;
+}
+
+.description {
+  margin: 9px 0 0;
+  color: var(--repo-gray-400);
+  font-size: var(--repo-font-body-very-tiny-size);
+  font-weight: var(--repo-font-body-very-tiny-weight);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.formPanel {
+  position: relative;
+  display: grid;
+  min-height: 484px;
+  place-items: center;
+  padding: 64px 64px 70px;
+  color: var(--repo-text-black);
+  background: var(--repo-gray-50);
+}
+
+.backButton {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  color: var(--repo-gray-500);
+  background: transparent;
+  cursor: pointer;
+}
+
+.backButton:hover {
+  color: var(--repo-gray-800);
+}
+
+.backIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.form {
+  position: relative;
+  display: grid;
+  width: min(338px, 100%);
+  align-content: start;
+}
+
+.title {
+  margin: 0 0 31px;
+  text-align: center;
+  color: var(--repo-text-black);
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: var(--repo-font-title-small-line-height);
+  letter-spacing: 0;
+}
+
+.fields {
+  display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 14px;
+  min-height: 190px;
+}
+
+.fieldGroup {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.label {
+  color: var(--repo-text-black);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  letter-spacing: 0;
+}
+
+.emailRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.emailField {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 45px;
+  padding: 12px 14px;
+  border: 1px solid var(--repo-gray-400);
+  border-radius: 12px;
+}
+
+.emailInput {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: var(--repo-text-black);
+  background: transparent;
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  letter-spacing: 0;
+}
+
+.emailInput::placeholder {
+  color: var(--repo-gray-400);
+  opacity: 1;
+}
+
+.emailDomain {
+  flex: 0 0 auto;
+  color: var(--repo-text-black);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  letter-spacing: 0;
+}
+
+.verifyButton {
+  min-height: 45px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main-point);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.verifyButton:disabled {
+  background: var(--repo-gray-400);
+  cursor: not-allowed;
+}
+
+.studentInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.studentInfoField {
+  display: grid;
+  gap: 8px;
+}
+
+.studentInfoField input {
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.emailFeedback {
+  margin: 0;
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  letter-spacing: 0;
+}
+
+.emailFeedbackSuccess {
+  color: var(--repo-state-success);
+}
+
+.emailFeedbackError {
+  color: var(--repo-state-error);
+}
+
+.passwordIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.submitGroup {
+  position: relative;
+  width: 100%;
+  margin-top: 36px;
+}
+
+.submitButton {
+  width: 100%;
+}
+
+.accountPrompt {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+}
+
+@media (max-width: 820px) {
+  .page {
+    min-height: 100svh;
+    padding: 88px 20px 40px;
+  }
+
+  .authCard {
+    grid-template-columns: 1fr;
+    width: min(430px, 100%);
+    height: auto;
+  }
+
+  .brandPanel {
+    min-height: 252px;
+    padding: 28px 24px;
+  }
+
+  .formPanel {
+    min-height: 430px;
+    padding: 44px 28px 52px;
+  }
+}
+
+@media (max-width: 420px) {
+  .page {
+    padding-inline: 16px;
+  }
+
+  .emailField {
+    padding-inline: 12px;
+  }
+
+  .backButton {
+    left: 4px;
+  }
+
+  .studentInfoGrid {
+    gap: var(--space-2);
+  }
+
+  .formPanel {
+    padding-inline: 22px;
+  }
+
+}

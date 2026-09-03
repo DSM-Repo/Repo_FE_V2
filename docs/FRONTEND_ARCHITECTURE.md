@@ -130,15 +130,6 @@ features/major/api
 
 상세 API 계약은 아직 확정하지 않는다. 백엔드 설계가 구체화되면 별도 `API_CONTRACTS.md` 분리를 검토한다.
 
-## Mock Data 방향
-
-백엔드/API 설계 전 퍼블리싱 단계에서는 단순 object 기반 mock data로 시작합니다.
-
-- MSW는 바로 도입하지 않습니다.
-- mock data는 화면 구조와 상태 표현을 확인하기 위한 최소 데이터로 둡니다.
-- API 흐름, 에러 상태, 네트워크 지연/실패 시나리오가 필요해지는 시점에 MSW 도입을 재검토합니다.
-- mock data는 feature별 가까운 위치에 두되, 여러 화면에서 공유되는 데이터는 shared mock으로 분리할 수 있습니다.
-
 ## 레거시 구조를 그대로 따르지 않는 이유
 
 레거시는 `student`, `teacher`, `main` 앱이 분리되어 있었지만 Repo-V2는 다음 이유로 단일 앱이 더 적합합니다.

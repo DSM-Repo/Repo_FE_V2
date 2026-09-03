@@ -1,0 +1,23 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin: 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  letter-spacing: 0;
+}
+
+.link {
+  color: var(--repo-gray-600);
+  font-weight: var(--repo-font-title-tiny-weight);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--repo-bg-main-point);
+}
