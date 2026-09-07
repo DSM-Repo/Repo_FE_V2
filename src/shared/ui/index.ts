@@ -39,7 +39,7 @@ export type { MajorListItem, MajorListProps } from './MajorList';
 export type { OptionListItem, OptionListProps } from './OptionList';
 export type { PortfolioUrlModalProps } from './PortfolioUrlModal';
 export type { PortfolioResumeSheetProps } from './PortfolioResumeSheet';
-export type { ResumeBookSheetProps } from './ResumeBookSheet';
+export type { ResumeBookSheetContent, ResumeBookSheetProps } from './ResumeBookSheet';
 export type { SearchFieldProps } from './SearchField';
 export type { SwitchProps } from './Switch';
 export type { TagProps, TagTone } from './Tag';

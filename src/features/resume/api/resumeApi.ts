@@ -1,0 +1,140 @@
+'use client'
+
+import type { Resume, ResumeDetailInput, ResumeDetailResult, ResumePage } from './resumeApi.types'
+import { getResumeRequest } from './resumeHttpClient'
+
+type JsonRecord = {
+  readonly [key: string]: unknown
+}
+
+const INVALID_RESUME_RESPONSE = {
+  kind: 'server-error',
+  message: '이력서 조회 응답 형식이 올바르지 않습니다.',
+} as const satisfies ResumeDetailResult
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function parseResumePage(value: unknown): ResumePage | undefined {
+  if (
+    !isJsonRecord(value) ||
+    typeof value['content'] !== 'string' ||
+    typeof value['id'] !== 'string' ||
+    typeof value['index'] !== 'number'
+  ) {
+    return undefined
+  }
+
+  return {
+    content: value['content'],
+    id: value['id'],
+    index: value['index'],
+  }
+}
+
+function parseResumePages(value: unknown): readonly ResumePage[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const pages = value.map(parseResumePage)
+
+  if (pages.some((page) => page === undefined)) {
+    return undefined
+  }
+
+  return pages.filter((page) => page !== undefined)
+}
+
+function parseResume(value: unknown): Resume | undefined {
+  if (
+    !isJsonRecord(value) ||
+    typeof value['id'] !== 'string' ||
+    typeof value['introduce'] !== 'string' ||
+    typeof value['isPublic'] !== 'boolean' ||
+    typeof value['majorName'] !== 'string' ||
+    typeof value['name'] !== 'string' ||
+    typeof value['portfolioUrl'] !== 'string' ||
+    typeof value['profileImageUrl'] !== 'string' ||
+    typeof value['savedAt'] !== 'string' ||
+    typeof value['submissionStatus'] !== 'string'
+  ) {
+    return undefined
+  }
+
+  const pages = parseResumePages(value['pages'])
+
+  if (!pages) {
+    return undefined
+  }
+
+  return {
+    id: value['id'],
+    introduce: value['introduce'],
+    isPublic: value['isPublic'],
+    majorName: value['majorName'],
+    name: value['name'],
+    pages,
+    portfolioUrl: value['portfolioUrl'],
+    profileImageUrl: value['profileImageUrl'],
+    savedAt: value['savedAt'],
+    submissionStatus: value['submissionStatus'],
+  }
+}
+
+async function readResumeResponseBody(response: Response): Promise<ResumeDetailResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.json()
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return INVALID_RESUME_RESPONSE
+    }
+
+    throw error
+  }
+
+  const resume = parseResume(responseBody)
+
+  if (!resume) {
+    return INVALID_RESUME_RESPONSE
+  }
+
+  return {
+    kind: 'success',
+    resume,
+  }
+}
+
+export async function getResumeById(input: ResumeDetailInput): Promise<ResumeDetailResult> {
+  const response = await getResumeRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readResumeResponseBody(response.value)
+  }
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '이력서를 조회할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  if (response.value.status === 404) {
+    return {
+      kind: 'not-found',
+      message: '이력서를 찾을 수 없습니다.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '이력서 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}

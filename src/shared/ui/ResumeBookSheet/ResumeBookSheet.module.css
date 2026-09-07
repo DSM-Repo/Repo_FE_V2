@@ -173,3 +173,23 @@
   font-size: 11px;
   line-height: 1.25;
 }
+
+.pageContent {
+  display: -webkit-box;
+  margin: 9px 0 0;
+  overflow: hidden;
+  color: var(--repo-gray-800);
+  font-size: var(--repo-font-resume-small-size);
+  font-weight: var(--repo-font-resume-small-weight);
+  line-height: var(--repo-font-resume-small-line-height);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+@media (max-width: 520px) {
+  .sheet {
+    width: calc(100vw - 32px);
+    height: auto;
+    min-height: 599px;
+  }
+}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
+import { sampleResumeBookSheetContent } from '@/shared/fixtures/examples/resumeBookExample'
 import type { AppHeaderItem, ToastVariant } from '@/shared/ui'
 import { AppHeader, Button, Feedback, FeedbackBalloon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
 
@@ -121,13 +122,13 @@ export default function TeacherStudentReviewPage() {
 
           <div className={styles.sheets} aria-label="최하은 포트폴리오 문서 페이지">
             <div className={styles.sheetFrame}>
-              <ResumeBookSheet ariaLabel="최하은 포트폴리오 왼쪽 페이지" />
+              <ResumeBookSheet ariaLabel="최하은 포트폴리오 왼쪽 페이지" content={sampleResumeBookSheetContent} />
               {isFeedbackVisible ? (
                 <FeedbackBalloon className={`${styles.feedbackMarker} ${styles.feedbackMarkerLeft}`} title="활동 내용을 조금 더 구체적으로 작성해주세요." />
               ) : null}
             </div>
             <div className={styles.sheetFrame}>
-              <ResumeBookSheet ariaLabel="최하은 포트폴리오 오른쪽 페이지" />
+              <ResumeBookSheet ariaLabel="최하은 포트폴리오 오른쪽 페이지" content={sampleResumeBookSheetContent} />
               {isFeedbackVisible ? (
                 <>
                   <FeedbackBalloon className={`${styles.feedbackMarker} ${styles.feedbackMarkerTop}`} title="자기소개에서 지원 직무 강점을 강조해주세요." />

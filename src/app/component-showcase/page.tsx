@@ -16,7 +16,7 @@ import styles from './page.module.css'
 
 const studentNavItems = [
   { href: '/', label: '홈', value: 'home' },
-  { href: '/student/resume', label: '이력서 관리', value: 'resume' },
+  { href: '/resume', label: '이력서 관리', value: 'resume' },
   { href: '/library', label: '도서관', value: 'library' },
 ] as const
 
