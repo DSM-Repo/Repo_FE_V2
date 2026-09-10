@@ -4,7 +4,16 @@ import { useState, type FormEvent } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import { AUTH_ACCESS_TOKEN_STORAGE_KEY } from '@/features/auth/api'
-import { getResumeById, updateResumeVisibility, type Resume, type ResumeDetailResult, type ResumeVisibilityResult } from '@/features/resume/api'
+import {
+  cancelResumeSubmission,
+  getResumeById,
+  submitResume,
+  updateResumeVisibility,
+  type Resume,
+  type ResumeDetailResult,
+  type ResumeSubmissionResult,
+  type ResumeVisibilityResult,
+} from '@/features/resume/api'
 import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
 import { AppHeader, Button, Input, ResumeBookSheet } from '@/shared/ui'
 
@@ -33,6 +42,7 @@ type LoadState =
     }
 
 type VisibilitySubmitState = 'idle' | 'pending'
+type SubmissionSubmitState = 'idle' | 'submit' | 'cancel'
 
 function toResumeBookSheetContent(resume: Resume): ResumeBookSheetContent {
   const firstPage = resume.pages.find((page) => page.index === 0) ?? resume.pages[0]
@@ -59,12 +69,21 @@ function toVisibilityFailureMessage(result: Exclude<ResumeVisibilityResult, { re
   return result.message
 }
 
+function toSubmissionFailureMessage(result: Exclude<ResumeSubmissionResult, { readonly kind: 'success' }>) {
+  return result.message
+}
+
+function isSubmittedResume(resume: Resume) {
+  return resume.submissionStatus !== 'ONGOING'
+}
+
 export function StudentResumePageContent() {
   const searchParams = useSearchParams()
   const [resumeId, setResumeId] = useState(searchParams.get('resumeId') ?? '')
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' })
   const [visibilitySubmitState, setVisibilitySubmitState] = useState<VisibilitySubmitState>('idle')
-  const [visibilityFeedback, setVisibilityFeedback] = useState<string>()
+  const [submissionSubmitState, setSubmissionSubmitState] = useState<SubmissionSubmitState>('idle')
+  const [actionFeedback, setActionFeedback] = useState<string>()
 
   const loadResume = async (nextResumeId: string) => {
     const trimmedResumeId = nextResumeId.trim()
@@ -82,7 +101,7 @@ export function StudentResumePageContent() {
     }
 
     setLoadState({ kind: 'loading' })
-    setVisibilityFeedback(undefined)
+    setActionFeedback(undefined)
     const result = await getResumeById({
       accessToken,
       resumeId: trimmedResumeId,
@@ -97,21 +116,21 @@ export function StudentResumePageContent() {
   }
 
   const changeVisibility = async () => {
-    if (loadState.kind !== 'success' || visibilitySubmitState === 'pending') {
+    if (loadState.kind !== 'success' || visibilitySubmitState === 'pending' || submissionSubmitState !== 'idle') {
       return
     }
 
     const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)
 
     if (!accessToken) {
-      setVisibilityFeedback('로그인 후 공개 여부를 변경할 수 있습니다.')
+      setActionFeedback('로그인 후 공개 여부를 변경할 수 있습니다.')
       return
     }
 
     const nextIsPublic = !loadState.resume.isPublic
 
     setVisibilitySubmitState('pending')
-    setVisibilityFeedback(undefined)
+    setActionFeedback(undefined)
 
     const result = await updateResumeVisibility({
       accessToken,
@@ -121,7 +140,7 @@ export function StudentResumePageContent() {
     setVisibilitySubmitState('idle')
 
     if (result.kind !== 'success') {
-      setVisibilityFeedback(toVisibilityFailureMessage(result))
+      setActionFeedback(toVisibilityFailureMessage(result))
       return
     }
 
@@ -132,7 +151,52 @@ export function StudentResumePageContent() {
         isPublic: result.isPublic,
       },
     })
-    setVisibilityFeedback(result.isPublic ? '이력서를 공개로 변경했습니다.' : '이력서를 비공개로 변경했습니다.')
+    setActionFeedback(result.isPublic ? '이력서를 공개로 변경했습니다.' : '이력서를 비공개로 변경했습니다.')
+  }
+
+  const changeSubmissionStatus = async () => {
+    if (loadState.kind !== 'success' || visibilitySubmitState === 'pending' || submissionSubmitState !== 'idle') {
+      return
+    }
+
+    const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)
+
+    if (!accessToken) {
+      setActionFeedback('로그인 후 이력서를 제출하거나 취소할 수 있습니다.')
+      return
+    }
+
+    const nextAction: Exclude<SubmissionSubmitState, 'idle'> = isSubmittedResume(loadState.resume) ? 'cancel' : 'submit'
+
+    setSubmissionSubmitState(nextAction)
+    setActionFeedback(undefined)
+
+    const result =
+      nextAction === 'submit'
+        ? await submitResume({
+            accessToken,
+          })
+        : await cancelResumeSubmission({
+            accessToken,
+          })
+
+    setSubmissionSubmitState('idle')
+
+    if (result.kind !== 'success') {
+      setActionFeedback(toSubmissionFailureMessage(result))
+      return
+    }
+
+    setLoadState({
+      kind: 'success',
+      resume: {
+        ...loadState.resume,
+        submissionStatus: result.submissionStatus,
+      },
+    })
+    setActionFeedback(
+      result.submissionStatus === 'ONGOING' ? '이력서 제출을 취소했습니다.' : '이력서를 제출했습니다.',
+    )
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -141,6 +205,7 @@ export function StudentResumePageContent() {
   }
 
   const sheetContent = loadState.kind === 'success' ? toResumeBookSheetContent(loadState.resume) : undefined
+  const isResumeActionPending = visibilitySubmitState === 'pending' || submissionSubmitState !== 'idle'
 
   return (
     <main className={styles.page}>
@@ -182,19 +247,37 @@ export function StudentResumePageContent() {
                 <dt>저장 시각</dt>
                 <dd>{loadState.resume.savedAt}</dd>
               </div>
+              <div>
+                <dt>제출 상태</dt>
+                <dd>{loadState.resume.submissionStatus}</dd>
+              </div>
             </dl>
           ) : null}
 
           {loadState.kind === 'success' ? (
-            <div className={styles.visibilityActions}>
-              <Button disabled={visibilitySubmitState === 'pending'} onClick={changeVisibility} type="button">
+            <div className={styles.resumeActions}>
+              <Button disabled={isResumeActionPending} onClick={changeVisibility} type="button">
                 {visibilitySubmitState === 'pending'
                   ? '변경 중'
                   : loadState.resume.isPublic
                     ? '비공개로 변경'
                     : '공개로 변경'}
               </Button>
-              {visibilityFeedback ? <p className={styles.visibilityFeedback}>{visibilityFeedback}</p> : null}
+              <Button
+                disabled={isResumeActionPending}
+                onClick={changeSubmissionStatus}
+                type="button"
+                variant="bordered-dark"
+              >
+                {submissionSubmitState === 'submit'
+                  ? '제출 중'
+                  : submissionSubmitState === 'cancel'
+                    ? '취소 중'
+                    : isSubmittedResume(loadState.resume)
+                      ? '제출 취소'
+                      : '제출하기'}
+              </Button>
+              {actionFeedback ? <p className={styles.actionFeedback}>{actionFeedback}</p> : null}
             </div>
           ) : null}
         </div>

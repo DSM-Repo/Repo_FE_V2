@@ -5,11 +5,14 @@ import type {
   ResumeDetailInput,
   ResumeDetailResult,
   ResumePage,
+  ResumeSubmission,
+  ResumeSubmissionInput,
+  ResumeSubmissionResult,
   ResumeVisibility,
   ResumeVisibilityInput,
   ResumeVisibilityResult,
 } from './resumeApi.types'
-import { getResumeRequest, patchResumeVisibilityRequest } from './resumeHttpClient'
+import { getResumeRequest, patchResumeVisibilityRequest, postResumeSubmitCancelRequest, postResumeSubmitRequest } from './resumeHttpClient'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -23,6 +26,10 @@ const INVALID_VISIBILITY_RESPONSE = {
   kind: 'server-error',
   message: '공개 여부 변경 응답 형식이 올바르지 않습니다.',
 } as const satisfies ResumeVisibilityResult
+const INVALID_SUBMISSION_RESPONSE = {
+  kind: 'server-error',
+  message: '이력서 제출 응답 형식이 올바르지 않습니다.',
+} as const satisfies ResumeSubmissionResult
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -105,6 +112,17 @@ function parseResumeVisibility(value: unknown): ResumeVisibility | undefined {
   }
 }
 
+function parseResumeSubmission(value: unknown): ResumeSubmission | undefined {
+  if (!isJsonRecord(value) || typeof value['resumeId'] !== 'string' || typeof value['submissionStatus'] !== 'string') {
+    return undefined
+  }
+
+  return {
+    resumeId: value['resumeId'],
+    submissionStatus: value['submissionStatus'],
+  }
+}
+
 async function readResumeResponseBody(response: Response): Promise<ResumeDetailResult> {
   let responseBody: unknown
 
@@ -152,6 +170,32 @@ async function readVisibilityResponseBody(response: Response): Promise<ResumeVis
   return {
     isPublic: visibility.isPublic,
     kind: 'success',
+  }
+}
+
+async function readSubmissionResponseBody(response: Response): Promise<ResumeSubmissionResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.json()
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return INVALID_SUBMISSION_RESPONSE
+    }
+
+    throw error
+  }
+
+  const submission = parseResumeSubmission(responseBody)
+
+  if (!submission) {
+    return INVALID_SUBMISSION_RESPONSE
+  }
+
+  return {
+    kind: 'success',
+    resumeId: submission.resumeId,
+    submissionStatus: submission.submissionStatus,
   }
 }
 
@@ -207,5 +251,53 @@ export async function updateResumeVisibility(input: ResumeVisibilityInput): Prom
   return {
     kind: 'server-error',
     message: '공개 여부 변경 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function submitResume(input: ResumeSubmissionInput): Promise<ResumeSubmissionResult> {
+  const response = await postResumeSubmitRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readSubmissionResponseBody(response.value)
+  }
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '이력서를 제출할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '이력서 제출 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function cancelResumeSubmission(input: ResumeSubmissionInput): Promise<ResumeSubmissionResult> {
+  const response = await postResumeSubmitCancelRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readSubmissionResponseBody(response.value)
+  }
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '이력서 제출을 취소할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '이력서 제출 취소 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }

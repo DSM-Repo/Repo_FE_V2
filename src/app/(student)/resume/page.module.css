@@ -76,12 +76,12 @@
   overflow-wrap: anywhere;
 }
 
-.visibilityActions {
+.resumeActions {
   display: grid;
   gap: var(--space-3);
 }
 
-.visibilityFeedback {
+.actionFeedback {
   margin: 0;
   color: var(--repo-gray-300);
   font-size: var(--repo-font-body-small-size);

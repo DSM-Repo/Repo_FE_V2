@@ -1,6 +1,6 @@
 'use client'
 
-import type { ResumeDetailInput, ResumeVisibilityInput } from './resumeApi.types'
+import type { ResumeDetailInput, ResumeSubmissionInput, ResumeVisibilityInput } from './resumeApi.types'
 
 type ResumeApiConfig =
   | {
@@ -113,5 +113,23 @@ export async function patchResumeVisibilityRequest(input: ResumeVisibilityInput)
       'Content-Type': 'application/json',
     },
     method: 'PATCH',
+  })
+}
+
+export async function postResumeSubmitRequest(input: ResumeSubmissionInput): Promise<ResumeRequestResponse> {
+  return sendResumeRequest('resume/submit', {
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'POST',
+  })
+}
+
+export async function postResumeSubmitCancelRequest(input: ResumeSubmissionInput): Promise<ResumeRequestResponse> {
+  return sendResumeRequest('resume/submit/cancel', {
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'POST',
   })
 }

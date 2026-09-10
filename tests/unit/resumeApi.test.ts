@@ -142,3 +142,86 @@ test('updateResumeVisibility returns server-error when the response body is not 
     message: '공개 여부 변경 응답 형식이 올바르지 않습니다.',
   })
 })
+
+test('submitResume sends bearer auth and returns parsed submission state', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+
+    return new Response(JSON.stringify({ resumeId: 'resume-id', submissionStatus: 'SUBMITTED' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+  }
+
+  const result = await resumeApi.submitResume({
+    accessToken: 'access-token',
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/resume/submit')
+  assert.equal(requestedMethod, 'POST')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.deepEqual(result, {
+    kind: 'success',
+    resumeId: 'resume-id',
+    submissionStatus: 'SUBMITTED',
+  })
+})
+
+test('cancelResumeSubmission sends bearer auth and returns parsed submission state', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+
+    return new Response(JSON.stringify({ resumeId: 'resume-id', submissionStatus: 'ONGOING' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+  }
+
+  const result = await resumeApi.cancelResumeSubmission({
+    accessToken: 'access-token',
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/resume/submit/cancel')
+  assert.equal(requestedMethod, 'POST')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.deepEqual(result, {
+    kind: 'success',
+    resumeId: 'resume-id',
+    submissionStatus: 'ONGOING',
+  })
+})
+
+test('submitResume returns server-error when the response body is not submission state', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ resumeId: 'resume-id' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+  const result = await resumeApi.submitResume({
+    accessToken: 'access-token',
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '이력서 제출 응답 형식이 올바르지 않습니다.',
+  })
+})

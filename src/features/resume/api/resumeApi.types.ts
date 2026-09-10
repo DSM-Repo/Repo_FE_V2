@@ -27,8 +27,17 @@ export type ResumeVisibilityInput = {
   readonly isPublic: boolean
 }
 
+export type ResumeSubmissionInput = {
+  readonly accessToken: string
+}
+
 export type ResumeVisibility = {
   readonly isPublic: boolean
+}
+
+export type ResumeSubmission = {
+  readonly resumeId: string
+  readonly submissionStatus: string
 }
 
 export type ResumeDetailResult =
@@ -45,6 +54,15 @@ export type ResumeVisibilityResult =
   | ({
       readonly kind: 'success'
     } & ResumeVisibility)
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type ResumeSubmissionResult =
+  | ({
+      readonly kind: 'success'
+    } & ResumeSubmission)
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
       readonly message: string
