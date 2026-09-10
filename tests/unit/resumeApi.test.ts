@@ -225,3 +225,140 @@ test('submitResume returns server-error when the response body is not submission
     message: '이력서 제출 응답 형식이 올바르지 않습니다.',
   })
 })
+
+test('saveResume sends resume content with bearer auth and returns parsed save state', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+  let requestedContentType = ''
+  let requestedBody = ''
+
+  globalThis.fetch = async (input, init) => {
+    const headers = new Headers(init?.headers)
+
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = headers.get('Authorization') ?? ''
+    requestedContentType = headers.get('Content-Type') ?? ''
+    requestedBody = String(init?.body)
+
+    return new Response(JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-10T14:03:35.469Z' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+  }
+
+  const result = await resumeApi.saveResume({
+    accessToken: 'access-token',
+    introduce: '사용자 소개',
+    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+    portfolioUrl: 'https://repo.example.test/hong',
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/resume/save')
+  assert.equal(requestedMethod, 'POST')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.equal(requestedContentType, 'application/json')
+  assert.equal(
+    requestedBody,
+    JSON.stringify({
+      introduce: '사용자 소개',
+      pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+      portfolioUrl: 'https://repo.example.test/hong',
+    }),
+  )
+  assert.deepEqual(result, {
+    kind: 'success',
+    resumeId: 'resume-id',
+    savedAt: '2026-09-10T14:03:35.469Z',
+  })
+})
+
+test('autoSaveResume sends pages with bearer auth and returns parsed auto-save state', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+  let requestedContentType = ''
+  let requestedBody = ''
+
+  globalThis.fetch = async (input, init) => {
+    const headers = new Headers(init?.headers)
+
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = headers.get('Authorization') ?? ''
+    requestedContentType = headers.get('Content-Type') ?? ''
+    requestedBody = String(init?.body)
+
+    return new Response(
+      JSON.stringify({ autoSaved: true, resumeId: 'resume-id', savedAt: '2026-09-10T14:03:53.700Z' }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+  }
+
+  const result = await resumeApi.autoSaveResume({
+    accessToken: 'access-token',
+    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/resume/auto-save')
+  assert.equal(requestedMethod, 'POST')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.equal(requestedContentType, 'application/json')
+  assert.equal(requestedBody, JSON.stringify({ pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }] }))
+  assert.deepEqual(result, {
+    autoSaved: true,
+    kind: 'success',
+    resumeId: 'resume-id',
+    savedAt: '2026-09-10T14:03:53.700Z',
+  })
+})
+
+test('saveResume returns server-error when the response body is not save state', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ resumeId: 'resume-id' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+  const result = await resumeApi.saveResume({
+    accessToken: 'access-token',
+    introduce: '사용자 소개',
+    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+    portfolioUrl: 'https://repo.example.test/hong',
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '이력서 저장 응답 형식이 올바르지 않습니다.',
+  })
+})
+
+test('autoSaveResume returns server-error when the response body is not auto-save state', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-10T14:03:53.700Z' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+  const result = await resumeApi.autoSaveResume({
+    accessToken: 'access-token',
+    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '이력서 자동 저장 응답 형식이 올바르지 않습니다.',
+  })
+})

@@ -2,9 +2,15 @@
 
 import type {
   Resume,
+  ResumeAutoSave,
+  ResumeAutoSaveInput,
+  ResumeAutoSaveResult,
   ResumeDetailInput,
   ResumeDetailResult,
   ResumePage,
+  ResumeSave,
+  ResumeSaveInput,
+  ResumeSaveResult,
   ResumeSubmission,
   ResumeSubmissionInput,
   ResumeSubmissionResult,
@@ -12,7 +18,14 @@ import type {
   ResumeVisibilityInput,
   ResumeVisibilityResult,
 } from './resumeApi.types'
-import { getResumeRequest, patchResumeVisibilityRequest, postResumeSubmitCancelRequest, postResumeSubmitRequest } from './resumeHttpClient'
+import {
+  getResumeRequest,
+  patchResumeVisibilityRequest,
+  postResumeAutoSaveRequest,
+  postResumeSaveRequest,
+  postResumeSubmitCancelRequest,
+  postResumeSubmitRequest,
+} from './resumeHttpClient'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -30,6 +43,14 @@ const INVALID_SUBMISSION_RESPONSE = {
   kind: 'server-error',
   message: '이력서 제출 응답 형식이 올바르지 않습니다.',
 } as const satisfies ResumeSubmissionResult
+const INVALID_SAVE_RESPONSE = {
+  kind: 'server-error',
+  message: '이력서 저장 응답 형식이 올바르지 않습니다.',
+} as const satisfies ResumeSaveResult
+const INVALID_AUTO_SAVE_RESPONSE = {
+  kind: 'server-error',
+  message: '이력서 자동 저장 응답 형식이 올바르지 않습니다.',
+} as const satisfies ResumeAutoSaveResult
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -123,6 +144,31 @@ function parseResumeSubmission(value: unknown): ResumeSubmission | undefined {
   }
 }
 
+function parseResumeSave(value: unknown): ResumeSave | undefined {
+  if (!isJsonRecord(value) || typeof value['resumeId'] !== 'string' || typeof value['savedAt'] !== 'string') {
+    return undefined
+  }
+
+  return {
+    resumeId: value['resumeId'],
+    savedAt: value['savedAt'],
+  }
+}
+
+function parseResumeAutoSave(value: unknown): ResumeAutoSave | undefined {
+  const savedResume = parseResumeSave(value)
+
+  if (!savedResume || !isJsonRecord(value) || typeof value['autoSaved'] !== 'boolean') {
+    return undefined
+  }
+
+  return {
+    autoSaved: value['autoSaved'],
+    resumeId: savedResume.resumeId,
+    savedAt: savedResume.savedAt,
+  }
+}
+
 async function readResumeResponseBody(response: Response): Promise<ResumeDetailResult> {
   let responseBody: unknown
 
@@ -196,6 +242,59 @@ async function readSubmissionResponseBody(response: Response): Promise<ResumeSub
     kind: 'success',
     resumeId: submission.resumeId,
     submissionStatus: submission.submissionStatus,
+  }
+}
+
+async function readSaveResponseBody(response: Response): Promise<ResumeSaveResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.json()
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return INVALID_SAVE_RESPONSE
+    }
+
+    throw error
+  }
+
+  const savedResume = parseResumeSave(responseBody)
+
+  if (!savedResume) {
+    return INVALID_SAVE_RESPONSE
+  }
+
+  return {
+    kind: 'success',
+    resumeId: savedResume.resumeId,
+    savedAt: savedResume.savedAt,
+  }
+}
+
+async function readAutoSaveResponseBody(response: Response): Promise<ResumeAutoSaveResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.json()
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return INVALID_AUTO_SAVE_RESPONSE
+    }
+
+    throw error
+  }
+
+  const autoSavedResume = parseResumeAutoSave(responseBody)
+
+  if (!autoSavedResume) {
+    return INVALID_AUTO_SAVE_RESPONSE
+  }
+
+  return {
+    autoSaved: autoSavedResume.autoSaved,
+    kind: 'success',
+    resumeId: autoSavedResume.resumeId,
+    savedAt: autoSavedResume.savedAt,
   }
 }
 
@@ -299,5 +398,53 @@ export async function cancelResumeSubmission(input: ResumeSubmissionInput): Prom
   return {
     kind: 'server-error',
     message: '이력서 제출 취소 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function saveResume(input: ResumeSaveInput): Promise<ResumeSaveResult> {
+  const response = await postResumeSaveRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readSaveResponseBody(response.value)
+  }
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '이력서를 저장할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '이력서 저장 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function autoSaveResume(input: ResumeAutoSaveInput): Promise<ResumeAutoSaveResult> {
+  const response = await postResumeAutoSaveRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readAutoSaveResponseBody(response.value)
+  }
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '이력서를 자동 저장할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '이력서 자동 저장 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }

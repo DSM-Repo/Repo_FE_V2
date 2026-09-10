@@ -1,6 +1,12 @@
 'use client'
 
-import type { ResumeDetailInput, ResumeSubmissionInput, ResumeVisibilityInput } from './resumeApi.types'
+import type {
+  ResumeAutoSaveInput,
+  ResumeDetailInput,
+  ResumeSaveInput,
+  ResumeSubmissionInput,
+  ResumeVisibilityInput,
+} from './resumeApi.types'
 
 type ResumeApiConfig =
   | {
@@ -129,6 +135,34 @@ export async function postResumeSubmitCancelRequest(input: ResumeSubmissionInput
   return sendResumeRequest('resume/submit/cancel', {
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'POST',
+  })
+}
+
+export async function postResumeSaveRequest(input: ResumeSaveInput): Promise<ResumeRequestResponse> {
+  return sendResumeRequest('resume/save', {
+    body: JSON.stringify({
+      introduce: input.introduce,
+      pages: input.pages,
+      portfolioUrl: input.portfolioUrl,
+    }),
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+}
+
+export async function postResumeAutoSaveRequest(input: ResumeAutoSaveInput): Promise<ResumeRequestResponse> {
+  return sendResumeRequest('resume/auto-save', {
+    body: JSON.stringify({
+      pages: input.pages,
+    }),
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+      'Content-Type': 'application/json',
     },
     method: 'POST',
   })

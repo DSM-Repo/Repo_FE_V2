@@ -27,6 +27,18 @@ export type ResumeVisibilityInput = {
   readonly isPublic: boolean
 }
 
+export type ResumeSaveInput = {
+  readonly accessToken: string
+  readonly introduce: string
+  readonly pages: readonly ResumePage[]
+  readonly portfolioUrl: string
+}
+
+export type ResumeAutoSaveInput = {
+  readonly accessToken: string
+  readonly pages: readonly ResumePage[]
+}
+
 export type ResumeSubmissionInput = {
   readonly accessToken: string
 }
@@ -38,6 +50,15 @@ export type ResumeVisibility = {
 export type ResumeSubmission = {
   readonly resumeId: string
   readonly submissionStatus: string
+}
+
+export type ResumeSave = {
+  readonly resumeId: string
+  readonly savedAt: string
+}
+
+export type ResumeAutoSave = ResumeSave & {
+  readonly autoSaved: boolean
 }
 
 export type ResumeDetailResult =
@@ -63,6 +84,24 @@ export type ResumeSubmissionResult =
   | ({
       readonly kind: 'success'
     } & ResumeSubmission)
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type ResumeSaveResult =
+  | ({
+      readonly kind: 'success'
+    } & ResumeSave)
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type ResumeAutoSaveResult =
+  | ({
+      readonly kind: 'success'
+    } & ResumeAutoSave)
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
       readonly message: string
