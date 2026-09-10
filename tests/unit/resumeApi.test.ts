@@ -87,3 +87,58 @@ test('getResumeById returns server-error when the response body is not a resume'
     message: '이력서 조회 응답 형식이 올바르지 않습니다.',
   })
 })
+
+test('updateResumeVisibility sends the public flag with bearer auth and returns parsed visibility', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+  let requestedBody = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+    requestedBody = String(init?.body)
+
+    return new Response(JSON.stringify({ isPublic: false }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+  }
+
+  const result = await resumeApi.updateResumeVisibility({
+    accessToken: 'access-token',
+    isPublic: false,
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/resume/visibility')
+  assert.equal(requestedMethod, 'PATCH')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.equal(requestedBody, JSON.stringify({ isPublic: false }))
+  assert.deepEqual(result, {
+    isPublic: false,
+    kind: 'success',
+  })
+})
+
+test('updateResumeVisibility returns server-error when the response body is not visibility state', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ public: true }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+  const result = await resumeApi.updateResumeVisibility({
+    accessToken: 'access-token',
+    isPublic: true,
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '공개 여부 변경 응답 형식이 올바르지 않습니다.',
+  })
+})

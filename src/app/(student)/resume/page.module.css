@@ -76,6 +76,19 @@
   overflow-wrap: anywhere;
 }
 
+.visibilityActions {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.visibilityFeedback {
+  margin: 0;
+  color: var(--repo-gray-300);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+}
+
 .viewer {
   display: grid;
   min-width: 0;

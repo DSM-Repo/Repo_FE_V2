@@ -1,6 +1,6 @@
 'use client'
 
-import type { ResumeDetailInput } from './resumeApi.types'
+import type { ResumeDetailInput, ResumeVisibilityInput } from './resumeApi.types'
 
 type ResumeApiConfig =
   | {
@@ -53,12 +53,11 @@ function getResumeApiConfig(): ResumeApiConfig {
   }
 }
 
-function buildResumeUrl(baseUrl: string, resumeId: string) {
-  const encodedResumeId = encodeURIComponent(resumeId)
-  return new URL(`resume/${encodedResumeId}`, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).href
+function buildResumeUrl(baseUrl: string, path: string) {
+  return new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).href
 }
 
-export async function getResumeRequest(input: ResumeDetailInput): Promise<ResumeRequestResponse> {
+async function sendResumeRequest(path: string, init: RequestInit): Promise<ResumeRequestResponse> {
   const config = getResumeApiConfig()
 
   if (config.kind === 'invalid') {
@@ -72,11 +71,8 @@ export async function getResumeRequest(input: ResumeDetailInput): Promise<Resume
   const timeoutId = globalThis.setTimeout(() => controller.abort(), RESUME_REQUEST_TIMEOUT_MS)
 
   try {
-    const response = await fetch(buildResumeUrl(config.baseUrl, input.resumeId), {
-      headers: {
-        Authorization: `Bearer ${input.accessToken}`,
-      },
-      method: 'GET',
+    const response = await fetch(buildResumeUrl(config.baseUrl, path), {
+      ...init,
       signal: controller.signal,
     })
 
@@ -96,4 +92,26 @@ export async function getResumeRequest(input: ResumeDetailInput): Promise<Resume
   } finally {
     globalThis.clearTimeout(timeoutId)
   }
+}
+
+export async function getResumeRequest(input: ResumeDetailInput): Promise<ResumeRequestResponse> {
+  const encodedResumeId = encodeURIComponent(input.resumeId)
+
+  return sendResumeRequest(`resume/${encodedResumeId}`, {
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'GET',
+  })
+}
+
+export async function patchResumeVisibilityRequest(input: ResumeVisibilityInput): Promise<ResumeRequestResponse> {
+  return sendResumeRequest('resume/visibility', {
+    body: JSON.stringify({ isPublic: input.isPublic }),
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    method: 'PATCH',
+  })
 }

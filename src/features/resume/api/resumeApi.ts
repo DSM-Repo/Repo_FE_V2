@@ -1,7 +1,15 @@
 'use client'
 
-import type { Resume, ResumeDetailInput, ResumeDetailResult, ResumePage } from './resumeApi.types'
-import { getResumeRequest } from './resumeHttpClient'
+import type {
+  Resume,
+  ResumeDetailInput,
+  ResumeDetailResult,
+  ResumePage,
+  ResumeVisibility,
+  ResumeVisibilityInput,
+  ResumeVisibilityResult,
+} from './resumeApi.types'
+import { getResumeRequest, patchResumeVisibilityRequest } from './resumeHttpClient'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -11,6 +19,10 @@ const INVALID_RESUME_RESPONSE = {
   kind: 'server-error',
   message: '이력서 조회 응답 형식이 올바르지 않습니다.',
 } as const satisfies ResumeDetailResult
+const INVALID_VISIBILITY_RESPONSE = {
+  kind: 'server-error',
+  message: '공개 여부 변경 응답 형식이 올바르지 않습니다.',
+} as const satisfies ResumeVisibilityResult
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -83,6 +95,16 @@ function parseResume(value: unknown): Resume | undefined {
   }
 }
 
+function parseResumeVisibility(value: unknown): ResumeVisibility | undefined {
+  if (!isJsonRecord(value) || typeof value['isPublic'] !== 'boolean') {
+    return undefined
+  }
+
+  return {
+    isPublic: value['isPublic'],
+  }
+}
+
 async function readResumeResponseBody(response: Response): Promise<ResumeDetailResult> {
   let responseBody: unknown
 
@@ -105,6 +127,31 @@ async function readResumeResponseBody(response: Response): Promise<ResumeDetailR
   return {
     kind: 'success',
     resume,
+  }
+}
+
+async function readVisibilityResponseBody(response: Response): Promise<ResumeVisibilityResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.json()
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return INVALID_VISIBILITY_RESPONSE
+    }
+
+    throw error
+  }
+
+  const visibility = parseResumeVisibility(responseBody)
+
+  if (!visibility) {
+    return INVALID_VISIBILITY_RESPONSE
+  }
+
+  return {
+    isPublic: visibility.isPublic,
+    kind: 'success',
   }
 }
 
@@ -136,5 +183,29 @@ export async function getResumeById(input: ResumeDetailInput): Promise<ResumeDet
   return {
     kind: 'server-error',
     message: '이력서 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function updateResumeVisibility(input: ResumeVisibilityInput): Promise<ResumeVisibilityResult> {
+  const response = await patchResumeVisibilityRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readVisibilityResponseBody(response.value)
+  }
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '이력서 공개 여부를 변경할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '공개 여부 변경 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }
