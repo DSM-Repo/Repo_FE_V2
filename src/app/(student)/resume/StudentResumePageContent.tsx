@@ -43,6 +43,10 @@ type LoadState =
 
 type VisibilitySubmitState = 'idle' | 'pending'
 type SubmissionSubmitState = 'idle' | 'submit' | 'cancel'
+type ActionFeedback = {
+  readonly message: string
+  readonly tone: 'error' | 'neutral'
+}
 
 function toResumeBookSheetContent(resume: Resume): ResumeBookSheetContent {
   const firstPage = resume.pages.find((page) => page.index === 0) ?? resume.pages[0]
@@ -83,7 +87,7 @@ export function StudentResumePageContent() {
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' })
   const [visibilitySubmitState, setVisibilitySubmitState] = useState<VisibilitySubmitState>('idle')
   const [submissionSubmitState, setSubmissionSubmitState] = useState<SubmissionSubmitState>('idle')
-  const [actionFeedback, setActionFeedback] = useState<string>()
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback>()
 
   const loadResume = async (nextResumeId: string) => {
     const trimmedResumeId = nextResumeId.trim()
@@ -123,7 +127,7 @@ export function StudentResumePageContent() {
     const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)
 
     if (!accessToken) {
-      setActionFeedback('로그인 후 공개 여부를 변경할 수 있습니다.')
+      setActionFeedback({ message: '로그인 후 공개 여부를 변경할 수 있습니다.', tone: 'error' })
       return
     }
 
@@ -140,7 +144,7 @@ export function StudentResumePageContent() {
     setVisibilitySubmitState('idle')
 
     if (result.kind !== 'success') {
-      setActionFeedback(toVisibilityFailureMessage(result))
+      setActionFeedback({ message: toVisibilityFailureMessage(result), tone: 'error' })
       return
     }
 
@@ -151,7 +155,10 @@ export function StudentResumePageContent() {
         isPublic: result.isPublic,
       },
     })
-    setActionFeedback(result.isPublic ? '이력서를 공개로 변경했습니다.' : '이력서를 비공개로 변경했습니다.')
+    setActionFeedback({
+      message: result.isPublic ? '이력서를 공개로 변경했습니다.' : '이력서를 비공개로 변경했습니다.',
+      tone: 'neutral',
+    })
   }
 
   const changeSubmissionStatus = async () => {
@@ -162,7 +169,7 @@ export function StudentResumePageContent() {
     const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)
 
     if (!accessToken) {
-      setActionFeedback('로그인 후 이력서를 제출하거나 취소할 수 있습니다.')
+      setActionFeedback({ message: '로그인 후 이력서를 제출하거나 취소할 수 있습니다.', tone: 'error' })
       return
     }
 
@@ -183,7 +190,7 @@ export function StudentResumePageContent() {
     setSubmissionSubmitState('idle')
 
     if (result.kind !== 'success') {
-      setActionFeedback(toSubmissionFailureMessage(result))
+      setActionFeedback({ message: toSubmissionFailureMessage(result), tone: 'error' })
       return
     }
 
@@ -194,9 +201,10 @@ export function StudentResumePageContent() {
         submissionStatus: result.submissionStatus,
       },
     })
-    setActionFeedback(
-      result.submissionStatus === 'ONGOING' ? '이력서 제출을 취소했습니다.' : '이력서를 제출했습니다.',
-    )
+    setActionFeedback({
+      message: result.submissionStatus === 'ONGOING' ? '이력서 제출을 취소했습니다.' : '이력서를 제출했습니다.',
+      tone: 'neutral',
+    })
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -277,7 +285,15 @@ export function StudentResumePageContent() {
                       ? '제출 취소'
                       : '제출하기'}
               </Button>
-              {actionFeedback ? <p className={styles.actionFeedback}>{actionFeedback}</p> : null}
+              {actionFeedback ? (
+                <p
+                  aria-live={actionFeedback.tone === 'error' ? 'assertive' : 'polite'}
+                  className={styles.actionFeedback}
+                  role={actionFeedback.tone === 'error' ? 'alert' : 'status'}
+                >
+                  {actionFeedback.message}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
