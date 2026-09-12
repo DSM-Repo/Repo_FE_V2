@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import { AUTH_ACCESS_TOKEN_STORAGE_KEY } from '@/features/auth/api'
@@ -88,6 +88,7 @@ export function StudentResumePageContent() {
   const [visibilitySubmitState, setVisibilitySubmitState] = useState<VisibilitySubmitState>('idle')
   const [submissionSubmitState, setSubmissionSubmitState] = useState<SubmissionSubmitState>('idle')
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback>()
+  const viewedResumeIdRef = useRef<string | undefined>(undefined)
 
   const loadResume = async (nextResumeId: string) => {
     const trimmedResumeId = nextResumeId.trim()
@@ -105,6 +106,7 @@ export function StudentResumePageContent() {
     }
 
     setLoadState({ kind: 'loading' })
+    viewedResumeIdRef.current = undefined
     setActionFeedback(undefined)
     const result = await getResumeById({
       accessToken,
@@ -112,10 +114,12 @@ export function StudentResumePageContent() {
     })
 
     if (result.kind === 'success') {
+      viewedResumeIdRef.current = result.resume.id
       setLoadState({ kind: 'success', resume: result.resume })
       return
     }
 
+    viewedResumeIdRef.current = undefined
     setLoadState({ kind: 'failure', message: toFailureMessage(result) })
   }
 
@@ -132,6 +136,7 @@ export function StudentResumePageContent() {
     }
 
     const nextIsPublic = !loadState.resume.isPublic
+    const requestedResumeId = loadState.resume.id
 
     setVisibilitySubmitState('pending')
     setActionFeedback(undefined)
@@ -142,6 +147,10 @@ export function StudentResumePageContent() {
     })
 
     setVisibilitySubmitState('idle')
+
+    if (viewedResumeIdRef.current !== requestedResumeId) {
+      return
+    }
 
     if (result.kind !== 'success') {
       setActionFeedback({ message: toVisibilityFailureMessage(result), tone: 'error' })
@@ -174,6 +183,7 @@ export function StudentResumePageContent() {
     }
 
     const nextAction: Exclude<SubmissionSubmitState, 'idle'> = isSubmittedResume(loadState.resume) ? 'cancel' : 'submit'
+    const requestedResumeId = loadState.resume.id
 
     setSubmissionSubmitState(nextAction)
     setActionFeedback(undefined)
@@ -188,6 +198,10 @@ export function StudentResumePageContent() {
           })
 
     setSubmissionSubmitState('idle')
+
+    if (viewedResumeIdRef.current !== requestedResumeId) {
+      return
+    }
 
     if (result.kind !== 'success') {
       setActionFeedback({ message: toSubmissionFailureMessage(result), tone: 'error' })
