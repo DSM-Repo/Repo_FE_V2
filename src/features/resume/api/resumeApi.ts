@@ -25,6 +25,8 @@ import {
   postResumeSaveRequest,
   postResumeSubmitCancelRequest,
   postResumeSubmitRequest,
+  type ResumeRequestFailure,
+  type ResumeRequestResponse,
 } from './resumeHttpClient'
 
 type JsonRecord = {
@@ -51,6 +53,12 @@ const INVALID_AUTO_SAVE_RESPONSE = {
   kind: 'server-error',
   message: '이력서 자동 저장 응답 형식이 올바르지 않습니다.',
 } as const satisfies ResumeAutoSaveResult
+const RESPONSE_BODY_STREAM_FAILURE = {
+  kind: 'network-error',
+  message: '이력서 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
+} as const satisfies ResumeRequestFailure
+
+type ResumeHttpResponse = Extract<ResumeRequestResponse, { readonly kind: 'response' }>
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -169,17 +177,30 @@ function parseResumeAutoSave(value: unknown): ResumeAutoSave | undefined {
   }
 }
 
-async function readResumeResponseBody(response: Response): Promise<ResumeDetailResult> {
+function toResponseBodyReadFailure<InvalidResponse extends { readonly kind: 'server-error'; readonly message: string }>(
+  error: unknown,
+  invalidResponse: InvalidResponse,
+): InvalidResponse | ResumeRequestFailure {
+  if (error instanceof SyntaxError) {
+    return invalidResponse
+  }
+
+  if (error instanceof DOMException || error instanceof TypeError || error instanceof Error) {
+    return RESPONSE_BODY_STREAM_FAILURE
+  }
+
+  throw error
+}
+
+async function readResumeResponseBody(response: ResumeHttpResponse): Promise<ResumeDetailResult> {
   let responseBody: unknown
 
   try {
-    responseBody = await response.json()
+    responseBody = await response.value.json()
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      return INVALID_RESUME_RESPONSE
-    }
-
-    throw error
+    return toResponseBodyReadFailure(error, INVALID_RESUME_RESPONSE)
+  } finally {
+    response.complete()
   }
 
   const resume = parseResume(responseBody)
@@ -194,17 +215,15 @@ async function readResumeResponseBody(response: Response): Promise<ResumeDetailR
   }
 }
 
-async function readVisibilityResponseBody(response: Response): Promise<ResumeVisibilityResult> {
+async function readVisibilityResponseBody(response: ResumeHttpResponse): Promise<ResumeVisibilityResult> {
   let responseBody: unknown
 
   try {
-    responseBody = await response.json()
+    responseBody = await response.value.json()
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      return INVALID_VISIBILITY_RESPONSE
-    }
-
-    throw error
+    return toResponseBodyReadFailure(error, INVALID_VISIBILITY_RESPONSE)
+  } finally {
+    response.complete()
   }
 
   const visibility = parseResumeVisibility(responseBody)
@@ -219,17 +238,15 @@ async function readVisibilityResponseBody(response: Response): Promise<ResumeVis
   }
 }
 
-async function readSubmissionResponseBody(response: Response): Promise<ResumeSubmissionResult> {
+async function readSubmissionResponseBody(response: ResumeHttpResponse): Promise<ResumeSubmissionResult> {
   let responseBody: unknown
 
   try {
-    responseBody = await response.json()
+    responseBody = await response.value.json()
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      return INVALID_SUBMISSION_RESPONSE
-    }
-
-    throw error
+    return toResponseBodyReadFailure(error, INVALID_SUBMISSION_RESPONSE)
+  } finally {
+    response.complete()
   }
 
   const submission = parseResumeSubmission(responseBody)
@@ -245,17 +262,15 @@ async function readSubmissionResponseBody(response: Response): Promise<ResumeSub
   }
 }
 
-async function readSaveResponseBody(response: Response): Promise<ResumeSaveResult> {
+async function readSaveResponseBody(response: ResumeHttpResponse): Promise<ResumeSaveResult> {
   let responseBody: unknown
 
   try {
-    responseBody = await response.json()
+    responseBody = await response.value.json()
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      return INVALID_SAVE_RESPONSE
-    }
-
-    throw error
+    return toResponseBodyReadFailure(error, INVALID_SAVE_RESPONSE)
+  } finally {
+    response.complete()
   }
 
   const savedResume = parseResumeSave(responseBody)
@@ -271,17 +286,15 @@ async function readSaveResponseBody(response: Response): Promise<ResumeSaveResul
   }
 }
 
-async function readAutoSaveResponseBody(response: Response): Promise<ResumeAutoSaveResult> {
+async function readAutoSaveResponseBody(response: ResumeHttpResponse): Promise<ResumeAutoSaveResult> {
   let responseBody: unknown
 
   try {
-    responseBody = await response.json()
+    responseBody = await response.value.json()
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      return INVALID_AUTO_SAVE_RESPONSE
-    }
-
-    throw error
+    return toResponseBodyReadFailure(error, INVALID_AUTO_SAVE_RESPONSE)
+  } finally {
+    response.complete()
   }
 
   const autoSavedResume = parseResumeAutoSave(responseBody)
@@ -306,8 +319,10 @@ export async function getResumeById(input: ResumeDetailInput): Promise<ResumeDet
   }
 
   if (response.value.ok) {
-    return readResumeResponseBody(response.value)
+    return readResumeResponseBody(response)
   }
+
+  response.complete()
 
   if (response.value.status === 401 || response.value.status === 403) {
     return {
@@ -337,8 +352,10 @@ export async function updateResumeVisibility(input: ResumeVisibilityInput): Prom
   }
 
   if (response.value.ok) {
-    return readVisibilityResponseBody(response.value)
+    return readVisibilityResponseBody(response)
   }
+
+  response.complete()
 
   if (response.value.status === 401 || response.value.status === 403) {
     return {
@@ -361,8 +378,10 @@ export async function submitResume(input: ResumeSubmissionInput): Promise<Resume
   }
 
   if (response.value.ok) {
-    return readSubmissionResponseBody(response.value)
+    return readSubmissionResponseBody(response)
   }
+
+  response.complete()
 
   if (response.value.status === 401 || response.value.status === 403) {
     return {
@@ -385,8 +404,10 @@ export async function cancelResumeSubmission(input: ResumeSubmissionInput): Prom
   }
 
   if (response.value.ok) {
-    return readSubmissionResponseBody(response.value)
+    return readSubmissionResponseBody(response)
   }
+
+  response.complete()
 
   if (response.value.status === 401 || response.value.status === 403) {
     return {
@@ -409,8 +430,10 @@ export async function saveResume(input: ResumeSaveInput): Promise<ResumeSaveResu
   }
 
   if (response.value.ok) {
-    return readSaveResponseBody(response.value)
+    return readSaveResponseBody(response)
   }
+
+  response.complete()
 
   if (response.value.status === 401 || response.value.status === 403) {
     return {
@@ -433,8 +456,10 @@ export async function autoSaveResume(input: ResumeAutoSaveInput): Promise<Resume
   }
 
   if (response.value.ok) {
-    return readAutoSaveResponseBody(response.value)
+    return readAutoSaveResponseBody(response)
   }
+
+  response.complete()
 
   if (response.value.status === 401 || response.value.status === 403) {
     return {

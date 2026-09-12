@@ -26,6 +26,7 @@ export type ResumeRequestFailure = {
 export type ResumeRequestResponse =
   | ResumeRequestFailure
   | {
+      readonly complete: () => void
       readonly kind: 'response'
       readonly value: Response
     }
@@ -75,6 +76,7 @@ async function sendResumeRequest(path: string, init: RequestInit): Promise<Resum
 
   const controller = new AbortController()
   const timeoutId = globalThis.setTimeout(() => controller.abort(), RESUME_REQUEST_TIMEOUT_MS)
+  const complete = () => globalThis.clearTimeout(timeoutId)
 
   try {
     const response = await fetch(buildResumeUrl(config.baseUrl, path), {
@@ -83,10 +85,13 @@ async function sendResumeRequest(path: string, init: RequestInit): Promise<Resum
     })
 
     return {
+      complete,
       kind: 'response',
       value: response,
     }
   } catch (error) {
+    complete()
+
     if (error instanceof DOMException || error instanceof TypeError) {
       return {
         kind: 'network-error',
@@ -95,8 +100,6 @@ async function sendResumeRequest(path: string, init: RequestInit): Promise<Resum
     }
 
     throw error
-  } finally {
-    globalThis.clearTimeout(timeoutId)
   }
 }
 

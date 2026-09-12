@@ -6,9 +6,12 @@ process.env.NEXT_PUBLIC_AUTH_API_BASE_URL = 'https://api.example.test'
 const resumeApi = await import('../../src/features/resume/api/resumeApi.js')
 
 const originalFetch = globalThis.fetch
+const originalClearTimeout = globalThis.clearTimeout
+const originalSetTimeout = globalThis.setTimeout
 
 test.afterEach(() => {
   globalThis.fetch = originalFetch
+  globalThis.clearTimeout = originalClearTimeout
 })
 
 test('getResumeById sends the resume id with bearer auth and returns parsed resume data', async () => {
@@ -85,6 +88,83 @@ test('getResumeById returns server-error when the response body is not a resume'
   assert.deepEqual(result, {
     kind: 'server-error',
     message: '이력서 조회 응답 형식이 올바르지 않습니다.',
+  })
+})
+
+test('getResumeById keeps the request timeout active until the response body is parsed', async () => {
+  let clearTimeoutCallCount = 0
+
+  globalThis.clearTimeout = (timeoutId) => {
+    clearTimeoutCallCount += 1
+    originalClearTimeout(timeoutId)
+  }
+
+  globalThis.fetch = async () => {
+    const response = new Response(null, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+    Object.defineProperty(response, 'json', {
+      value: async () => {
+        await new Promise<void>((resolve) => originalSetTimeout(resolve, 0))
+        assert.equal(clearTimeoutCallCount, 0)
+
+        return {
+          id: '66c73ec4c92f1d2d087e9012',
+          introduce: '사용자 소개',
+          isPublic: true,
+          majorName: 'Frontend Developer',
+          name: '홍길동',
+          pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+          portfolioUrl: 'https://repo.example.test/hong',
+          profileImageUrl: 'https://repo.example.test/profile.png',
+          savedAt: '2026-09-07T14:35:06.220Z',
+          submissionStatus: 'ONGOING',
+        }
+      },
+    })
+
+    return response
+  }
+
+  const result = await resumeApi.getResumeById({
+    accessToken: 'access-token',
+    resumeId: '66c73ec4c92f1d2d087e9012',
+  })
+
+  assert.equal(result.kind, 'success')
+  assert.equal(clearTimeoutCallCount, 1)
+})
+
+test('getResumeById returns network-error when the response body stream fails', async () => {
+  globalThis.fetch = async () => {
+    const response = new Response(null, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+    Object.defineProperty(response, 'json', {
+      value: async () => {
+        throw new TypeError('response stream failed')
+      },
+    })
+
+    return response
+  }
+
+  const result = await resumeApi.getResumeById({
+    accessToken: 'access-token',
+    resumeId: '66c73ec4c92f1d2d087e9012',
+  })
+
+  assert.deepEqual(result, {
+    kind: 'network-error',
+    message: '이력서 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
   })
 })
 
