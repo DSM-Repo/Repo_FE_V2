@@ -8,7 +8,7 @@ test.describe('student home page', () => {
     await expect(mainNavigation.getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
     await expect(mainNavigation.getByRole('link', { name: '이력서 관리' })).toHaveAttribute(
       'href',
-      '/student/resume',
+      '/resume',
     )
     await expect(mainNavigation.getByRole('link', { name: '도서관' })).toHaveAttribute('href', '/library')
 
@@ -26,7 +26,7 @@ test.describe('student home page', () => {
 
     await expect(page.getByRole('link', { name: /이력서 관리 바로가기/ })).toHaveAttribute(
       'href',
-      '/student/resume',
+      '/resume',
     )
     await expect(page.getByRole('link', { name: /도서관 바로가기/ })).toHaveAttribute('href', '/library')
   })

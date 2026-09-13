@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 
-import { loginWithAuthApi, type AuthLoginResult, type AuthLoginRole } from '@/features/auth/api'
+import { loginWithAuthApi, saveAuthTokens, type AuthLoginResult, type AuthLoginRole } from '@/features/auth/api'
 import { Button, Icon, Input, Logo } from '@/shared/ui'
 
 import { AuthAccountPrompt } from './AuthAccountPrompt'
@@ -134,6 +134,7 @@ export function AuthLoginPage() {
     setSubmitState('idle')
 
     if (result.kind === 'success') {
+      saveAuthTokens(result.token)
       router.push('/library')
       return
     }

@@ -19,9 +19,13 @@ const tscArgs = [
   '.',
   'tests/unit/authApi.test.ts',
   'tests/unit/internalHref.test.ts',
+  'tests/unit/resumeApi.test.ts',
   'src/features/auth/api/authApi.ts',
   'src/features/auth/api/authApi.types.ts',
   'src/features/auth/api/authHttpClient.ts',
+  'src/features/resume/api/resumeApi.ts',
+  'src/features/resume/api/resumeApi.types.ts',
+  'src/features/resume/api/resumeHttpClient.ts',
   'src/shared/lib/internalHref.ts',
 ]
 
@@ -45,5 +49,9 @@ run('tsc', tscArgs)
 const emittedAuthApiPath = join(outDir, 'src/features/auth/api/authApi.js')
 const emittedAuthApi = readFileSync(emittedAuthApiPath, 'utf8')
 writeFileSync(emittedAuthApiPath, emittedAuthApi.replace("from './authHttpClient'", "from './authHttpClient.js'"))
+
+const emittedResumeApiPath = join(outDir, 'src/features/resume/api/resumeApi.js')
+const emittedResumeApi = readFileSync(emittedResumeApiPath, 'utf8')
+writeFileSync(emittedResumeApiPath, emittedResumeApi.replace("from './resumeHttpClient'", "from './resumeHttpClient.js'"))
 
 run('node', ['--test', `${outDir}/tests/unit/*.test.js`])

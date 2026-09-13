@@ -8,7 +8,7 @@ import styles from './page.module.css'
 
 const navigationItems = [
   { href: '/home', label: '홈', value: 'home' },
-  { href: '/student/resume', label: '이력서 관리', value: 'resume' },
+  { href: '/resume', label: '이력서 관리', value: 'resume' },
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
 
@@ -37,7 +37,7 @@ const progressRingStyle = {
 const shortcutCards = [
   {
     ctaLabel: '이력서 관리 바로가기',
-    href: '/student/resume',
+    href: '/resume',
     title: (
       <>
         <span>내 이력서를</span> 확인하고

@@ -1,4 +1,5 @@
 export { loginWithAuthApi, refreshAuthToken, sendEmailVerificationCode, signupWithAuthApi, verifyEmailCode } from './authApi'
+export { AUTH_ACCESS_TOKEN_STORAGE_KEY, AUTH_REFRESH_TOKEN_STORAGE_KEY, saveAuthTokens } from './authTokenStorage'
 export type {
   AuthEmailSendInput,
   AuthEmailSendResult,
