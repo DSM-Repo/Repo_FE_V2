@@ -4,6 +4,7 @@ import type {
   FeedbackApplyInput,
   FeedbackCompleteInput,
   FeedbackCreateInput,
+  FeedbackDeleteInput,
   FeedbackDetailInput,
   FeedbackListInput,
   FeedbackPendingInput,
@@ -130,6 +131,17 @@ export async function getFeedbackRequest(input: FeedbackDetailInput): Promise<Fe
       Authorization: `Bearer ${input.accessToken}`,
     },
     method: 'GET',
+  })
+}
+
+export async function deleteFeedbackRequest(input: FeedbackDeleteInput): Promise<FeedbackRequestResponse> {
+  const encodedFeedbackId = encodeURIComponent(input.feedbackId)
+
+  return sendFeedbackRequest(`feedback/${encodedFeedbackId}`, {
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'DELETE',
   })
 }
 

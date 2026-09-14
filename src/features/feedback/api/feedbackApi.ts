@@ -11,6 +11,9 @@ import type {
   FeedbackCreate,
   FeedbackCreateInput,
   FeedbackCreateResult,
+  FeedbackDelete,
+  FeedbackDeleteInput,
+  FeedbackDeleteResult,
   FeedbackDetail,
   FeedbackDetailInput,
   FeedbackDetailResult,
@@ -25,6 +28,7 @@ import type {
   FeedbackUpdateResult,
 } from './feedbackApi.types'
 import {
+  deleteFeedbackRequest,
   getFeedbackRequest,
   getFeedbacksRequest,
   patchFeedbackApplyRequest,
@@ -68,6 +72,10 @@ const INVALID_LIST_RESPONSE = {
   kind: 'server-error',
   message: '피드백 목록 조회 응답 형식이 올바르지 않습니다.',
 } as const satisfies FeedbackListResult
+const INVALID_DELETE_RESPONSE = {
+  kind: 'server-error',
+  message: '피드백 삭제 응답 형식이 올바르지 않습니다.',
+} as const satisfies FeedbackDeleteResult
 const RESPONSE_BODY_STREAM_FAILURE = {
   kind: 'network-error',
   message: '피드백 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
@@ -250,6 +258,16 @@ function parseFeedbackList(value: unknown): FeedbackList | undefined {
   }
 }
 
+function parseFeedbackDelete(value: unknown): FeedbackDelete | undefined {
+  if (!isJsonRecord(value) || typeof value['message'] !== 'string') {
+    return undefined
+  }
+
+  return {
+    message: value['message'],
+  }
+}
+
 function toResponseBodyReadFailure<InvalidResponse extends { readonly kind: 'server-error'; readonly message: string }>(
   error: unknown,
   invalidResponse: InvalidResponse,
@@ -423,6 +441,29 @@ async function readListResponseBody(response: FeedbackHttpResponse): Promise<Fee
     feedbacks: feedbackList.feedbacks,
     kind: 'success',
     numberOfData: feedbackList.numberOfData,
+  }
+}
+
+async function readDeleteResponseBody(response: FeedbackHttpResponse): Promise<FeedbackDeleteResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.value.json()
+  } catch (error) {
+    return toResponseBodyReadFailure(error, INVALID_DELETE_RESPONSE)
+  } finally {
+    response.complete()
+  }
+
+  const deletedFeedback = parseFeedbackDelete(responseBody)
+
+  if (!deletedFeedback) {
+    return INVALID_DELETE_RESPONSE
+  }
+
+  return {
+    kind: 'success',
+    message: deletedFeedback.message,
   }
 }
 
@@ -612,5 +653,31 @@ export async function getFeedbacks(input: FeedbackListInput): Promise<FeedbackLi
   return {
     kind: 'server-error',
     message: '피드백 목록 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function deleteFeedback(input: FeedbackDeleteInput): Promise<FeedbackDeleteResult> {
+  const response = await deleteFeedbackRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readDeleteResponseBody(response)
+  }
+
+  response.complete()
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '피드백을 삭제할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '피드백 삭제 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }

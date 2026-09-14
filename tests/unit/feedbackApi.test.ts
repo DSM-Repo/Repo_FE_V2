@@ -576,3 +576,55 @@ test('getFeedbacks returns server-error when the response body is not feedback l
     message: '피드백 목록 조회 응답 형식이 올바르지 않습니다.',
   })
 })
+
+test('deleteFeedback sends the feedback id with bearer auth and returns parsed deletion message', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+
+    return new Response(JSON.stringify({ message: '피드백 삭제 성공' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+  }
+
+  const result = await feedbackApi.deleteFeedback({
+    accessToken: 'access-token',
+    feedbackId: '66c74063c92f1d2d087e9013',
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/feedback/66c74063c92f1d2d087e9013')
+  assert.equal(requestedMethod, 'DELETE')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.deepEqual(result, {
+    kind: 'success',
+    message: '피드백 삭제 성공',
+  })
+})
+
+test('deleteFeedback returns server-error when the response body is not deletion message', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({}), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+  const result = await feedbackApi.deleteFeedback({
+    accessToken: 'access-token',
+    feedbackId: '66c74063c92f1d2d087e9013',
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '피드백 삭제 응답 형식이 올바르지 않습니다.',
+  })
+})

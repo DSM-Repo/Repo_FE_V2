@@ -34,6 +34,8 @@ export type FeedbackDetailInput = {
   readonly feedbackId: string
 }
 
+export type FeedbackDeleteInput = FeedbackDetailInput
+
 export type FeedbackListInput = {
   readonly accessToken: string
   readonly documentId: string
@@ -96,6 +98,10 @@ export type FeedbackList = {
   readonly numberOfData: number
 }
 
+export type FeedbackDelete = {
+  readonly message: string
+}
+
 export type FeedbackCreateResult =
   | ({
       readonly kind: 'success'
@@ -154,6 +160,15 @@ export type FeedbackListResult =
   | ({
       readonly kind: 'success'
     } & FeedbackList)
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type FeedbackDeleteResult =
+  | ({
+      readonly kind: 'success'
+    } & FeedbackDelete)
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
       readonly message: string
