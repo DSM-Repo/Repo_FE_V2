@@ -119,26 +119,6 @@
   right: calc(50% - 650px);
 }
 
-.feedbackMarker {
-  position: absolute;
-  z-index: 2;
-}
-
-.feedbackMarkerLeft {
-  top: 293px;
-  left: 101px;
-}
-
-.feedbackMarkerTop {
-  top: 81px;
-  left: 345px;
-}
-
-.feedbackMarkerBottom {
-  top: 411px;
-  left: 228px;
-}
-
 .pageIndicator {
   margin: 18px 0 0;
   color: var(--repo-bg-main-point);
@@ -309,14 +289,12 @@
   padding: 14px clamp(24px, 2vw, 46px) 40px;
 }
 
-.feedbackList .feedbackItem {
-  width: 100%;
-  padding: 10px 0;
-  background: transparent;
-}
-
-.feedbackList .feedbackItem:hover {
-  background: var(--repo-bg-main-point);
+.feedbackEmpty {
+  margin: 24px 0 0;
+  color: var(--repo-gray-300);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
 }
 
 @media (max-height: 880px) {
@@ -340,6 +318,10 @@
 
   .saveActions {
     top: 15px;
+  }
+
+  .page[data-feedback-panel-open='true'] .reviewSettings {
+    right: calc(var(--feedback-panel-width) + 48px);
   }
 
   .page[data-feedback-panel-open='true'] .previousArrow {

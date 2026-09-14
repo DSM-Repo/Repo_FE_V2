@@ -33,10 +33,9 @@ test.describe('teacher student portfolio review', () => {
     await expect(page.getByRole('button', { name: '임시저장' })).toBeVisible()
     await expect(page.getByRole('button', { name: '저장', exact: true })).toBeVisible()
     await expect(feedbackSwitch).toHaveAttribute('aria-checked', 'true')
-    await expect(page.getByRole('button', { name: '피드백 내용 보기' })).toHaveCount(3)
+    await expect(page.getByRole('button', { name: '피드백 내용 보기' })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: '피드백 목록' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /피드백 제목/ })).toHaveCount(8)
-    await expect(page.getByText('피드백에 대한 상세 내용')).toBeVisible()
+    await expect(page.getByText('등록된 피드백이 없습니다.')).toBeVisible()
 
     await expect
       .poll(async () => {
