@@ -18,11 +18,15 @@ const tscArgs = [
   '--rootDir',
   '.',
   'tests/unit/authApi.test.ts',
+  'tests/unit/feedbackApi.test.ts',
   'tests/unit/internalHref.test.ts',
   'tests/unit/resumeApi.test.ts',
   'src/features/auth/api/authApi.ts',
   'src/features/auth/api/authApi.types.ts',
   'src/features/auth/api/authHttpClient.ts',
+  'src/features/feedback/api/feedbackApi.ts',
+  'src/features/feedback/api/feedbackApi.types.ts',
+  'src/features/feedback/api/feedbackHttpClient.ts',
   'src/features/resume/api/resumeApi.ts',
   'src/features/resume/api/resumeApi.types.ts',
   'src/features/resume/api/resumeHttpClient.ts',
@@ -53,5 +57,12 @@ writeFileSync(emittedAuthApiPath, emittedAuthApi.replace("from './authHttpClient
 const emittedResumeApiPath = join(outDir, 'src/features/resume/api/resumeApi.js')
 const emittedResumeApi = readFileSync(emittedResumeApiPath, 'utf8')
 writeFileSync(emittedResumeApiPath, emittedResumeApi.replace("from './resumeHttpClient'", "from './resumeHttpClient.js'"))
+
+const emittedFeedbackApiPath = join(outDir, 'src/features/feedback/api/feedbackApi.js')
+const emittedFeedbackApi = readFileSync(emittedFeedbackApiPath, 'utf8')
+writeFileSync(
+  emittedFeedbackApiPath,
+  emittedFeedbackApi.replace("from './feedbackHttpClient'", "from './feedbackHttpClient.js'"),
+)
 
 run('node', ['--test', `${outDir}/tests/unit/*.test.js`])
