@@ -3,8 +3,8 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-import type { AppHeaderItem, LinkRowTone } from '@/shared/ui'
-import { AppHeader, ClassCard, LinkRow, SearchField, Toast } from '@/shared/ui'
+import type { AppHeaderItem } from '@/shared/ui'
+import { AppHeader, ClassCard, SearchField, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -24,44 +24,13 @@ const classes = [1, 2, 3, 4] as const
 
 type Grade = (typeof grades)[number]['value']
 type ClassNumber = (typeof classes)[number]
-type SubmissionStatus = 'missing' | 'submitted'
 
 type SelectedClass = {
   readonly grade: Grade
   readonly classNumber: ClassNumber
 }
 
-type StudentSummary = {
-  readonly id: number
-  readonly name: string
-  readonly number: string
-  readonly status: SubmissionStatus
-}
-
-const classSize = 16
-const lastUpdatedDate = '2023.05.23'
-
-const students = [
-  { id: 1, name: '최하은', number: '2415', status: 'missing' },
-  { id: 2, name: '최하은', number: '2415', status: 'submitted' },
-  { id: 3, name: '최하은', number: '2415', status: 'missing' },
-  { id: 4, name: '최하은', number: '2415', status: 'missing' },
-  { id: 5, name: '최하은', number: '2415', status: 'missing' },
-  { id: 6, name: '최하은', number: '2415', status: 'submitted' },
-  { id: 7, name: '최하은', number: '2415', status: 'submitted' },
-  { id: 8, name: '최하은', number: '2415', status: 'missing' },
-  { id: 9, name: '최하은', number: '2415', status: 'missing' },
-] satisfies readonly StudentSummary[]
-
-const statusLabel: Record<SubmissionStatus, string> = {
-  missing: '미제출',
-  submitted: '제출됨',
-}
-
-const statusTone: Record<SubmissionStatus, LinkRowTone> = {
-  missing: 'missing',
-  submitted: 'submitted',
-}
+const classSize = 0
 
 export default function TeacherStudentsPage() {
   return (
@@ -109,15 +78,7 @@ function TeacherStudentsContent() {
     return `2026 ${selectedClass.grade}학년 ${selectedClass.classNumber}반`
   }, [selectedClass])
 
-  const filteredStudents = useMemo(() => {
-    const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase('ko-KR')
-
-    if (!normalizedSearchQuery) {
-      return students
-    }
-
-    return students.filter((student) => student.name.toLocaleLowerCase('ko-KR').includes(normalizedSearchQuery))
-  }, [searchQuery])
+  const hasSearchQuery = searchQuery.trim().length > 0
 
   return (
     <main className={styles.page} data-dialog-open={selectedClass ? 'true' : 'false'}>
@@ -191,23 +152,14 @@ function TeacherStudentsContent() {
                 <h2 className={styles.dialogTitle} id="class-dialog-title">
                   {selectedClassLabel}
                 </h2>
-                <p className={styles.updatedAt}>마지막 업데이트 : {lastUpdatedDate}</p>
               </header>
 
               <div className={styles.dialogDivider} />
 
               <div className={styles.studentRows} aria-label={`${selectedClassLabel} 학생 제출 현황`}>
-                {filteredStudents.map((student) => (
-                  <LinkRow
-                    actionLabel="레주메 보러가기"
-                    className={styles.studentRow}
-                    href={`/students/${student.id}`}
-                    key={student.id}
-                    status={statusLabel[student.status]}
-                    title={`${student.number} ${student.name}`}
-                    tone={statusTone[student.status]}
-                  />
-                ))}
+                <p className={styles.emptyMessage}>
+                  {hasSearchQuery ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
+                </p>
               </div>
             </section>
           </div>

@@ -44,6 +44,16 @@
   margin-top: 49px;
 }
 
+.emptyMessage {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  text-align: center;
+}
+
 .toastLayer {
   position: absolute;
   z-index: 10;

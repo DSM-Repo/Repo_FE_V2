@@ -3,9 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-import { sampleResumeBookSheetContent } from '@/shared/fixtures/examples/resumeBookExample'
 import type { AppHeaderItem, ToastVariant } from '@/shared/ui'
-import { AppHeader, Button, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
+import { AppHeader, Button, Switch, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -112,13 +111,8 @@ export default function TeacherStudentReviewPage() {
             ‹
           </button>
 
-          <div className={styles.sheets} aria-label="최하은 포트폴리오 문서 페이지">
-            <div className={styles.sheetFrame}>
-              <ResumeBookSheet ariaLabel="최하은 포트폴리오 왼쪽 페이지" content={sampleResumeBookSheetContent} />
-            </div>
-            <div className={styles.sheetFrame}>
-              <ResumeBookSheet ariaLabel="최하은 포트폴리오 오른쪽 페이지" content={sampleResumeBookSheetContent} />
-            </div>
+          <div className={styles.documentEmpty} aria-label="학생 포트폴리오 문서 페이지">
+            조회된 포트폴리오 문서가 없습니다.
           </div>
 
           <button

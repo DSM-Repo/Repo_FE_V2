@@ -1,14 +1,12 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('teacher student portfolio review', () => {
-  test('opens the teacher-only review route from the student list', async ({ page }) => {
+  test('keeps the teacher-only review route available without seeded student rows', async ({ page }) => {
     await page.goto('/students')
     await page.getByRole('button', { name: /1반/ }).first().click()
+    await expect(page.getByRole('dialog').getByRole('link', { name: /레주메 보러가기/ })).toHaveCount(0)
 
-    const firstStudentLink = page.getByRole('link', { name: /레주메 보러가기/ }).first()
-    await expect(firstStudentLink).toHaveAttribute('href', '/students/1')
-
-    await firstStudentLink.click()
+    await page.goto('/students/1')
     await expect(page).toHaveURL(/\/students\/1$/)
     await expect(page.getByRole('navigation', { name: '주요 메뉴' }).getByText('학생 관리')).toHaveAttribute(
       'aria-current',
@@ -21,7 +19,7 @@ test.describe('teacher student portfolio review', () => {
     await page.goto('/students/1')
 
     await expect(page.getByLabel('학생 포트폴리오 검토')).toBeVisible()
-    await expect(page.getByRole('article', { name: /최하은 포트폴리오/ })).toHaveCount(2)
+    await expect(page.getByText('조회된 포트폴리오 문서가 없습니다.')).toBeVisible()
     await expect(page.getByRole('button', { name: '필터 열기' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '전체 PDF 다운로드' })).toHaveCount(0)
 
@@ -40,7 +38,7 @@ test.describe('teacher student portfolio review', () => {
     await expect
       .poll(async () => {
         const [documentPages, feedbackPanel, saveActions, reviewSettings] = await Promise.all([
-          page.getByLabel('최하은 포트폴리오 문서 페이지').boundingBox(),
+          page.getByLabel('학생 포트폴리오 문서 페이지').boundingBox(),
           page.getByRole('complementary').boundingBox(),
           page.getByLabel('피드백 저장').boundingBox(),
           page.getByLabel('학생 이력서 검토 설정').boundingBox(),

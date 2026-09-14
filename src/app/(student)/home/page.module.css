@@ -216,6 +216,15 @@
   color: var(--repo-gray-600);
 }
 
+.emptyMessage {
+  margin: 28px 24px 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  text-align: center;
+}
+
 @media (max-width: 1180px) {
   .content {
     padding-top: 44px;
