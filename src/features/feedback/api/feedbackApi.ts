@@ -5,12 +5,16 @@ import type {
   FeedbackApplyFailure,
   FeedbackApplyInput,
   FeedbackApplyResult,
+  FeedbackComplete,
+  FeedbackCompleteInput,
+  FeedbackCompleteResult,
   FeedbackCreate,
   FeedbackCreateInput,
   FeedbackCreateResult,
 } from './feedbackApi.types'
 import {
   patchFeedbackApplyRequest,
+  patchFeedbackCompleteRequest,
   postFeedbackRequest,
   type FeedbackRequestFailure,
   type FeedbackRequestResponse,
@@ -28,6 +32,10 @@ const INVALID_APPLY_RESPONSE = {
   kind: 'server-error',
   message: '피드백 일괄 반영 응답 형식이 올바르지 않습니다.',
 } as const satisfies FeedbackApplyResult
+const INVALID_COMPLETE_RESPONSE = {
+  kind: 'server-error',
+  message: '피드백 완료 응답 형식이 올바르지 않습니다.',
+} as const satisfies FeedbackCompleteResult
 const RESPONSE_BODY_STREAM_FAILURE = {
   kind: 'network-error',
   message: '피드백 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
@@ -102,6 +110,17 @@ function parseFeedbackApply(value: unknown): FeedbackApply | undefined {
   }
 }
 
+function parseFeedbackComplete(value: unknown): FeedbackComplete | undefined {
+  if (!isJsonRecord(value) || typeof value['feedbackId'] !== 'string' || typeof value['status'] !== 'string') {
+    return undefined
+  }
+
+  return {
+    feedbackId: value['feedbackId'],
+    status: value['status'],
+  }
+}
+
 function toResponseBodyReadFailure<InvalidResponse extends { readonly kind: 'server-error'; readonly message: string }>(
   error: unknown,
   invalidResponse: InvalidResponse,
@@ -168,6 +187,30 @@ async function readApplyResponseBody(response: FeedbackHttpResponse): Promise<Fe
   }
 }
 
+async function readCompleteResponseBody(response: FeedbackHttpResponse): Promise<FeedbackCompleteResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.value.json()
+  } catch (error) {
+    return toResponseBodyReadFailure(error, INVALID_COMPLETE_RESPONSE)
+  } finally {
+    response.complete()
+  }
+
+  const completedFeedback = parseFeedbackComplete(responseBody)
+
+  if (!completedFeedback) {
+    return INVALID_COMPLETE_RESPONSE
+  }
+
+  return {
+    feedbackId: completedFeedback.feedbackId,
+    kind: 'success',
+    status: completedFeedback.status,
+  }
+}
+
 export async function createFeedback(input: FeedbackCreateInput): Promise<FeedbackCreateResult> {
   const response = await postFeedbackRequest(input)
 
@@ -217,5 +260,31 @@ export async function applyFeedback(input: FeedbackApplyInput): Promise<Feedback
   return {
     kind: 'server-error',
     message: '피드백 일괄 반영 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function completeFeedback(input: FeedbackCompleteInput): Promise<FeedbackCompleteResult> {
+  const response = await patchFeedbackCompleteRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readCompleteResponseBody(response)
+  }
+
+  response.complete()
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '피드백을 완료 처리할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '피드백 완료 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }

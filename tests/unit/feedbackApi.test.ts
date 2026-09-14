@@ -193,3 +193,56 @@ test('applyFeedback returns server-error when the response body is not batch res
     message: '피드백 일괄 반영 응답 형식이 올바르지 않습니다.',
   })
 })
+
+test('completeFeedback sends the feedback id with bearer auth and returns parsed status', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+
+    return new Response(JSON.stringify({ feedbackId: '66c74063c92f1d2d087e9013', status: 'COMPLETED' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+  }
+
+  const result = await feedbackApi.completeFeedback({
+    accessToken: 'access-token',
+    feedbackId: '66c74063c92f1d2d087e9013',
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/feedback/66c74063c92f1d2d087e9013/complete')
+  assert.equal(requestedMethod, 'PATCH')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.deepEqual(result, {
+    feedbackId: '66c74063c92f1d2d087e9013',
+    kind: 'success',
+    status: 'COMPLETED',
+  })
+})
+
+test('completeFeedback returns server-error when the response body is not feedback status', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ feedbackId: '66c74063c92f1d2d087e9013' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+  const result = await feedbackApi.completeFeedback({
+    accessToken: 'access-token',
+    feedbackId: '66c74063c92f1d2d087e9013',
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '피드백 완료 응답 형식이 올바르지 않습니다.',
+  })
+})

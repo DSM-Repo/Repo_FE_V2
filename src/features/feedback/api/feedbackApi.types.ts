@@ -13,6 +13,11 @@ export type FeedbackApplyInput = {
   readonly feedbackIds: readonly string[]
 }
 
+export type FeedbackCompleteInput = {
+  readonly accessToken: string
+  readonly feedbackId: string
+}
+
 export type FeedbackCreate = {
   readonly createdAt: string
   readonly feedbackId: string
@@ -31,6 +36,11 @@ export type FeedbackApply = {
   readonly successCount: number
 }
 
+export type FeedbackComplete = {
+  readonly feedbackId: string
+  readonly status: string
+}
+
 export type FeedbackCreateResult =
   | ({
       readonly kind: 'success'
@@ -44,6 +54,15 @@ export type FeedbackApplyResult =
   | ({
       readonly kind: 'success'
     } & FeedbackApply)
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type FeedbackCompleteResult =
+  | ({
+      readonly kind: 'success'
+    } & FeedbackComplete)
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
       readonly message: string
