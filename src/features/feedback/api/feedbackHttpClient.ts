@@ -1,6 +1,6 @@
 'use client'
 
-import type { FeedbackCreateInput } from './feedbackApi.types'
+import type { FeedbackApplyInput, FeedbackCreateInput } from './feedbackApi.types'
 
 type FeedbackApiConfig =
   | {
@@ -111,5 +111,19 @@ export async function postFeedbackRequest(input: FeedbackCreateInput): Promise<F
       'Content-Type': 'application/json',
     },
     method: 'POST',
+  })
+}
+
+export async function patchFeedbackApplyRequest(input: FeedbackApplyInput): Promise<FeedbackRequestResponse> {
+  return sendFeedbackRequest('feedback/apply', {
+    body: JSON.stringify({
+      applied: input.applied,
+      feedbackIds: input.feedbackIds,
+    }),
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    method: 'PATCH',
   })
 }

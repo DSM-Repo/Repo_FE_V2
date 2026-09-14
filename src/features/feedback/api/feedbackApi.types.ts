@@ -7,6 +7,12 @@ export type FeedbackCreateInput = {
   readonly y: number
 }
 
+export type FeedbackApplyInput = {
+  readonly accessToken: string
+  readonly applied: boolean
+  readonly feedbackIds: readonly string[]
+}
+
 export type FeedbackCreate = {
   readonly createdAt: string
   readonly feedbackId: string
@@ -15,10 +21,29 @@ export type FeedbackCreate = {
   readonly y: number
 }
 
+export type FeedbackApplyFailure = {
+  readonly feedbackId: string
+  readonly reason: string
+}
+
+export type FeedbackApply = {
+  readonly failed: readonly FeedbackApplyFailure[]
+  readonly successCount: number
+}
+
 export type FeedbackCreateResult =
   | ({
       readonly kind: 'success'
     } & FeedbackCreate)
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type FeedbackApplyResult =
+  | ({
+      readonly kind: 'success'
+    } & FeedbackApply)
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
       readonly message: string

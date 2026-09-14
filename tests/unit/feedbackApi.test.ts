@@ -118,3 +118,78 @@ test('createFeedback returns forbidden when feedback creation is rejected by aut
     message: '피드백을 작성할 권한이 없습니다. 다시 로그인해주세요.',
   })
 })
+
+test('applyFeedback sends selected feedback ids with bearer auth and returns parsed batch result', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+  let requestedContentType = ''
+  let requestedBody = ''
+
+  globalThis.fetch = async (input, init) => {
+    const headers = new Headers(init?.headers)
+
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = headers.get('Authorization') ?? ''
+    requestedContentType = headers.get('Content-Type') ?? ''
+    requestedBody = String(init?.body)
+
+    return new Response(
+      JSON.stringify({
+        failed: [{ feedbackId: 'feedback-2', reason: '이미 처리된 피드백입니다.' }],
+        successCount: 1,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+  }
+
+  const result = await feedbackApi.applyFeedback({
+    accessToken: 'access-token',
+    applied: true,
+    feedbackIds: ['feedback-1', 'feedback-2'],
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/feedback/apply')
+  assert.equal(requestedMethod, 'PATCH')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.equal(requestedContentType, 'application/json')
+  assert.equal(
+    requestedBody,
+    JSON.stringify({
+      applied: true,
+      feedbackIds: ['feedback-1', 'feedback-2'],
+    }),
+  )
+  assert.deepEqual(result, {
+    failed: [{ feedbackId: 'feedback-2', reason: '이미 처리된 피드백입니다.' }],
+    kind: 'success',
+    successCount: 1,
+  })
+})
+
+test('applyFeedback returns server-error when the response body is not batch result', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ successCount: 1 }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+  const result = await feedbackApi.applyFeedback({
+    accessToken: 'access-token',
+    applied: false,
+    feedbackIds: ['feedback-1'],
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '피드백 일괄 반영 응답 형식이 올바르지 않습니다.',
+  })
+})
