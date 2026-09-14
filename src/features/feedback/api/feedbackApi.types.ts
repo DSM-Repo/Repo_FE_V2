@@ -18,6 +18,8 @@ export type FeedbackCompleteInput = {
   readonly feedbackId: string
 }
 
+export type FeedbackPendingInput = FeedbackCompleteInput
+
 export type FeedbackCreate = {
   readonly createdAt: string
   readonly feedbackId: string
@@ -41,6 +43,8 @@ export type FeedbackComplete = {
   readonly status: string
 }
 
+export type FeedbackPending = FeedbackComplete
+
 export type FeedbackCreateResult =
   | ({
       readonly kind: 'success'
@@ -63,6 +67,15 @@ export type FeedbackCompleteResult =
   | ({
       readonly kind: 'success'
     } & FeedbackComplete)
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type FeedbackPendingResult =
+  | ({
+      readonly kind: 'success'
+    } & FeedbackPending)
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
       readonly message: string
