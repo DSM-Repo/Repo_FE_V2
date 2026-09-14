@@ -1,4 +1,4 @@
-export { applyFeedback, completeFeedback, createFeedback, pendingFeedback, updateFeedback } from './feedbackApi'
+export { applyFeedback, completeFeedback, createFeedback, getFeedbackById, pendingFeedback, updateFeedback } from './feedbackApi'
 export type {
   FeedbackApply,
   FeedbackApplyFailure,
@@ -10,6 +10,9 @@ export type {
   FeedbackCreate,
   FeedbackCreateInput,
   FeedbackCreateResult,
+  FeedbackDetail,
+  FeedbackDetailInput,
+  FeedbackDetailResult,
   FeedbackPending,
   FeedbackPendingInput,
   FeedbackPendingResult,

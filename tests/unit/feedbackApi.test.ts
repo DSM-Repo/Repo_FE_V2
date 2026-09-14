@@ -392,3 +392,74 @@ test('updateFeedback returns server-error when the response body is not updated 
     message: '피드백 수정 응답 형식이 올바르지 않습니다.',
   })
 })
+
+test('getFeedbackById sends the feedback id with bearer auth and returns parsed feedback detail', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+
+    return new Response(
+      JSON.stringify({
+        content: '피드백 내용입니다.',
+        createdAt: '2026-09-14T10:21:30.455Z',
+        feedbackId: '66c74063c92f1d2d087e9013',
+        pageDeleted: true,
+        pageId: 'page-id',
+        status: 'PENDING',
+        x: 0.1,
+        y: 0.2,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+  }
+
+  const result = await feedbackApi.getFeedbackById({
+    accessToken: 'access-token',
+    feedbackId: '66c74063c92f1d2d087e9013',
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/feedback/66c74063c92f1d2d087e9013')
+  assert.equal(requestedMethod, 'GET')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.deepEqual(result, {
+    content: '피드백 내용입니다.',
+    createdAt: '2026-09-14T10:21:30.455Z',
+    feedbackId: '66c74063c92f1d2d087e9013',
+    kind: 'success',
+    pageDeleted: true,
+    pageId: 'page-id',
+    status: 'PENDING',
+    x: 0.1,
+    y: 0.2,
+  })
+})
+
+test('getFeedbackById returns server-error when the response body is not feedback detail', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ feedbackId: '66c74063c92f1d2d087e9013' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+  const result = await feedbackApi.getFeedbackById({
+    accessToken: 'access-token',
+    feedbackId: '66c74063c92f1d2d087e9013',
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '피드백 조회 응답 형식이 올바르지 않습니다.',
+  })
+})

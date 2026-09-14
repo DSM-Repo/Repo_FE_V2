@@ -4,6 +4,7 @@ import type {
   FeedbackApplyInput,
   FeedbackCompleteInput,
   FeedbackCreateInput,
+  FeedbackDetailInput,
   FeedbackPendingInput,
   FeedbackUpdateInput,
 } from './feedbackApi.types'
@@ -117,6 +118,17 @@ export async function postFeedbackRequest(input: FeedbackCreateInput): Promise<F
       'Content-Type': 'application/json',
     },
     method: 'POST',
+  })
+}
+
+export async function getFeedbackRequest(input: FeedbackDetailInput): Promise<FeedbackRequestResponse> {
+  const encodedFeedbackId = encodeURIComponent(input.feedbackId)
+
+  return sendFeedbackRequest(`feedback/${encodedFeedbackId}`, {
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'GET',
   })
 }
 
