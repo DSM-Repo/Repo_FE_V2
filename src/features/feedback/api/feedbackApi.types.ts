@@ -34,6 +34,12 @@ export type FeedbackDetailInput = {
   readonly feedbackId: string
 }
 
+export type FeedbackListInput = {
+  readonly accessToken: string
+  readonly documentId: string
+  readonly pageId?: string
+}
+
 export type FeedbackCreate = {
   readonly createdAt: string
   readonly feedbackId: string
@@ -78,6 +84,16 @@ export type FeedbackDetail = {
   readonly status: string
   readonly x: number
   readonly y: number
+}
+
+export type FeedbackListItem = FeedbackDetail & {
+  readonly completedAt: string
+  readonly teacherName: string
+}
+
+export type FeedbackList = {
+  readonly feedbacks: readonly FeedbackListItem[]
+  readonly numberOfData: number
 }
 
 export type FeedbackCreateResult =
@@ -131,5 +147,14 @@ export type FeedbackDetailResult =
     } & FeedbackDetail)
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'not-found' | 'server-error'
+      readonly message: string
+    }
+
+export type FeedbackListResult =
+  | ({
+      readonly kind: 'success'
+    } & FeedbackList)
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
       readonly message: string
     }

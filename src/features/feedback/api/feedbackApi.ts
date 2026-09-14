@@ -14,6 +14,10 @@ import type {
   FeedbackDetail,
   FeedbackDetailInput,
   FeedbackDetailResult,
+  FeedbackList,
+  FeedbackListInput,
+  FeedbackListItem,
+  FeedbackListResult,
   FeedbackPendingInput,
   FeedbackPendingResult,
   FeedbackUpdate,
@@ -22,6 +26,7 @@ import type {
 } from './feedbackApi.types'
 import {
   getFeedbackRequest,
+  getFeedbacksRequest,
   patchFeedbackApplyRequest,
   patchFeedbackCompleteRequest,
   patchFeedbackPendingRequest,
@@ -59,6 +64,10 @@ const INVALID_DETAIL_RESPONSE = {
   kind: 'server-error',
   message: '피드백 조회 응답 형식이 올바르지 않습니다.',
 } as const satisfies FeedbackDetailResult
+const INVALID_LIST_RESPONSE = {
+  kind: 'server-error',
+  message: '피드백 목록 조회 응답 형식이 올바르지 않습니다.',
+} as const satisfies FeedbackListResult
 const RESPONSE_BODY_STREAM_FAILURE = {
   kind: 'network-error',
   message: '피드백 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
@@ -193,6 +202,51 @@ function parseFeedbackDetail(value: unknown): FeedbackDetail | undefined {
     status: value['status'],
     x: value['x'],
     y: value['y'],
+  }
+}
+
+function parseFeedbackListItem(value: unknown): FeedbackListItem | undefined {
+  const detail = parseFeedbackDetail(value)
+
+  if (!detail || !isJsonRecord(value) || typeof value['completedAt'] !== 'string' || typeof value['teacherName'] !== 'string') {
+    return undefined
+  }
+
+  return {
+    ...detail,
+    completedAt: value['completedAt'],
+    teacherName: value['teacherName'],
+  }
+}
+
+function parseFeedbackListItems(value: unknown): readonly FeedbackListItem[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const feedbacks = value.map(parseFeedbackListItem)
+
+  if (feedbacks.some((feedback) => feedback === undefined)) {
+    return undefined
+  }
+
+  return feedbacks.filter((feedback) => feedback !== undefined)
+}
+
+function parseFeedbackList(value: unknown): FeedbackList | undefined {
+  if (!isJsonRecord(value) || typeof value['numberOfData'] !== 'number') {
+    return undefined
+  }
+
+  const feedbacks = parseFeedbackListItems(value['feedbacks'])
+
+  if (!feedbacks) {
+    return undefined
+  }
+
+  return {
+    feedbacks,
+    numberOfData: value['numberOfData'],
   }
 }
 
@@ -345,6 +399,30 @@ async function readDetailResponseBody(response: FeedbackHttpResponse): Promise<F
     status: feedback.status,
     x: feedback.x,
     y: feedback.y,
+  }
+}
+
+async function readListResponseBody(response: FeedbackHttpResponse): Promise<FeedbackListResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.value.json()
+  } catch (error) {
+    return toResponseBodyReadFailure(error, INVALID_LIST_RESPONSE)
+  } finally {
+    response.complete()
+  }
+
+  const feedbackList = parseFeedbackList(responseBody)
+
+  if (!feedbackList) {
+    return INVALID_LIST_RESPONSE
+  }
+
+  return {
+    feedbacks: feedbackList.feedbacks,
+    kind: 'success',
+    numberOfData: feedbackList.numberOfData,
   }
 }
 
@@ -508,5 +586,31 @@ export async function getFeedbackById(input: FeedbackDetailInput): Promise<Feedb
   return {
     kind: 'server-error',
     message: '피드백 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function getFeedbacks(input: FeedbackListInput): Promise<FeedbackListResult> {
+  const response = await getFeedbacksRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readListResponseBody(response)
+  }
+
+  response.complete()
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '피드백 목록을 조회할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '피드백 목록 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }

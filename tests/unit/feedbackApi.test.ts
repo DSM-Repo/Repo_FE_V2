@@ -463,3 +463,116 @@ test('getFeedbackById returns server-error when the response body is not feedbac
     message: '피드백 조회 응답 형식이 올바르지 않습니다.',
   })
 })
+
+test('getFeedbacks sends document and page query with bearer auth and returns parsed feedback list', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+
+    return new Response(
+      JSON.stringify({
+        feedbacks: [
+          {
+            completedAt: '2026-09-14T10:22:34.319Z',
+            content: '피드백 내용입니다.',
+            createdAt: '2026-09-14T10:21:30.455Z',
+            feedbackId: 'feedback-id',
+            pageDeleted: false,
+            pageId: 'page-id',
+            status: 'PENDING',
+            teacherName: '김선생',
+            x: 0.1,
+            y: 0.2,
+          },
+        ],
+        numberOfData: 1,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+  }
+
+  const result = await feedbackApi.getFeedbacks({
+    accessToken: 'access-token',
+    documentId: '66c73ec4c92f1d2d087e9012',
+    pageId: 'page-id',
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/feedback?documentId=66c73ec4c92f1d2d087e9012&pageId=page-id')
+  assert.equal(requestedMethod, 'GET')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.deepEqual(result, {
+    feedbacks: [
+      {
+        completedAt: '2026-09-14T10:22:34.319Z',
+        content: '피드백 내용입니다.',
+        createdAt: '2026-09-14T10:21:30.455Z',
+        feedbackId: 'feedback-id',
+        pageDeleted: false,
+        pageId: 'page-id',
+        status: 'PENDING',
+        teacherName: '김선생',
+        x: 0.1,
+        y: 0.2,
+      },
+    ],
+    kind: 'success',
+    numberOfData: 1,
+  })
+})
+
+test('getFeedbacks omits page query when page id is not provided', async () => {
+  let requestedUrl = ''
+
+  globalThis.fetch = async (input) => {
+    requestedUrl = String(input)
+
+    return new Response(JSON.stringify({ feedbacks: [], numberOfData: 0 }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+  }
+
+  const result = await feedbackApi.getFeedbacks({
+    accessToken: 'access-token',
+    documentId: '66c73ec4c92f1d2d087e9012',
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/feedback?documentId=66c73ec4c92f1d2d087e9012')
+  assert.deepEqual(result, {
+    feedbacks: [],
+    kind: 'success',
+    numberOfData: 0,
+  })
+})
+
+test('getFeedbacks returns server-error when the response body is not feedback list', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ feedbacks: [] }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+  const result = await feedbackApi.getFeedbacks({
+    accessToken: 'access-token',
+    documentId: '66c73ec4c92f1d2d087e9012',
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '피드백 목록 조회 응답 형식이 올바르지 않습니다.',
+  })
+})

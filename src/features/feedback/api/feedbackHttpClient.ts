@@ -5,6 +5,7 @@ import type {
   FeedbackCompleteInput,
   FeedbackCreateInput,
   FeedbackDetailInput,
+  FeedbackListInput,
   FeedbackPendingInput,
   FeedbackUpdateInput,
 } from './feedbackApi.types'
@@ -125,6 +126,21 @@ export async function getFeedbackRequest(input: FeedbackDetailInput): Promise<Fe
   const encodedFeedbackId = encodeURIComponent(input.feedbackId)
 
   return sendFeedbackRequest(`feedback/${encodedFeedbackId}`, {
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'GET',
+  })
+}
+
+export async function getFeedbacksRequest(input: FeedbackListInput): Promise<FeedbackRequestResponse> {
+  const searchParams = new URLSearchParams({ documentId: input.documentId })
+
+  if (input.pageId) {
+    searchParams.set('pageId', input.pageId)
+  }
+
+  return sendFeedbackRequest(`feedback?${searchParams.toString()}`, {
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
     },
