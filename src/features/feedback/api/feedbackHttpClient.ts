@@ -1,6 +1,12 @@
 'use client'
 
-import type { FeedbackApplyInput, FeedbackCompleteInput, FeedbackCreateInput, FeedbackPendingInput } from './feedbackApi.types'
+import type {
+  FeedbackApplyInput,
+  FeedbackCompleteInput,
+  FeedbackCreateInput,
+  FeedbackPendingInput,
+  FeedbackUpdateInput,
+} from './feedbackApi.types'
 
 type FeedbackApiConfig =
   | {
@@ -145,6 +151,24 @@ export async function patchFeedbackPendingRequest(input: FeedbackPendingInput): 
   return sendFeedbackRequest(`feedback/${encodedFeedbackId}/pending`, {
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'PATCH',
+  })
+}
+
+export async function patchFeedbackRequest(input: FeedbackUpdateInput): Promise<FeedbackRequestResponse> {
+  const encodedFeedbackId = encodeURIComponent(input.feedbackId)
+
+  return sendFeedbackRequest(`feedback/${encodedFeedbackId}`, {
+    body: JSON.stringify({
+      comment: input.comment,
+      pageId: input.pageId,
+      x: input.x,
+      y: input.y,
+    }),
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+      'Content-Type': 'application/json',
     },
     method: 'PATCH',
   })

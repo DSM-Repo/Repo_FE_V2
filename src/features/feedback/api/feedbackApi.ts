@@ -13,11 +13,15 @@ import type {
   FeedbackCreateResult,
   FeedbackPendingInput,
   FeedbackPendingResult,
+  FeedbackUpdate,
+  FeedbackUpdateInput,
+  FeedbackUpdateResult,
 } from './feedbackApi.types'
 import {
   patchFeedbackApplyRequest,
   patchFeedbackCompleteRequest,
   patchFeedbackPendingRequest,
+  patchFeedbackRequest,
   postFeedbackRequest,
   type FeedbackRequestFailure,
   type FeedbackRequestResponse,
@@ -43,6 +47,10 @@ const INVALID_PENDING_RESPONSE = {
   kind: 'server-error',
   message: '피드백 미반영 응답 형식이 올바르지 않습니다.',
 } as const satisfies FeedbackPendingResult
+const INVALID_UPDATE_RESPONSE = {
+  kind: 'server-error',
+  message: '피드백 수정 응답 형식이 올바르지 않습니다.',
+} as const satisfies FeedbackUpdateResult
 const RESPONSE_BODY_STREAM_FAILURE = {
   kind: 'network-error',
   message: '피드백 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
@@ -125,6 +133,31 @@ function parseFeedbackComplete(value: unknown): FeedbackComplete | undefined {
   return {
     feedbackId: value['feedbackId'],
     status: value['status'],
+  }
+}
+
+function parseFeedbackUpdate(value: unknown): FeedbackUpdate | undefined {
+  if (
+    !isJsonRecord(value) ||
+    typeof value['content'] !== 'string' ||
+    typeof value['id'] !== 'string' ||
+    typeof value['pageId'] !== 'string' ||
+    typeof value['teacherName'] !== 'string' ||
+    typeof value['updatedAt'] !== 'string' ||
+    typeof value['x'] !== 'number' ||
+    typeof value['y'] !== 'number'
+  ) {
+    return undefined
+  }
+
+  return {
+    content: value['content'],
+    id: value['id'],
+    pageId: value['pageId'],
+    teacherName: value['teacherName'],
+    updatedAt: value['updatedAt'],
+    x: value['x'],
+    y: value['y'],
   }
 }
 
@@ -218,6 +251,35 @@ async function readStatusResponseBody<InvalidResponse extends { readonly kind: '
     feedbackId: completedFeedback.feedbackId,
     kind: 'success',
     status: completedFeedback.status,
+  }
+}
+
+async function readUpdateResponseBody(response: FeedbackHttpResponse): Promise<FeedbackUpdateResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.value.json()
+  } catch (error) {
+    return toResponseBodyReadFailure(error, INVALID_UPDATE_RESPONSE)
+  } finally {
+    response.complete()
+  }
+
+  const updatedFeedback = parseFeedbackUpdate(responseBody)
+
+  if (!updatedFeedback) {
+    return INVALID_UPDATE_RESPONSE
+  }
+
+  return {
+    content: updatedFeedback.content,
+    id: updatedFeedback.id,
+    kind: 'success',
+    pageId: updatedFeedback.pageId,
+    teacherName: updatedFeedback.teacherName,
+    updatedAt: updatedFeedback.updatedAt,
+    x: updatedFeedback.x,
+    y: updatedFeedback.y,
   }
 }
 
@@ -322,5 +384,31 @@ export async function pendingFeedback(input: FeedbackPendingInput): Promise<Feed
   return {
     kind: 'server-error',
     message: '피드백 미반영 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function updateFeedback(input: FeedbackUpdateInput): Promise<FeedbackUpdateResult> {
+  const response = await patchFeedbackRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readUpdateResponseBody(response)
+  }
+
+  response.complete()
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '피드백을 수정할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '피드백 수정 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }
