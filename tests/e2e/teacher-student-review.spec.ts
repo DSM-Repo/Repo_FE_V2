@@ -14,7 +14,7 @@ test.describe('teacher student portfolio review', () => {
     )
   })
 
-  test('provides feedback, visibility, save, and page controls instead of library tools', async ({ page }) => {
+  test('provides feedback, visibility, and save controls instead of library tools without a document', async ({ page }) => {
     await page.setViewportSize({ height: 854, width: 1528 })
     await page.goto('/students/1')
 
@@ -22,6 +22,9 @@ test.describe('teacher student portfolio review', () => {
     await expect(page.getByText('조회된 포트폴리오 문서가 없습니다.')).toBeVisible()
     await expect(page.getByRole('button', { name: '필터 열기' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '전체 PDF 다운로드' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '이전 페이지' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '다음 페이지' })).toHaveCount(0)
+    await expect(page.getByLabel('현재 페이지')).toHaveCount(0)
 
     const feedbackSwitch = page.getByRole('switch', { name: '피드백 보기' })
     await expect(feedbackSwitch).toHaveAttribute('aria-checked', 'false')
@@ -58,9 +61,6 @@ test.describe('teacher student portfolio review', () => {
     await expect(page.getByRole('heading', { name: '피드백 목록' })).toHaveCount(0)
     await expect(feedbackSwitch).toHaveAttribute('aria-checked', 'false')
     await expect(page.getByRole('button', { name: '피드백 내용 보기' })).toHaveCount(0)
-
-    await page.getByRole('button', { name: '다음 페이지' }).last().click()
-    await expect(page.getByLabel('현재 페이지')).toHaveText('3 / 5')
 
     await page.getByRole('button', { name: '임시저장' }).click()
     await expect(page.getByRole('status')).toContainText('피드백을 임시저장했습니다.')

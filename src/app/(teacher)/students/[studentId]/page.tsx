@@ -20,6 +20,7 @@ type Notice = {
 }
 
 const totalPages = 5
+const hasDocument = false
 
 export default function TeacherStudentReviewPage() {
   const searchParams = useSearchParams()
@@ -100,45 +101,58 @@ export default function TeacherStudentReviewPage() {
           </div>
         ) : null}
 
-        <div className={styles.viewer}>
-          <button
-            aria-label="이전 페이지"
-            className={`${styles.pageArrow} ${styles.previousArrow}`}
-            disabled={currentPage === 1}
-            type="button"
-            onClick={() => movePage(-1)}
-          >
-            ‹
-          </button>
+        <div className={styles.viewer} data-document-empty={hasDocument ? 'false' : 'true'}>
+          {hasDocument ? (
+            <button
+              aria-label="이전 페이지"
+              className={`${styles.pageArrow} ${styles.previousArrow}`}
+              disabled={currentPage === 1}
+              type="button"
+              onClick={() => movePage(-1)}
+            >
+              ‹
+            </button>
+          ) : null}
 
           <div className={styles.documentEmpty} aria-label="학생 포트폴리오 문서 페이지">
             조회된 포트폴리오 문서가 없습니다.
           </div>
 
-          <button
-            aria-label="다음 페이지"
-            className={`${styles.pageArrow} ${styles.nextArrow}`}
-            disabled={currentPage === totalPages}
-            type="button"
-            onClick={() => movePage(1)}
-          >
-            ›
-          </button>
-        </div>
-
-        <p className={styles.pageIndicator} aria-label="현재 페이지">
-          <strong>{currentPage}</strong> / {totalPages}
-        </p>
-
-        <div className={styles.bottomControls}>
-          <div className={styles.compactPager} aria-label="페이지 이동">
-            <button aria-label="이전 페이지" disabled={currentPage === 1} type="button" onClick={() => movePage(-1)}>
-              ‹
-            </button>
-            <button aria-label="다음 페이지" disabled={currentPage === totalPages} type="button" onClick={() => movePage(1)}>
+          {hasDocument ? (
+            <button
+              aria-label="다음 페이지"
+              className={`${styles.pageArrow} ${styles.nextArrow}`}
+              disabled={currentPage === totalPages}
+              type="button"
+              onClick={() => movePage(1)}
+            >
               ›
             </button>
-          </div>
+          ) : null}
+        </div>
+
+        {hasDocument ? (
+          <p className={styles.pageIndicator} aria-label="현재 페이지">
+            <strong>{currentPage}</strong> / {totalPages}
+          </p>
+        ) : null}
+
+        <div className={styles.bottomControls}>
+          {hasDocument ? (
+            <div className={styles.compactPager} aria-label="페이지 이동">
+              <button aria-label="이전 페이지" disabled={currentPage === 1} type="button" onClick={() => movePage(-1)}>
+                ‹
+              </button>
+              <button
+                aria-label="다음 페이지"
+                disabled={currentPage === totalPages}
+                type="button"
+                onClick={() => movePage(1)}
+              >
+                ›
+              </button>
+            </div>
+          ) : null}
           <Button className={styles.feedbackButton} onClick={startFeedbackMode}>
             피드백 추가 <span aria-hidden="true">＋</span>
           </Button>

@@ -19,6 +19,7 @@ const tscArgs = [
   '.',
   'tests/unit/authApi.test.ts',
   'tests/unit/feedbackApi.test.ts',
+  'tests/unit/feedbackApiFallback.test.ts',
   'tests/unit/internalHref.test.ts',
   'tests/unit/resumeApi.test.ts',
   'src/features/auth/api/authApi.ts',

@@ -23,6 +23,7 @@ type MajorFilterOption = {
 const majorFilters: readonly MajorFilterOption[] = []
 
 const classFilters = ['1반', '2반', '3반', '4반'] as const
+const hasDocument = false
 
 type MajorFilterValue = MajorFilterOption['value']
 type ClassFilterValue = (typeof classFilters)[number]
@@ -125,6 +126,10 @@ export default function ResumeBookPage() {
   }
 
   const showDownloadToast = () => {
+    if (!hasDocument) {
+      return
+    }
+
     if (downloadToastTimerId.current) {
       clearTimeout(downloadToastTimerId.current)
     }
@@ -164,9 +169,11 @@ export default function ResumeBookPage() {
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </div>
-            <Button className={styles.downloadButton} onClick={showDownloadToast}>
-              전체 PDF 다운로드
-            </Button>
+            {hasDocument ? (
+              <Button className={styles.downloadButton} onClick={showDownloadToast}>
+                전체 PDF 다운로드
+              </Button>
+            ) : null}
           </div>
 
           {showsDownloadToast ? (

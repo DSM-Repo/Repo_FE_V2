@@ -56,6 +56,10 @@
   transition: width 180ms ease;
 }
 
+.viewer[data-document-empty='true'] {
+  pointer-events: none;
+}
+
 .page[data-feedback-panel-open='true'] .viewer {
   width: calc(100% - var(--feedback-panel-width));
   align-self: flex-start;
@@ -79,6 +83,7 @@
   font-size: var(--repo-font-body-small-size);
   font-weight: var(--repo-font-body-small-weight);
   line-height: var(--repo-font-body-small-line-height);
+  pointer-events: none;
   text-align: center;
 }
 
