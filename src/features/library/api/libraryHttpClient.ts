@@ -1,6 +1,6 @@
 'use client'
 
-import type { LibraryResumeInput, LibrarySearchInput } from './libraryApi.types'
+import type { LibraryAuthInput, LibraryResumeInput, LibrarySearchInput } from './libraryApi.types'
 
 type LibraryApiConfig =
   | {
@@ -125,14 +125,22 @@ async function sendLibraryRequest(path: string, init: RequestInit): Promise<Libr
   }
 }
 
-export async function getLibraryRequest(): Promise<LibraryRequestResponse> {
+function buildAuthorizationHeader(input: LibraryAuthInput) {
+  return {
+    Authorization: `Bearer ${input.accessToken}`,
+  }
+}
+
+export async function getLibraryRequest(input: LibraryAuthInput): Promise<LibraryRequestResponse> {
   return sendLibraryRequest('library', {
+    headers: buildAuthorizationHeader(input),
     method: 'GET',
   })
 }
 
 export async function getLibraryResumeRequest(input: LibraryResumeInput): Promise<LibraryRequestResponse> {
   return sendLibraryRequest(`library/${encodeURIComponent(String(input.studentId))}`, {
+    headers: buildAuthorizationHeader(input),
     method: 'GET',
   })
 }
@@ -153,6 +161,7 @@ export async function getLibrarySearchRequest(input: LibrarySearchInput): Promis
 
   try {
     const response = await fetch(buildLibrarySearchUrl(config.baseUrl, input), {
+      headers: buildAuthorizationHeader(input),
       method: 'GET',
       signal: controller.signal,
     })

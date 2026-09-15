@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
+import { getSavedAccessToken } from '@/features/auth/api'
 import {
   getLibraryResumeByStudentId,
   type LibraryResume,
@@ -32,6 +33,20 @@ type ResumeLoadState =
       readonly kind: 'success'
       readonly resume: LibraryResume
     }
+
+function subscribeToSavedAccessToken(onStoreChange: () => void) {
+  window.addEventListener('storage', onStoreChange)
+
+  return () => window.removeEventListener('storage', onStoreChange)
+}
+
+function getSavedAccessTokenSnapshot(): string | undefined {
+  return getSavedAccessToken()
+}
+
+function getServerAccessTokenSnapshot(): string | undefined {
+  return undefined
+}
 
 function parseStudentId(value: string): number | undefined {
   const studentId = Number(value)
@@ -69,6 +84,11 @@ function sortResumePages(pages: readonly LibraryResumePage[]) {
 
 export default function ResumeBookPage() {
   const params = useParams<{ readonly bookId: string }>()
+  const accessToken = useSyncExternalStore(
+    subscribeToSavedAccessToken,
+    getSavedAccessTokenSnapshot,
+    getServerAccessTokenSnapshot,
+  )
   const studentId = parseStudentId(params.bookId)
   const [loadState, setLoadState] = useState<ResumeLoadState>({ kind: 'loading' })
   const pageState: ResumeLoadState = useMemo(
@@ -95,8 +115,16 @@ export default function ResumeBookPage() {
     const validStudentId = studentId
 
     async function loadResume() {
+      if (!accessToken) {
+        setLoadState({
+          kind: 'failure',
+          message: '로그인 후 도서관을 이용할 수 있습니다.',
+        })
+        return
+      }
+
       setLoadState({ kind: 'loading' })
-      const result = await getLibraryResumeByStudentId({ studentId: validStudentId })
+      const result = await getLibraryResumeByStudentId({ accessToken, studentId: validStudentId })
 
       if (ignoresResult) {
         return
@@ -121,7 +149,7 @@ export default function ResumeBookPage() {
     return () => {
       ignoresResult = true
     }
-  }, [studentId])
+  }, [accessToken, studentId])
 
   return (
     <main className={styles.page}>

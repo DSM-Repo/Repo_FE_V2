@@ -12,10 +12,12 @@ test.afterEach(() => {
 })
 
 test('getLibraryBooks requests public library groups and returns parsed books', async () => {
+  let requestedAuthorization = ''
   let requestedUrl = ''
   let requestedMethod = ''
 
   globalThis.fetch = async (input, init) => {
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
     requestedUrl = String(input)
     requestedMethod = init?.method ?? ''
 
@@ -33,10 +35,11 @@ test('getLibraryBooks requests public library groups and returns parsed books', 
     )
   }
 
-  const result = await libraryApi.getLibraryBooks()
+  const result = await libraryApi.getLibraryBooks({ accessToken: 'access-token' })
 
   assert.equal(requestedUrl, 'https://api.example.test/library')
   assert.equal(requestedMethod, 'GET')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
   assert.deepEqual(result, {
     books: [
       { cohort: 9, date: 2026, year: 3 },
@@ -55,7 +58,7 @@ test('getLibraryBooks returns server-error when the response body is not a libra
       status: 200,
     })
 
-  const result = await libraryApi.getLibraryBooks()
+  const result = await libraryApi.getLibraryBooks({ accessToken: 'access-token' })
 
   assert.deepEqual(result, {
     kind: 'server-error',
@@ -64,10 +67,12 @@ test('getLibraryBooks returns server-error when the response body is not a libra
 })
 
 test('searchLibraryStudents requests public students with date and keyword filters', async () => {
+  let requestedAuthorization = ''
   let requestedUrl = ''
   let requestedMethod = ''
 
   globalThis.fetch = async (input, init) => {
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
     requestedUrl = String(input)
     requestedMethod = init?.method ?? ''
 
@@ -86,6 +91,7 @@ test('searchLibraryStudents requests public students with date and keyword filte
   }
 
   const result = await libraryApi.searchLibraryStudents({
+    accessToken: 'access-token',
     date: 2026,
     keyword: '김태균',
   })
@@ -98,6 +104,7 @@ test('searchLibraryStudents requests public students with date and keyword filte
   assert.equal(url.searchParams.get('page'), '0')
   assert.equal(url.searchParams.get('size'), '20')
   assert.equal(requestedMethod, 'GET')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
   assert.deepEqual(result, {
     kind: 'success',
     students: [{ major: '백엔드', studentId: 1, studentName: '김태균' }],
@@ -114,7 +121,7 @@ test('searchLibraryStudents returns server-error when the response body is not a
       status: 200,
     })
 
-  const result = await libraryApi.searchLibraryStudents({ date: 2026 })
+  const result = await libraryApi.searchLibraryStudents({ accessToken: 'access-token', date: 2026 })
 
   assert.deepEqual(result, {
     kind: 'server-error',
@@ -123,10 +130,12 @@ test('searchLibraryStudents returns server-error when the response body is not a
 })
 
 test('getLibraryResumeByStudentId requests one public resume and returns parsed resume', async () => {
+  let requestedAuthorization = ''
   let requestedUrl = ''
   let requestedMethod = ''
 
   globalThis.fetch = async (input, init) => {
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
     requestedUrl = String(input)
     requestedMethod = init?.method ?? ''
 
@@ -156,10 +165,11 @@ test('getLibraryResumeByStudentId requests one public resume and returns parsed 
     )
   }
 
-  const result = await libraryApi.getLibraryResumeByStudentId({ studentId: 1 })
+  const result = await libraryApi.getLibraryResumeByStudentId({ accessToken: 'access-token', studentId: 1 })
 
   assert.equal(requestedUrl, 'https://api.example.test/library/1')
   assert.equal(requestedMethod, 'GET')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
   assert.deepEqual(result, {
     kind: 'success',
     resume: {
@@ -184,7 +194,7 @@ test('getLibraryResumeByStudentId requests one public resume and returns parsed 
 test('getLibraryResumeByStudentId returns not-found when the public resume is unavailable', async () => {
   globalThis.fetch = async () => new Response(null, { status: 404 })
 
-  const result = await libraryApi.getLibraryResumeByStudentId({ studentId: 1 })
+  const result = await libraryApi.getLibraryResumeByStudentId({ accessToken: 'access-token', studentId: 1 })
 
   assert.deepEqual(result, {
     kind: 'not-found',

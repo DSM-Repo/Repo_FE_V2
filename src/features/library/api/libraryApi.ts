@@ -2,6 +2,7 @@
 
 import type {
   LibraryBookGroup,
+  LibraryBookListInput,
   LibraryBookListResult,
   LibraryResume,
   LibraryResumeInput,
@@ -270,8 +271,8 @@ async function readLibraryResumeResponseBody(response: LibraryHttpResponse): Pro
   }
 }
 
-export async function getLibraryBooks(): Promise<LibraryBookListResult> {
-  const response = await getLibraryRequest()
+export async function getLibraryBooks(input: LibraryBookListInput): Promise<LibraryBookListResult> {
+  const response = await getLibraryRequest(input)
 
   if (response.kind !== 'response') {
     return response

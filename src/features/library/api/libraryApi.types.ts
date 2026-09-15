@@ -1,8 +1,14 @@
+export type LibraryAuthInput = {
+  readonly accessToken: string
+}
+
 export type LibraryBookGroup = {
   readonly cohort: number
   readonly date: number
   readonly year: number
 }
+
+export type LibraryBookListInput = LibraryAuthInput
 
 export type LibraryBookListResult =
   | {
@@ -14,7 +20,7 @@ export type LibraryBookListResult =
       readonly message: string
     }
 
-export type LibrarySearchInput = {
+export type LibrarySearchInput = LibraryAuthInput & {
   readonly date?: number
   readonly keyword?: string
   readonly major?: string
@@ -39,7 +45,7 @@ export type LibrarySearchResult =
       readonly message: string
     }
 
-export type LibraryResumeInput = {
+export type LibraryResumeInput = LibraryAuthInput & {
   readonly studentId: number
 }
 

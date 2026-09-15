@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
-import { getSavedAuthRole, type AuthLoginRole } from '@/features/auth/api'
+import { getSavedAccessToken, getSavedAuthRole, type AuthLoginRole } from '@/features/auth/api'
 import { getLibraryBooks, searchLibraryStudents, type LibraryBookGroup, type LibrarySearchStudent } from '@/features/library/api'
 import type { InternalHref } from '@/shared/lib/internalHref'
 import type { AppHeaderItem, LibraryBookCardProps } from '@/shared/ui'
@@ -65,6 +65,14 @@ function getSavedAuthRoleSnapshot(): AuthLoginRole {
   return getSavedAuthRole() ?? 'student'
 }
 
+function getSavedAccessTokenSnapshot(): string | undefined {
+  return getSavedAccessToken()
+}
+
+function getServerAccessTokenSnapshot(): string | undefined {
+  return undefined
+}
+
 function getServerAuthRoleSnapshot(): AuthLoginRole {
   return 'student'
 }
@@ -98,6 +106,11 @@ function parseSelectedDate(value: string | null): number | undefined {
 export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) {
   const searchParams = useSearchParams()
   const role = useSyncExternalStore(subscribeToSavedAuthRole, getSavedAuthRoleSnapshot, getServerAuthRoleSnapshot)
+  const accessToken = useSyncExternalStore(
+    subscribeToSavedAuthRole,
+    getSavedAccessTokenSnapshot,
+    getServerAccessTokenSnapshot,
+  )
   const [loadState, setLoadState] = useState<LibraryLoadState>({ kind: 'loading' })
   const [searchKeyword, setSearchKeyword] = useState('')
   const [studentSearchState, setStudentSearchState] = useState<StudentSearchState>({ kind: 'loading' })
@@ -110,7 +123,15 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     let ignoresResult = false
 
     async function loadLibraryBooks() {
-      const result = await getLibraryBooks()
+      if (!accessToken) {
+        setLoadState({
+          kind: 'failure',
+          message: '로그인 후 도서관을 이용할 수 있습니다.',
+        })
+        return
+      }
+
+      const result = await getLibraryBooks({ accessToken })
 
       if (ignoresResult) {
         return
@@ -135,7 +156,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     return () => {
       ignoresResult = true
     }
-  }, [])
+  }, [accessToken])
 
   useEffect(() => {
     if (selectedDate === undefined) {
@@ -145,8 +166,17 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     let ignoresResult = false
 
     async function loadLibraryStudents() {
+      if (!accessToken) {
+        setStudentSearchState({
+          kind: 'failure',
+          message: '로그인 후 도서관을 이용할 수 있습니다.',
+        })
+        return
+      }
+
       setStudentSearchState({ kind: 'loading' })
       const result = await searchLibraryStudents({
+        accessToken,
         date: selectedDate,
         keyword: normalizedSearchKeyword,
       })
@@ -175,7 +205,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     return () => {
       ignoresResult = true
     }
-  }, [normalizedSearchKeyword, selectedDate])
+  }, [accessToken, normalizedSearchKeyword, selectedDate])
 
   return (
     <main className={styles.page}>

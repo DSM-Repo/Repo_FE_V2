@@ -16,6 +16,12 @@ export function getSavedAuthRole(): AuthLoginRole | undefined {
   return isAuthLoginRole(role) ? role : undefined
 }
 
+export function getSavedAccessToken(): string | undefined {
+  const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)?.trim()
+
+  return accessToken || undefined
+}
+
 export function saveAuthRole(role: AuthLoginRole) {
   window.localStorage.setItem(AUTH_LOGIN_ROLE_STORAGE_KEY, role)
 }

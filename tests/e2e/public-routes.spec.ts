@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test'
 
+const accessTokenStorageKey = 'repo.auth.accessToken'
+const testAccessToken = 'e2e-access-token'
+
 test.describe('public route smoke', () => {
   test('renders the public landing page', async ({ page }) => {
     await page.goto('/')
@@ -28,7 +31,13 @@ test.describe('public route smoke', () => {
   })
 
   test('renders public library groups from the library API', async ({ page }) => {
+    await page.addInitScript(
+      ({ key, value }) => window.localStorage.setItem(key, value),
+      { key: accessTokenStorageKey, value: testAccessToken },
+    )
     await page.route('http://127.0.0.1:8080/library', async (route) => {
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
+
       await route.fulfill({
         body: JSON.stringify([
           { cohort: 9, date: 2026, year: 3 },
@@ -60,7 +69,13 @@ test.describe('public route smoke', () => {
     }))
 
     await page.setViewportSize({ height: 720, width: 1280 })
+    await page.addInitScript(
+      ({ key, value }) => window.localStorage.setItem(key, value),
+      { key: accessTokenStorageKey, value: testAccessToken },
+    )
     await page.route('http://127.0.0.1:8080/library', async (route) => {
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
+
       await route.fulfill({
         body: JSON.stringify(groups),
         contentType: 'application/json',
@@ -84,6 +99,10 @@ test.describe('public route smoke', () => {
   })
 
   test('renders public students for a selected library date', async ({ page }) => {
+    await page.addInitScript(
+      ({ key, value }) => window.localStorage.setItem(key, value),
+      { key: accessTokenStorageKey, value: testAccessToken },
+    )
     await page.route('http://127.0.0.1:8080/library', async (route) => {
       await route.fulfill({
         body: JSON.stringify([{ cohort: 9, date: 2026, year: 3 }]),
@@ -97,6 +116,7 @@ test.describe('public route smoke', () => {
     await page.route('http://127.0.0.1:8080/library/search?*', async (route) => {
       const url = new URL(route.request().url())
 
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
       expect(url.searchParams.get('date')).toBe('2026')
       expect(url.searchParams.get('page')).toBe('0')
       expect(url.searchParams.get('size')).toBe('20')
@@ -125,7 +145,13 @@ test.describe('public route smoke', () => {
   })
 
   test('renders one public library resume from the student detail API', async ({ page }) => {
+    await page.addInitScript(
+      ({ key, value }) => window.localStorage.setItem(key, value),
+      { key: accessTokenStorageKey, value: testAccessToken },
+    )
     await page.route('http://127.0.0.1:8080/library/1', async (route) => {
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
+
       await route.fulfill({
         body: JSON.stringify({
           cohort: 9,
