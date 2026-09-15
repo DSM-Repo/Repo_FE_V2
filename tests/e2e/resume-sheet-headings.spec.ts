@@ -1,11 +1,8 @@
 import { expect, test } from '@playwright/test'
 
-test('uses a consistent heading hierarchy inside each resume book sheet', async ({ page }) => {
+test('does not render resume book sheet headings when no document data is loaded', async ({ page }) => {
   await page.goto('/resume-books/1')
 
-  const leftSheet = page.getByRole('article').first()
-
-  await expect(leftSheet.getByRole('heading', { level: 2, name: '최하은' })).toBeVisible()
-  await expect(leftSheet.getByRole('heading', { level: 3, name: '기술스택' })).toBeVisible()
-  await expect(leftSheet.getByRole('heading', { level: 4, name: '대회' })).toBeVisible()
+  await expect(page.getByText('공개된 포트폴리오 문서가 없습니다.')).toBeVisible()
+  await expect(page.getByRole('article')).toHaveCount(0)
 })

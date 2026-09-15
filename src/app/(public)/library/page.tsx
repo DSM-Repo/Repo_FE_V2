@@ -9,13 +9,7 @@ const navigationItems = [
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
 
-const libraryBooks = Array.from({ length: 8 }, (_, index) => ({
-  ariaLabel: `2022 9기 2학년 ${index + 1}번째 포트폴리오 열람`,
-  batchLabel: '9기',
-  gradeLabel: '2학년',
-  href: `/resume-books/${index + 1}` as const,
-  title: '2022',
-})) satisfies readonly LibraryBookCardProps[]
+const libraryBooks: readonly LibraryBookCardProps[] = []
 
 type LibraryPageProps = {
   readonly searchParams?: Promise<{
@@ -43,9 +37,11 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
           <p className={styles.description}>다양한 학생들의 포트폴리오를 둘러보세요.</p>
         </div>
         <div className={styles.books} aria-label="포트폴리오 책 목록">
-          {libraryBooks.map((book) => (
-            <LibraryBookCard key={book.ariaLabel} {...book} />
-          ))}
+          {libraryBooks.length > 0 ? (
+            libraryBooks.map((book) => <LibraryBookCard key={book.ariaLabel} {...book} />)
+          ) : (
+            <p className={styles.emptyMessage}>공개된 포트폴리오 책이 없습니다.</p>
+          )}
         </div>
       </section>
     </main>

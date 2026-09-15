@@ -2,7 +2,7 @@ import type { CSSProperties, ReactElement } from 'react'
 
 import type { AppHeaderItem } from '@/shared/ui'
 import { StudentHomeShortcutCard } from '@/features/student-home'
-import { AppHeader, Icon } from '@/shared/ui'
+import { AppHeader } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -12,26 +12,18 @@ const navigationItems = [
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
 
-const student = {
-  completionRate: 17,
-  headline: 'Frontend Developer',
-  intro: '“한줄소개가 와라라라라라라라라락 들어갑니다 많아도 이정도 길이면 되겠죠, 많아도 이정도 길이면 되겠죠”',
-  name: '홍길동',
-}
-
 type ProgressItem = {
   readonly label: string
-  readonly status?: string
 }
 
 const progressItems = [
-  { label: '내 정보', status: '완료됨' },
+  { label: '내 정보' },
   { label: '활동' },
   { label: '프로젝트' },
 ] satisfies readonly ProgressItem[]
 
 const progressRingStyle = {
-  '--progress': `${student.completionRate}%`,
+  '--progress': '0%',
 } as CSSProperties
 
 const shortcutCards = [
@@ -61,13 +53,6 @@ const shortcutCards = [
   },
 ] as const
 
-const notifications = Array.from({ length: 8 }, (_, index) => ({
-  dateTime: '2026-08-26',
-  id: `notification-${index + 1}`,
-  message: '알림내용',
-  receivedAt: '202X.XX.XX',
-}))
-
 export default function StudentHomePage(): ReactElement {
   return (
     <main className={styles.page}>
@@ -77,26 +62,23 @@ export default function StudentHomePage(): ReactElement {
         <header className={styles.profileHero}>
           <div className={styles.avatar} aria-hidden="true" />
           <div className={styles.profileText}>
-            <h1 id="student-home-title">
-              {student.name}
-              <span>{student.headline}</span>
-            </h1>
-            <p>{student.intro}</p>
+            <h1 id="student-home-title">내 정보가 없습니다.</h1>
+            <p>이력서를 저장하면 홈에서 내 정보를 확인할 수 있습니다.</p>
           </div>
         </header>
 
         <div className={styles.dashboard}>
           <section className={styles.progressPanel} aria-labelledby="resume-progress-title">
             <div
-              aria-label={`이력서 완성도 ${student.completionRate}%`}
+              aria-label="이력서 완성도 0%"
               aria-valuemax={100}
               aria-valuemin={0}
-              aria-valuenow={student.completionRate}
+              aria-valuenow={0}
               className={styles.progressRing}
               role="progressbar"
               style={progressRingStyle}
             >
-              <span>{student.completionRate}%</span>
+              <span>0%</span>
             </div>
 
             <div className={styles.progressDetails}>
@@ -107,7 +89,6 @@ export default function StudentHomePage(): ReactElement {
                 {progressItems.map((item) => (
                   <li key={item.label}>
                     <span>{item.label}</span>
-                    {item.status ? <strong>{item.status}</strong> : null}
                   </li>
                 ))}
               </ul>
@@ -128,17 +109,7 @@ export default function StudentHomePage(): ReactElement {
 
           <section className={styles.notificationPanel} aria-labelledby="notifications-title">
             <h2 id="notifications-title">알림 목록</h2>
-            <ul className={styles.notificationList}>
-              {notifications.map((notification) => (
-                <li key={notification.id}>
-                  <span className={styles.notificationItem}>
-                    <span>{notification.message}</span>
-                    <time dateTime={notification.dateTime}>{notification.receivedAt}</time>
-                    <Icon name="chevron-right" />
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className={styles.emptyMessage}>새 알림이 없습니다.</p>
           </section>
         </div>
       </section>

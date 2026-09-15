@@ -3,9 +3,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 
-import { sampleResumeBookSheetContent } from '@/shared/fixtures/examples/resumeBookExample'
 import type { AppHeaderItem } from '@/shared/ui'
-import { AppHeader, Button, CheckboxOption, ResumeBookSheet, SearchField, Tag, Toast } from '@/shared/ui'
+import { AppHeader, Button, CheckboxOption, SearchField, Tag, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -15,21 +14,18 @@ const navigationItems = [
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
 
-const majorFilters = [
-  { chipLabel: 'Frontend', label: 'Frontend Developer', value: 'frontend' },
-  { chipLabel: 'Backend', label: 'Backend Developer', value: 'backend' },
-  { chipLabel: 'UI/UX', label: 'UI/UX Engineer', value: 'ui-ux' },
-  { chipLabel: 'AI', label: 'AI Developer', value: 'ai' },
-  { chipLabel: 'Blockchain', label: 'Blockchain Developer', value: 'blockchain' },
-  { chipLabel: 'Embedded', label: 'Embedded Developer', value: 'embedded' },
-  { chipLabel: 'Android', label: 'Android Developer', value: 'android' },
-  { chipLabel: 'iOS', label: 'iOS Developer', value: 'ios' },
-  { chipLabel: 'QA', label: 'QA Master', value: 'qa' },
-] as const
+type MajorFilterOption = {
+  readonly chipLabel: string
+  readonly label: string
+  readonly value: string
+}
+
+const majorFilters: readonly MajorFilterOption[] = []
 
 const classFilters = ['1반', '2반', '3반', '4반'] as const
+const hasDocument = false
 
-type MajorFilterValue = (typeof majorFilters)[number]['value']
+type MajorFilterValue = MajorFilterOption['value']
 type ClassFilterValue = (typeof classFilters)[number]
 
 type FilterState = {
@@ -40,8 +36,8 @@ type FilterState = {
 type FilterSectionKey = 'classes' | 'majors'
 
 const defaultFilters: FilterState = {
-  classes: ['4반'],
-  majors: ['frontend', 'ui-ux'],
+  classes: [],
+  majors: [],
 }
 
 const defaultExpandedFilterSections: Record<FilterSectionKey, boolean> = {
@@ -130,6 +126,10 @@ export default function ResumeBookPage() {
   }
 
   const showDownloadToast = () => {
+    if (!hasDocument) {
+      return
+    }
+
     if (downloadToastTimerId.current) {
       clearTimeout(downloadToastTimerId.current)
     }
@@ -169,9 +169,11 @@ export default function ResumeBookPage() {
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </div>
-            <Button className={styles.downloadButton} onClick={showDownloadToast}>
-              전체 PDF 다운로드
-            </Button>
+            {hasDocument ? (
+              <Button className={styles.downloadButton} onClick={showDownloadToast}>
+                전체 PDF 다운로드
+              </Button>
+            ) : null}
           </div>
 
           {showsDownloadToast ? (
@@ -202,24 +204,9 @@ export default function ResumeBookPage() {
           {showsEmptySearchResult ? (
             <SearchEmptyState searchQuery={normalizedSearchQuery} onReturn={() => router.push('/library')} />
           ) : (
-            <>
-              <div className={styles.viewer}>
-                <button className={`${styles.pageArrow} ${styles.previousArrow}`} type="button" aria-label="이전 페이지">
-                  ‹
-                </button>
-                <div className={styles.sheets} aria-label="포트폴리오 문서 페이지">
-                  <ResumeBookSheet ariaLabel="최하은 포트폴리오 왼쪽 페이지" content={sampleResumeBookSheetContent} />
-                  <ResumeBookSheet ariaLabel="최하은 포트폴리오 오른쪽 페이지" content={sampleResumeBookSheetContent} />
-                </div>
-                <button className={`${styles.pageArrow} ${styles.nextArrow}`} type="button" aria-label="다음 페이지">
-                  ›
-                </button>
-              </div>
-
-              <p className={styles.pageIndicator} aria-label="현재 페이지">
-                <strong>4</strong> / 126
-              </p>
-            </>
+            <section className={styles.emptyState} aria-live="polite">
+              <p className={styles.emptyMessage}>공개된 포트폴리오 문서가 없습니다.</p>
+            </section>
           )}
         </div>
 

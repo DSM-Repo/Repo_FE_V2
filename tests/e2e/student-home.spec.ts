@@ -12,12 +12,11 @@ test.describe('student home page', () => {
     )
     await expect(mainNavigation.getByRole('link', { name: '도서관' })).toHaveAttribute('href', '/library')
 
-    await expect(page.getByRole('heading', { level: 1, name: /홍길동/ })).toBeVisible()
-    await expect(page.getByText('Frontend Developer')).toBeVisible()
-    await expect(page.getByText(/한줄소개가/)).toBeVisible()
-    await expect(page.getByRole('progressbar', { name: '이력서 완성도 17%' })).toHaveAttribute(
+    await expect(page.getByRole('heading', { level: 1, name: '내 정보가 없습니다.' })).toBeVisible()
+    await expect(page.getByText('이력서를 저장하면 홈에서 내 정보를 확인할 수 있습니다.')).toBeVisible()
+    await expect(page.getByRole('progressbar', { name: '이력서 완성도 0%' })).toHaveAttribute(
       'aria-valuenow',
-      '17',
+      '0',
     )
   })
 
@@ -73,12 +72,13 @@ test.describe('student home page', () => {
     expect(frontDocumentBox!.x).toBeGreaterThanOrEqual(titleBox!.x + titleBox!.width + 20)
   })
 
-  test('renders the notification list with eight items', async ({ page }) => {
+  test('renders the empty notification state', async ({ page }) => {
     await page.goto('/home')
 
     const notifications = page.getByRole('region', { name: '알림 목록' })
     await expect(notifications.getByRole('heading', { name: '알림 목록' })).toBeVisible()
-    await expect(notifications.getByRole('listitem')).toHaveCount(8)
+    await expect(notifications.getByText('새 알림이 없습니다.')).toBeVisible()
+    await expect(notifications.getByRole('listitem')).toHaveCount(0)
   })
 
   test('keeps dashboard columns from overlapping on desktop', async ({ page }) => {
@@ -106,8 +106,8 @@ test.describe('student home page', () => {
     await page.setViewportSize({ height: 844, width: 390 })
     await page.goto('/home')
 
-    await expect(page.getByRole('heading', { level: 1, name: /홍길동/ })).toBeVisible()
-    await expect(page.getByRole('progressbar', { name: '이력서 완성도 17%' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: '내 정보가 없습니다.' })).toBeVisible()
+    await expect(page.getByRole('progressbar', { name: '이력서 완성도 0%' })).toBeVisible()
     await expect(page.getByRole('link', { name: /이력서 관리 바로가기/ })).toBeVisible()
     await expect(page.getByRole('heading', { name: '알림 목록' })).toBeVisible()
 

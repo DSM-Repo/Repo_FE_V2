@@ -3,9 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-import { sampleResumeBookSheetContent } from '@/shared/fixtures/examples/resumeBookExample'
 import type { AppHeaderItem, ToastVariant } from '@/shared/ui'
-import { AppHeader, Button, Feedback, FeedbackBalloon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
+import { AppHeader, Button, Switch, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -21,13 +20,7 @@ type Notice = {
 }
 
 const totalPages = 5
-
-const feedbackItems = Array.from({ length: 8 }, (_, index) => ({
-  content: index === 1 ? '피드백에 대한 상세 내용' : '학생에게 전달할 피드백 상세 내용입니다.',
-  createdAtLabel: '1일 전',
-  id: index + 1,
-  title: '피드백 제목',
-}))
+const hasDocument = false
 
 export default function TeacherStudentReviewPage() {
   const searchParams = useSearchParams()
@@ -35,7 +28,6 @@ export default function TeacherStudentReviewPage() {
   const [isFeedbackMode, setIsFeedbackMode] = useState(false)
   const [isFeedbackVisible, setIsFeedbackVisible] = useState(false)
   const [isResumePublic, setIsResumePublic] = useState(false)
-  const [expandedFeedbackId, setExpandedFeedbackId] = useState<number | null>(2)
   const [notice, setNotice] = useState<Notice | null>(null)
   const noticeTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -109,59 +101,58 @@ export default function TeacherStudentReviewPage() {
           </div>
         ) : null}
 
-        <div className={styles.viewer}>
-          <button
-            aria-label="이전 페이지"
-            className={`${styles.pageArrow} ${styles.previousArrow}`}
-            disabled={currentPage === 1}
-            type="button"
-            onClick={() => movePage(-1)}
-          >
-            ‹
-          </button>
-
-          <div className={styles.sheets} aria-label="최하은 포트폴리오 문서 페이지">
-            <div className={styles.sheetFrame}>
-              <ResumeBookSheet ariaLabel="최하은 포트폴리오 왼쪽 페이지" content={sampleResumeBookSheetContent} />
-              {isFeedbackVisible ? (
-                <FeedbackBalloon className={`${styles.feedbackMarker} ${styles.feedbackMarkerLeft}`} title="활동 내용을 조금 더 구체적으로 작성해주세요." />
-              ) : null}
-            </div>
-            <div className={styles.sheetFrame}>
-              <ResumeBookSheet ariaLabel="최하은 포트폴리오 오른쪽 페이지" content={sampleResumeBookSheetContent} />
-              {isFeedbackVisible ? (
-                <>
-                  <FeedbackBalloon className={`${styles.feedbackMarker} ${styles.feedbackMarkerTop}`} title="자기소개에서 지원 직무 강점을 강조해주세요." />
-                  <FeedbackBalloon className={`${styles.feedbackMarker} ${styles.feedbackMarkerBottom}`} title="프로젝트에서 맡은 역할을 추가해주세요." />
-                </>
-              ) : null}
-            </div>
-          </div>
-
-          <button
-            aria-label="다음 페이지"
-            className={`${styles.pageArrow} ${styles.nextArrow}`}
-            disabled={currentPage === totalPages}
-            type="button"
-            onClick={() => movePage(1)}
-          >
-            ›
-          </button>
-        </div>
-
-        <p className={styles.pageIndicator} aria-label="현재 페이지">
-          <strong>{currentPage}</strong> / {totalPages}
-        </p>
-
-        <div className={styles.bottomControls}>
-          <div className={styles.compactPager} aria-label="페이지 이동">
-            <button aria-label="이전 페이지" disabled={currentPage === 1} type="button" onClick={() => movePage(-1)}>
+        <div className={styles.viewer} data-document-empty={hasDocument ? 'false' : 'true'}>
+          {hasDocument ? (
+            <button
+              aria-label="이전 페이지"
+              className={`${styles.pageArrow} ${styles.previousArrow}`}
+              disabled={currentPage === 1}
+              type="button"
+              onClick={() => movePage(-1)}
+            >
               ‹
             </button>
-            <button aria-label="다음 페이지" disabled={currentPage === totalPages} type="button" onClick={() => movePage(1)}>
+          ) : null}
+
+          <div className={styles.documentEmpty} aria-label="학생 포트폴리오 문서 페이지">
+            조회된 포트폴리오 문서가 없습니다.
+          </div>
+
+          {hasDocument ? (
+            <button
+              aria-label="다음 페이지"
+              className={`${styles.pageArrow} ${styles.nextArrow}`}
+              disabled={currentPage === totalPages}
+              type="button"
+              onClick={() => movePage(1)}
+            >
               ›
             </button>
-          </div>
+          ) : null}
+        </div>
+
+        {hasDocument ? (
+          <p className={styles.pageIndicator} aria-label="현재 페이지">
+            <strong>{currentPage}</strong> / {totalPages}
+          </p>
+        ) : null}
+
+        <div className={styles.bottomControls}>
+          {hasDocument ? (
+            <div className={styles.compactPager} aria-label="페이지 이동">
+              <button aria-label="이전 페이지" disabled={currentPage === 1} type="button" onClick={() => movePage(-1)}>
+                ‹
+              </button>
+              <button
+                aria-label="다음 페이지"
+                disabled={currentPage === totalPages}
+                type="button"
+                onClick={() => movePage(1)}
+              >
+                ›
+              </button>
+            </div>
+          ) : null}
           <Button className={styles.feedbackButton} onClick={startFeedbackMode}>
             피드백 추가 <span aria-hidden="true">＋</span>
           </Button>
@@ -201,17 +192,7 @@ export default function TeacherStudentReviewPage() {
             </div>
 
             <div className={styles.feedbackList}>
-              {feedbackItems.map((feedback) => (
-                <Feedback
-                  className={styles.feedbackItem}
-                  content={feedback.content}
-                  createdAtLabel={feedback.createdAtLabel}
-                  expanded={expandedFeedbackId === feedback.id}
-                  key={feedback.id}
-                  title={feedback.title}
-                  onExpandedChange={(expanded) => setExpandedFeedbackId(expanded ? feedback.id : null)}
-                />
-              ))}
+              <p className={styles.feedbackEmpty}>등록된 피드백이 없습니다.</p>
             </div>
           </aside>
         ) : null}

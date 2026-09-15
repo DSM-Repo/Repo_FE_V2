@@ -31,20 +31,9 @@ type Notice = {
   readonly variant: ToastVariant
 }
 
-const initialMajors: readonly Major[] = Array.from({ length: 9 }, (_, index) => ({
-  createdAt: '2023.05.23',
-  hasStudents: index === 0,
-  id: `major-${index + 1}`,
-  name: 'Frontend Developer',
-}))
+const initialMajors: readonly Major[] = []
 
-const students: readonly Student[] = Array.from({ length: 8 }, (_, index) => ({
-  classNumber: '4',
-  id: index + 1,
-  name: '최하은',
-  number: '2415',
-  year: String(2023 + (index % 4)),
-}))
+const students: readonly Student[] = []
 
 const yearFilters = [
   { label: '전체', value: 'all' },
@@ -61,6 +50,12 @@ const classFilters = [
   { label: '3반', value: '3' },
   { label: '4반', value: '4' },
 ]
+
+const createdAtFormatter = new Intl.DateTimeFormat('ko-KR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+})
 
 export default function TeacherMajorsPage() {
   const [majors, setMajors] = useState<readonly Major[]>(initialMajors)
@@ -121,7 +116,7 @@ export default function TeacherMajorsPage() {
     }
 
     const newMajor: Major = {
-      createdAt: '2026.08.25',
+      createdAt: createdAtFormatter.format(new Date()),
       hasStudents: false,
       id: `major-${nextMajorId.current}`,
       name: normalizedMajorName,

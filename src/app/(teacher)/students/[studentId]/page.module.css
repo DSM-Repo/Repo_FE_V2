@@ -56,6 +56,10 @@
   transition: width 180ms ease;
 }
 
+.viewer[data-document-empty='true'] {
+  pointer-events: none;
+}
+
 .page[data-feedback-panel-open='true'] .viewer {
   width: calc(100% - var(--feedback-panel-width));
   align-self: flex-start;
@@ -66,24 +70,21 @@
   margin-right: var(--feedback-panel-width);
 }
 
-.sheets {
+.documentEmpty {
   display: grid;
-  width: 1124px;
-  grid-template-columns: repeat(2, 550px);
-  justify-content: center;
-  gap: 24px;
+  width: min(100%, 760px);
+  min-height: 420px;
+  place-items: center;
   margin-inline: auto;
-}
-
-.sheetFrame {
-  position: relative;
-  width: 550px;
-  height: 779px;
-}
-
-.sheetFrame > article {
-  transform: scale(1.3);
-  transform-origin: top left;
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: var(--repo-radius-panel);
+  color: var(--repo-gray-500);
+  background: var(--repo-bg-main-lighter);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  pointer-events: none;
+  text-align: center;
 }
 
 .pageArrow {
@@ -117,26 +118,6 @@
 
 .nextArrow {
   right: calc(50% - 650px);
-}
-
-.feedbackMarker {
-  position: absolute;
-  z-index: 2;
-}
-
-.feedbackMarkerLeft {
-  top: 293px;
-  left: 101px;
-}
-
-.feedbackMarkerTop {
-  top: 81px;
-  left: 345px;
-}
-
-.feedbackMarkerBottom {
-  top: 411px;
-  left: 228px;
 }
 
 .pageIndicator {
@@ -309,14 +290,12 @@
   padding: 14px clamp(24px, 2vw, 46px) 40px;
 }
 
-.feedbackList .feedbackItem {
-  width: 100%;
-  padding: 10px 0;
-  background: transparent;
-}
-
-.feedbackList .feedbackItem:hover {
-  background: var(--repo-bg-main-point);
+.feedbackEmpty {
+  margin: 24px 0 0;
+  color: var(--repo-gray-300);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
 }
 
 @media (max-height: 880px) {
@@ -324,8 +303,9 @@
     padding-top: 48px;
   }
 
-  .sheets {
-    transform: translateY(17px) scale(0.79);
+  .documentEmpty {
+    min-height: 360px;
+    transform: translateY(17px) scale(0.9);
   }
 
   .viewer {
@@ -342,6 +322,10 @@
     top: 15px;
   }
 
+  .page[data-feedback-panel-open='true'] .reviewSettings {
+    right: calc(var(--feedback-panel-width) + 48px);
+  }
+
   .page[data-feedback-panel-open='true'] .previousArrow {
     left: max(16px, calc(50% - 468px));
   }
@@ -356,8 +340,8 @@
     padding-inline: 24px;
   }
 
-  .sheets {
-    transform: scale(0.68);
+  .documentEmpty {
+    min-height: 320px;
   }
 
   .viewer {
