@@ -1,5 +1,7 @@
 'use client'
 
+import type { LibraryResumeInput, LibrarySearchInput } from './libraryApi.types'
+
 type LibraryApiConfig =
   | {
       readonly baseUrl: string
@@ -24,6 +26,8 @@ export type LibraryRequestResponse =
     }
 
 const LIBRARY_REQUEST_TIMEOUT_MS = 8_000
+const DEFAULT_LIBRARY_SEARCH_PAGE = 0
+const DEFAULT_LIBRARY_SEARCH_SIZE = 20
 const LIBRARY_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ?? process.env.NEXT_PUBLIC_AUTH_API_BASE_URL?.trim()
 
@@ -52,11 +56,37 @@ function getLibraryApiConfig(): LibraryApiConfig {
   }
 }
 
-function buildLibraryUrl(baseUrl: string, path: 'library') {
-  return new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).href
+function buildLibraryUrl(baseUrl: string, path: string) {
+  return new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`)
 }
 
-async function sendLibraryRequest(path: 'library', init: RequestInit): Promise<LibraryRequestResponse> {
+function appendSearchParam(searchParams: URLSearchParams, key: string, value: number | string | undefined) {
+  if (value === undefined) {
+    return
+  }
+
+  const normalizedValue = typeof value === 'string' ? value.trim() : String(value)
+
+  if (!normalizedValue) {
+    return
+  }
+
+  searchParams.set(key, normalizedValue)
+}
+
+function buildLibrarySearchUrl(baseUrl: string, input: LibrarySearchInput) {
+  const url = buildLibraryUrl(baseUrl, 'library/search')
+
+  appendSearchParam(url.searchParams, 'keyword', input.keyword)
+  appendSearchParam(url.searchParams, 'major', input.major)
+  appendSearchParam(url.searchParams, 'date', input.date)
+  appendSearchParam(url.searchParams, 'page', input.page ?? DEFAULT_LIBRARY_SEARCH_PAGE)
+  appendSearchParam(url.searchParams, 'size', input.size ?? DEFAULT_LIBRARY_SEARCH_SIZE)
+
+  return url.href
+}
+
+async function sendLibraryRequest(path: string, init: RequestInit): Promise<LibraryRequestResponse> {
   const config = getLibraryApiConfig()
 
   if (config.kind === 'invalid') {
@@ -71,7 +101,7 @@ async function sendLibraryRequest(path: 'library', init: RequestInit): Promise<L
   const complete = () => globalThis.clearTimeout(timeoutId)
 
   try {
-    const response = await fetch(buildLibraryUrl(config.baseUrl, path), {
+    const response = await fetch(buildLibraryUrl(config.baseUrl, path).href, {
       ...init,
       signal: controller.signal,
     })
@@ -99,4 +129,49 @@ export async function getLibraryRequest(): Promise<LibraryRequestResponse> {
   return sendLibraryRequest('library', {
     method: 'GET',
   })
+}
+
+export async function getLibraryResumeRequest(input: LibraryResumeInput): Promise<LibraryRequestResponse> {
+  return sendLibraryRequest(`library/${encodeURIComponent(String(input.studentId))}`, {
+    method: 'GET',
+  })
+}
+
+export async function getLibrarySearchRequest(input: LibrarySearchInput): Promise<LibraryRequestResponse> {
+  const config = getLibraryApiConfig()
+
+  if (config.kind === 'invalid') {
+    return {
+      kind: 'configuration-error',
+      message: config.message,
+    }
+  }
+
+  const controller = new AbortController()
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), LIBRARY_REQUEST_TIMEOUT_MS)
+  const complete = () => globalThis.clearTimeout(timeoutId)
+
+  try {
+    const response = await fetch(buildLibrarySearchUrl(config.baseUrl, input), {
+      method: 'GET',
+      signal: controller.signal,
+    })
+
+    return {
+      complete,
+      kind: 'response',
+      value: response,
+    }
+  } catch (error) {
+    complete()
+
+    if (error instanceof DOMException || error instanceof TypeError) {
+      return {
+        kind: 'network-error',
+        message: '도서관 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      }
+    }
+
+    throw error
+  }
 }

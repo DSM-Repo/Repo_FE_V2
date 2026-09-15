@@ -82,4 +82,83 @@ test.describe('public route smoke', () => {
     expect(scrolledY).toBeGreaterThan(0)
     await expect(page.getByRole('link', { name: '2016 1기 2학년 포트폴리오 열람' })).toBeVisible()
   })
+
+  test('renders public students for a selected library date', async ({ page }) => {
+    await page.route('http://127.0.0.1:8080/library', async (route) => {
+      await route.fulfill({
+        body: JSON.stringify([{ cohort: 9, date: 2026, year: 3 }]),
+        contentType: 'application/json',
+        headers: {
+          'access-control-allow-origin': '*',
+        },
+        status: 200,
+      })
+    })
+    await page.route('http://127.0.0.1:8080/library/search?*', async (route) => {
+      const url = new URL(route.request().url())
+
+      expect(url.searchParams.get('date')).toBe('2026')
+      expect(url.searchParams.get('page')).toBe('0')
+      expect(url.searchParams.get('size')).toBe('20')
+
+      await route.fulfill({
+        body: JSON.stringify({
+          content: [
+            { major: '백엔드', studentId: 1, studentName: '김태균' },
+            { major: '프론트엔드', studentId: 2, studentName: '오혜민' },
+          ],
+          totalElements: 2,
+        }),
+        contentType: 'application/json',
+        headers: {
+          'access-control-allow-origin': '*',
+        },
+        status: 200,
+      })
+    })
+
+    await page.goto('/library?date=2026')
+
+    await expect(page.getByRole('heading', { name: '도서관' })).toBeVisible()
+    await expect(page.getByRole('link', { name: /김태균/ })).toHaveAttribute('href', '/resume-books/1')
+    await expect(page.getByRole('link', { name: /오혜민/ })).toBeVisible()
+  })
+
+  test('renders one public library resume from the student detail API', async ({ page }) => {
+    await page.route('http://127.0.0.1:8080/library/1', async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          cohort: 9,
+          date: 2026,
+          email: 'student@example.com',
+          introduce: '문제를 끝까지 파고드는 백엔드 개발자입니다.',
+          majorName: '백엔드',
+          name: '김태균',
+          pages: [
+            { content: 'API 설계와 테스트 자동화를 좋아합니다.', id: 'page-1', index: 0 },
+            { content: '협업 과정에서 문서화를 중요하게 생각합니다.', id: 'page-2', index: 1 },
+          ],
+          portfolioUrl: 'https://portfolio.example.test',
+          profileImageUrl: 'https://cdn.example.test/profile.png',
+          releasedAt: '2026-09-15T14:54:37.468Z',
+          resumeId: 'resume-1',
+          studentId: 1,
+          studentNumber: '30101',
+          year: 3,
+        }),
+        contentType: 'application/json',
+        headers: {
+          'access-control-allow-origin': '*',
+        },
+        status: 200,
+      })
+    })
+
+    await page.goto('/resume-books/1')
+
+    await expect(page.getByRole('heading', { name: '김태균 이력서' })).toBeVisible()
+    await expect(page.getByText('30101 | 백엔드 | student@example.com')).toBeVisible()
+    await expect(page.getByText('API 설계와 테스트 자동화를 좋아합니다.')).toBeVisible()
+    await expect(page.getByText('협업 과정에서 문서화를 중요하게 생각합니다.')).toBeVisible()
+  })
 })

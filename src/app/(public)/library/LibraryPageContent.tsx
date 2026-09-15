@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 import { getSavedAuthRole, type AuthLoginRole } from '@/features/auth/api'
-import { getLibraryBooks, type LibraryBookGroup } from '@/features/library/api'
+import { getLibraryBooks, searchLibraryStudents, type LibraryBookGroup, type LibrarySearchStudent } from '@/features/library/api'
 import type { InternalHref } from '@/shared/lib/internalHref'
 import type { AppHeaderItem, LibraryBookCardProps } from '@/shared/ui'
-import { AppHeader, LibraryBookCard, Toast } from '@/shared/ui'
+import { AppHeader, LibraryBookCard, LinkRow, SearchField, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -39,6 +41,20 @@ type LibraryLoadState =
       readonly kind: 'loading'
     }
 
+type StudentSearchState =
+  | {
+      readonly kind: 'failure'
+      readonly message: string
+    }
+  | {
+      readonly kind: 'loading'
+    }
+  | {
+      readonly kind: 'success'
+      readonly students: readonly LibrarySearchStudent[]
+      readonly totalElements: number
+    }
+
 function subscribeToSavedAuthRole(onStoreChange: () => void) {
   window.addEventListener('storage', onStoreChange)
 
@@ -65,11 +81,30 @@ function toLibraryBookCard(book: LibraryBookGroup): LibraryBookCardProps {
   }
 }
 
+function parseSelectedDate(value: string | null): number | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  const parsedDate = Number(value)
+
+  if (!Number.isSafeInteger(parsedDate)) {
+    return undefined
+  }
+
+  return parsedDate
+}
+
 export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) {
+  const searchParams = useSearchParams()
   const role = useSyncExternalStore(subscribeToSavedAuthRole, getSavedAuthRoleSnapshot, getServerAuthRoleSnapshot)
   const [loadState, setLoadState] = useState<LibraryLoadState>({ kind: 'loading' })
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [studentSearchState, setStudentSearchState] = useState<StudentSearchState>({ kind: 'loading' })
+  const selectedDate = parseSelectedDate(searchParams.get('date'))
   const navigationItems = role === 'teacher' ? teacherNavigationItems : studentNavigationItems
   const libraryBooks = loadState.kind === 'success' ? loadState.books.map(toLibraryBookCard) : []
+  const normalizedSearchKeyword = searchKeyword.trim()
 
   useEffect(() => {
     let ignoresResult = false
@@ -102,6 +137,46 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     }
   }, [])
 
+  useEffect(() => {
+    if (selectedDate === undefined) {
+      return
+    }
+
+    let ignoresResult = false
+
+    async function loadLibraryStudents() {
+      setStudentSearchState({ kind: 'loading' })
+      const result = await searchLibraryStudents({
+        date: selectedDate,
+        keyword: normalizedSearchKeyword,
+      })
+
+      if (ignoresResult) {
+        return
+      }
+
+      if (result.kind === 'success') {
+        setStudentSearchState({
+          kind: 'success',
+          students: result.students,
+          totalElements: result.totalElements,
+        })
+        return
+      }
+
+      setStudentSearchState({
+        kind: 'failure',
+        message: result.message,
+      })
+    }
+
+    void loadLibraryStudents()
+
+    return () => {
+      ignoresResult = true
+    }
+  }, [normalizedSearchKeyword, selectedDate])
+
   return (
     <main className={styles.page}>
       <AppHeader activeItem="library" items={navigationItems} />
@@ -115,22 +190,71 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
           <h1 className={styles.title} id="library-title">
             도서관
           </h1>
-          <p className={styles.description}>다양한 학생들의 포트폴리오를 둘러보세요.</p>
+          <p className={styles.description}>
+            {selectedDate === undefined
+              ? '다양한 학생들의 포트폴리오를 둘러보세요.'
+              : `${selectedDate}학년도 공개 이력서를 둘러보세요.`}
+          </p>
         </div>
-        <div className={styles.books} aria-label="포트폴리오 책 목록">
-          {loadState.kind === 'loading' ? <p className={styles.emptyMessage}>도서관을 불러오는 중입니다.</p> : null}
-          {loadState.kind === 'failure' ? (
-            <p className={styles.emptyMessage} role="alert">
-              {loadState.message}
-            </p>
-          ) : null}
-          {loadState.kind === 'success' && libraryBooks.length > 0 ? (
-            libraryBooks.map((book) => <LibraryBookCard key={book.ariaLabel} {...book} />)
-          ) : null}
-          {loadState.kind === 'success' && libraryBooks.length === 0 ? (
-            <p className={styles.emptyMessage}>공개된 포트폴리오 책이 없습니다.</p>
-          ) : null}
-        </div>
+        {selectedDate === undefined ? (
+          <div className={styles.books} aria-label="포트폴리오 책 목록">
+            {loadState.kind === 'loading' ? <p className={styles.emptyMessage}>도서관을 불러오는 중입니다.</p> : null}
+            {loadState.kind === 'failure' ? (
+              <p className={styles.emptyMessage} role="alert">
+                {loadState.message}
+              </p>
+            ) : null}
+            {loadState.kind === 'success' && libraryBooks.length > 0 ? (
+              libraryBooks.map((book) => <LibraryBookCard key={book.ariaLabel} {...book} />)
+            ) : null}
+            {loadState.kind === 'success' && libraryBooks.length === 0 ? (
+              <p className={styles.emptyMessage}>공개된 포트폴리오 책이 없습니다.</p>
+            ) : null}
+          </div>
+        ) : (
+          <section className={styles.studentSearch} aria-label={`${selectedDate}학년도 학생 이력서 목록`}>
+            <div className={styles.studentSearchHeader}>
+              <Link className={styles.backLink} href="/library">
+                전체 학년도 보기
+              </Link>
+              <SearchField
+                aria-label="학생 이름 검색"
+                className={styles.searchField}
+                placeholder="이름으로 학생을 찾아보세요."
+                spellCheck={false}
+                value={searchKeyword}
+                onChange={(event) => setSearchKeyword(event.target.value)}
+              />
+            </div>
+            <div className={styles.studentRows} aria-live="polite">
+              {studentSearchState.kind === 'loading' ? (
+                <p className={styles.emptyMessage}>학생 이력서를 불러오는 중입니다.</p>
+              ) : null}
+              {studentSearchState.kind === 'failure' ? (
+                <p className={styles.emptyMessage} role="alert">
+                  {studentSearchState.message}
+                </p>
+              ) : null}
+              {studentSearchState.kind === 'success' && studentSearchState.students.length === 0 ? (
+                <p className={styles.emptyMessage}>
+                  {normalizedSearchKeyword ? '검색어와 일치하는 학생이 없습니다.' : '공개된 학생 이력서가 없습니다.'}
+                </p>
+              ) : null}
+              {studentSearchState.kind === 'success'
+                ? studentSearchState.students.map((student) => (
+                    <LinkRow
+                      actionLabel="이력서 보기"
+                      href={`/resume-books/${student.studentId}`}
+                      key={student.studentId}
+                      status={student.major}
+                      surface="muted"
+                      title={student.studentName}
+                    />
+                  ))
+                : null}
+            </div>
+          </section>
+        )}
       </section>
     </main>
   )
