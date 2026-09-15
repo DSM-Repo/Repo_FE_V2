@@ -37,6 +37,10 @@ Repo-V2 is a dark, quiet school-work surface: compact, direct, and built for rep
 | Level | Token | Usage |
 | --- | --- | --- |
 | Title/large | `--repo-font-title-large-*` | Page-level emphasis only |
+| Display/mega | `--repo-font-display-mega-*` | Landing final CTA only |
+| Display/large | `--repo-font-display-large-*` | Landing hero headline only |
+| Display/medium | `--repo-font-display-medium-*` | Landing line-art statement only |
+| Display/small | `--repo-font-display-small-*` | Landing gradient CTA supporting lines |
 | Title/medium | `--repo-font-title-medium-*` | Large modal emphasis and rare showcase headings |
 | Title/small | `--repo-font-title-small-*` | Primary row labels, card titles, modal headings |
 | Title/tiny | `--repo-font-title-tiny-*` | Navigation, buttons |
@@ -118,6 +122,14 @@ All spacing derives from 4px.
 ### AppFooter
 - **Structure**: footer with product name, address, phone lines, legal links
 - **Accessibility**: footer landmark
+
+### LandingPage
+- **Source**: Figma `okhxw8EuxX4OTiZDkXpCcT`, node `1647:33411` (`랜딩페이지시안1`)
+- **Structure**: 1920px reference canvas translated into a responsive public homepage with dark hero, 1360px feature rail, resume-document visuals, feedback preview, CTA strip, and footer
+- **Geometry**: desktop content follows the Figma 1360px inner width, 64px header side padding, 380px hero left anchor, and 732px hero media anchor through fluid `clamp()` constraints
+- **States**: CTA links expose hover and focus outlines without changing layout
+- **Assets**: Figma-exported media lives under `/assets/landing/*` to avoid temporary Figma asset URLs
+- **Responsive**: desktop preserves the Figma two-column staging; tablet/mobile stacks content and scales display typography through declared display tokens
 
 ### LibraryBook
 - **Structure**: fixed-ratio book cover link using `/assets/library-book-cover.svg` as the cover source, with year, generation, grade, and action text layered above it

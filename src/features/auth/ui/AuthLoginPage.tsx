@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 
-import { loginWithAuthApi, saveAuthTokens, type AuthLoginResult, type AuthLoginRole } from '@/features/auth/api'
+import { loginWithAuthApi, saveAuthRole, saveAuthTokens, type AuthLoginResult, type AuthLoginRole } from '@/features/auth/api'
 import { Button, Icon, Input, Logo } from '@/shared/ui'
 
 import { AuthAccountPrompt } from './AuthAccountPrompt'
@@ -42,6 +42,11 @@ const LOGIN_CONTENT: Record<LoginRole, LoginContent> = {
 const oppositeRole: Record<LoginRole, LoginRole> = {
   student: 'teacher',
   teacher: 'student',
+}
+
+const loginRedirectPath: Record<LoginRole, string> = {
+  student: '/home',
+  teacher: '/students',
 }
 
 const emptyTouchedFields: Record<LoginField, boolean> = {
@@ -135,7 +140,8 @@ export function AuthLoginPage() {
 
     if (result.kind === 'success') {
       saveAuthTokens(result.token)
-      router.push('/library')
+      saveAuthRole(role)
+      router.push(loginRedirectPath[role])
       return
     }
 

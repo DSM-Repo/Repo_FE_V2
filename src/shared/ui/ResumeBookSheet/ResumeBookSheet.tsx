@@ -10,6 +10,7 @@ export type ResumeBookSheetContent = {
   readonly contests: readonly string[]
   readonly email?: string
   readonly headline: string
+  readonly introTitle?: string
   readonly introduce: string
   readonly majorName: string
   readonly name: string
@@ -46,7 +47,7 @@ export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookShe
       </header>
 
       <section className={styles.introBox}>
-        <h3>{content.headline}</h3>
+        <h3>{content.introTitle ?? content.headline}</h3>
         <p>{content.introduce}</p>
       </section>
 

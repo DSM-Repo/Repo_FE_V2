@@ -1,22 +1,26 @@
 'use client'
 
-import { useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import { AUTH_ACCESS_TOKEN_STORAGE_KEY } from '@/features/auth/api'
 import {
+  autoSaveResume,
   cancelResumeSubmission,
   getResumeById,
+  saveResume,
   submitResume,
   updateResumeVisibility,
   type Resume,
   type ResumeDetailResult,
+  type ResumePage,
   type ResumeSubmissionResult,
   type ResumeVisibilityResult,
 } from '@/features/resume/api'
 import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
-import { AppHeader, Button, Input, ResumeBookSheet } from '@/shared/ui'
+import { AppHeader, Icon, ResumeBookSheet } from '@/shared/ui'
 
+import { ResumeEditorSheet, type ResumeDraft } from './ResumeEditorSheet'
 import styles from './page.module.css'
 
 const navigationItems = [
@@ -24,6 +28,90 @@ const navigationItems = [
   { href: '/resume', label: '이력서 관리', value: 'resume' },
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
+
+const sampleSheetContent = {
+  activities: [
+    { date: '2025.12.25', title: '제 1회 SCSC 온라인 해커톤 2위' },
+    { date: '2025.07.18', title: '2025 교내 해커톤 우수상' },
+  ],
+  contests: ['제4회 2026 블레이버스 MVP 개발 해커톤', '제 1회 SCSC온라인 해커톤', '2025 교내 해커톤'],
+  email: 'mare2mare6@gmail.com',
+  headline: 'Frontend Developer',
+  introTitle: '안녕하세요 저는 디자이너가 되고 싶은 인간입니다',
+  introduce:
+    '새벽자습너무 졸립니다. 뭘 적지.. 한줄소개는 이런식으로 쭉쭉 들어갑니다. 줄넘김 가능합니다. 자기소개자기소개자기소개자기소개자기소개자기소개.. 최대 4줄이면 충분하겠지만..',
+  majorName: '2415 인공지능소프트웨어과',
+  name: '최하은',
+  portfolioUrl: 'https://repo.dev',
+  projects: ['TEENS', '스플', 'D-ask', 'DSG', 'Studiz', 'hear', '마음씨', 'Repo'],
+  skills: ['Figma', 'illustrator', 'photoshop'],
+} satisfies ResumeBookSheetContent
+
+const defaultResumeDraft = {
+  activities: sampleSheetContent.activities,
+  contests: sampleSheetContent.contests,
+  email: sampleSheetContent.email,
+  headline: sampleSheetContent.headline,
+  introTitle: sampleSheetContent.introTitle,
+  introduce: sampleSheetContent.introduce,
+  majorName: sampleSheetContent.majorName,
+  name: sampleSheetContent.name,
+  pageContents: ['', ''],
+  portfolioUrl: sampleSheetContent.portfolioUrl,
+  projects: sampleSheetContent.projects,
+  skills: sampleSheetContent.skills,
+} satisfies ResumeDraft
+
+const feedbackItems = [
+  {
+    detail: '피드백에 대한 상세 내용',
+    id: 'feedback-1',
+    isOpen: false,
+    title: '피드백 제목',
+  },
+  {
+    detail: '피드백에 대한 상세 내용',
+    id: 'feedback-2',
+    isOpen: true,
+    title: '피드백 제목',
+  },
+  {
+    detail: '피드백에 대한 상세 내용',
+    id: 'feedback-3',
+    isOpen: false,
+    title: '피드백 제목',
+  },
+  {
+    detail: '피드백에 대한 상세 내용',
+    id: 'feedback-4',
+    isOpen: false,
+    title: '피드백 제목',
+  },
+  {
+    detail: '피드백에 대한 상세 내용',
+    id: 'feedback-5',
+    isOpen: false,
+    title: '피드백 제목',
+  },
+  {
+    detail: '피드백에 대한 상세 내용',
+    id: 'feedback-6',
+    isOpen: false,
+    title: '피드백 제목',
+  },
+  {
+    detail: '피드백에 대한 상세 내용',
+    id: 'feedback-7',
+    isOpen: false,
+    title: '피드백 제목',
+  },
+  {
+    detail: '피드백에 대한 상세 내용',
+    id: 'feedback-8',
+    isOpen: false,
+    title: '피드백 제목',
+  },
+] as const
 
 type LoadState =
   | {
@@ -41,15 +129,29 @@ type LoadState =
       readonly message: string
     }
 
+type ViewMode = 'view' | 'edit' | 'feedback'
 type VisibilitySubmitState = 'idle' | 'pending'
 type SubmissionSubmitState = 'idle' | 'submit' | 'cancel'
+type SaveSubmitState = 'auto-save' | 'idle' | 'save'
 type ActionFeedback = {
   readonly message: string
   readonly tone: 'error' | 'neutral'
 }
 
-function toResumeBookSheetContent(resume: Resume): ResumeBookSheetContent {
-  const firstPage = resume.pages.find((page) => page.index === 0) ?? resume.pages[0]
+function toInitialViewMode(mode: string | null): ViewMode {
+  if (mode === 'edit') {
+    return 'edit'
+  }
+
+  if (mode === 'feedback') {
+    return 'feedback'
+  }
+
+  return 'view'
+}
+
+function toResumeBookSheetContent(resume: Resume, pageIndex: number): ResumeBookSheetContent {
+  const page = resume.pages.find((resumePage) => resumePage.index === pageIndex) ?? resume.pages[pageIndex] ?? resume.pages[0]
 
   return {
     activities: [],
@@ -58,11 +160,63 @@ function toResumeBookSheetContent(resume: Resume): ResumeBookSheetContent {
     introduce: resume.introduce,
     majorName: resume.majorName,
     name: resume.name,
-    pageContent: firstPage?.content,
+    pageContent: page?.content,
     portfolioUrl: resume.portfolioUrl,
     projects: [],
     skills: [],
   }
+}
+
+function toDraftSheetContent(draft: ResumeDraft, pageIndex: 0 | 1): ResumeBookSheetContent {
+  return {
+    activities: draft.activities,
+    contests: draft.contests,
+    email: draft.email,
+    headline: draft.headline,
+    introTitle: draft.introTitle,
+    introduce: draft.introduce,
+    majorName: draft.majorName,
+    name: draft.name,
+    pageContent: draft.pageContents[pageIndex],
+    portfolioUrl: draft.portfolioUrl,
+    projects: draft.projects,
+    skills: draft.skills,
+  }
+}
+
+function toResumeDraft(resume: Resume): ResumeDraft {
+  const firstPage = resume.pages.find((resumePage) => resumePage.index === 0) ?? resume.pages[0]
+  const secondPage = resume.pages.find((resumePage) => resumePage.index === 1) ?? resume.pages[1]
+
+  return {
+    ...defaultResumeDraft,
+    headline: resume.submissionStatus,
+    introduce: resume.introduce,
+    majorName: resume.majorName,
+    name: resume.name,
+    pageContents: [firstPage?.content ?? '', secondPage?.content ?? ''],
+    portfolioUrl: resume.portfolioUrl,
+  }
+}
+
+function toSheetSpreadContent(resume: Resume | undefined, draft: ResumeDraft): readonly [ResumeBookSheetContent, ResumeBookSheetContent] {
+  if (!resume) {
+    return [toDraftSheetContent(draft, 0), toDraftSheetContent(draft, 1)]
+  }
+
+  return [toResumeBookSheetContent(resume, 0), toResumeBookSheetContent(resume, 1)]
+}
+
+function toResumePages(draft: ResumeDraft, resume?: Resume): readonly ResumePage[] {
+  return draft.pageContents.map((content, index) => {
+    const existingPage = resume?.pages.find((resumePage) => resumePage.index === index) ?? resume?.pages[index]
+
+    return {
+      content,
+      id: existingPage?.id ?? `page-${index + 1}`,
+      index,
+    }
+  })
 }
 
 function toFailureMessage(result: Exclude<ResumeDetailResult, { readonly kind: 'success' }>) {
@@ -83,18 +237,21 @@ function isSubmittedResume(resume: Resume) {
 
 export function StudentResumePageContent() {
   const searchParams = useSearchParams()
-  const [resumeId, setResumeId] = useState(searchParams.get('resumeId') ?? '')
+  const requestedResumeId = searchParams.get('resumeId') ?? ''
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' })
+  const [viewMode, setViewMode] = useState<ViewMode>(() => toInitialViewMode(searchParams.get('mode')))
+  const [draft, setDraft] = useState<ResumeDraft>(defaultResumeDraft)
   const [visibilitySubmitState, setVisibilitySubmitState] = useState<VisibilitySubmitState>('idle')
   const [submissionSubmitState, setSubmissionSubmitState] = useState<SubmissionSubmitState>('idle')
+  const [saveSubmitState, setSaveSubmitState] = useState<SaveSubmitState>('idle')
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback>()
   const viewedResumeIdRef = useRef<string | undefined>(undefined)
+  const requestedResumeIdRef = useRef<string | undefined>(undefined)
 
-  const loadResume = async (nextResumeId: string) => {
+  const loadResume = useCallback(async (nextResumeId: string) => {
     const trimmedResumeId = nextResumeId.trim()
 
     if (!trimmedResumeId) {
-      setLoadState({ kind: 'failure', message: '조회할 이력서 ID를 입력해주세요.' })
       return
     }
 
@@ -108,6 +265,7 @@ export function StudentResumePageContent() {
     setLoadState({ kind: 'loading' })
     viewedResumeIdRef.current = undefined
     setActionFeedback(undefined)
+
     const result = await getResumeById({
       accessToken,
       resumeId: trimmedResumeId,
@@ -115,16 +273,31 @@ export function StudentResumePageContent() {
 
     if (result.kind === 'success') {
       viewedResumeIdRef.current = result.resume.id
+      setDraft(toResumeDraft(result.resume))
       setLoadState({ kind: 'success', resume: result.resume })
       return
     }
 
     viewedResumeIdRef.current = undefined
     setLoadState({ kind: 'failure', message: toFailureMessage(result) })
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!requestedResumeId || requestedResumeIdRef.current === requestedResumeId) {
+      return
+    }
+
+    requestedResumeIdRef.current = requestedResumeId
+    void loadResume(requestedResumeId)
+  }, [loadResume, requestedResumeId])
 
   const changeVisibility = async () => {
-    if (loadState.kind !== 'success' || visibilitySubmitState === 'pending' || submissionSubmitState !== 'idle') {
+    if (
+      loadState.kind !== 'success' ||
+      visibilitySubmitState === 'pending' ||
+      submissionSubmitState !== 'idle' ||
+      saveSubmitState !== 'idle'
+    ) {
       return
     }
 
@@ -136,7 +309,7 @@ export function StudentResumePageContent() {
     }
 
     const nextIsPublic = !loadState.resume.isPublic
-    const requestedResumeId = loadState.resume.id
+    const activeResumeId = loadState.resume.id
 
     setVisibilitySubmitState('pending')
     setActionFeedback(undefined)
@@ -148,7 +321,7 @@ export function StudentResumePageContent() {
 
     setVisibilitySubmitState('idle')
 
-    if (viewedResumeIdRef.current !== requestedResumeId) {
+    if (viewedResumeIdRef.current !== activeResumeId) {
       return
     }
 
@@ -171,7 +344,13 @@ export function StudentResumePageContent() {
   }
 
   const changeSubmissionStatus = async () => {
-    if (loadState.kind !== 'success' || visibilitySubmitState === 'pending' || submissionSubmitState !== 'idle') {
+    if (
+      loadState.kind !== 'success' ||
+      visibilitySubmitState === 'pending' ||
+      submissionSubmitState !== 'idle' ||
+      saveSubmitState !== 'idle'
+    ) {
+      setActionFeedback({ message: '조회된 이력서가 없어 제출할 수 없습니다.', tone: 'error' })
       return
     }
 
@@ -183,7 +362,7 @@ export function StudentResumePageContent() {
     }
 
     const nextAction: Exclude<SubmissionSubmitState, 'idle'> = isSubmittedResume(loadState.resume) ? 'cancel' : 'submit'
-    const requestedResumeId = loadState.resume.id
+    const activeResumeId = loadState.resume.id
 
     setSubmissionSubmitState(nextAction)
     setActionFeedback(undefined)
@@ -199,7 +378,7 @@ export function StudentResumePageContent() {
 
     setSubmissionSubmitState('idle')
 
-    if (viewedResumeIdRef.current !== requestedResumeId) {
+    if (viewedResumeIdRef.current !== activeResumeId) {
       return
     }
 
@@ -221,104 +400,217 @@ export function StudentResumePageContent() {
     })
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    void loadResume(resumeId)
+  const handleSave = async (isTemporary: boolean) => {
+    if (saveSubmitState !== 'idle' || visibilitySubmitState === 'pending' || submissionSubmitState !== 'idle') {
+      return
+    }
+
+    const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)
+
+    if (!accessToken) {
+      setActionFeedback({ message: '로그인 후 이력서를 저장할 수 있습니다.', tone: 'error' })
+      return
+    }
+
+    const activeResume = loadState.kind === 'success' ? loadState.resume : undefined
+    const activeResumeId = activeResume?.id
+    const pages = toResumePages(draft, activeResume)
+
+    setActionFeedback(undefined)
+    setSaveSubmitState(isTemporary ? 'auto-save' : 'save')
+
+    const result = isTemporary
+      ? await autoSaveResume({
+          accessToken,
+          pages,
+        })
+      : await saveResume({
+          accessToken,
+          introduce: draft.introduce,
+          pages,
+          portfolioUrl: draft.portfolioUrl,
+        })
+
+    setSaveSubmitState('idle')
+
+    if (activeResumeId && viewedResumeIdRef.current !== activeResumeId) {
+      return
+    }
+
+    if (result.kind !== 'success') {
+      setActionFeedback({ message: result.message, tone: 'error' })
+      return
+    }
+
+    viewedResumeIdRef.current = result.resumeId
+
+    if (activeResume) {
+      setLoadState({
+        kind: 'success',
+        resume: {
+          ...activeResume,
+          introduce: draft.introduce,
+          pages,
+          portfolioUrl: draft.portfolioUrl,
+          savedAt: result.savedAt,
+        },
+      })
+    }
+
+    setActionFeedback({
+      message: isTemporary ? '이력서를 임시저장했습니다.' : '이력서를 저장했습니다.',
+      tone: 'neutral',
+    })
   }
 
-  const sheetContent = loadState.kind === 'success' ? toResumeBookSheetContent(loadState.resume) : undefined
-  const isResumeActionPending = visibilitySubmitState === 'pending' || submissionSubmitState !== 'idle'
+  const resume = loadState.kind === 'success' ? loadState.resume : undefined
+  const sheetContents = toSheetSpreadContent(resume, draft)
+  const isResumeActionPending =
+    visibilitySubmitState === 'pending' || submissionSubmitState !== 'idle' || saveSubmitState !== 'idle'
+  const isEditing = viewMode === 'edit' || viewMode === 'feedback'
 
   return (
     <main className={styles.page}>
       <AppHeader activeItem="resume" items={navigationItems} />
 
-      <section className={styles.workspace} aria-labelledby="student-resume-title">
-        <div className={styles.sidebar}>
-          <h1 id="student-resume-title">내 이력서 조회</h1>
-          <form className={styles.lookupForm} onSubmit={handleSubmit}>
-            <label className={styles.label} htmlFor="resume-id">
-              이력서 ID
-            </label>
-            <Input
-              id="resume-id"
-              name="resumeId"
-              onChange={(event) => setResumeId(event.target.value)}
-              placeholder="66c73ec4c92f1d2d087e9012"
-              required
-              value={resumeId}
-            />
-            <Button disabled={loadState.kind === 'loading'} type="submit">
-              {loadState.kind === 'loading' ? '조회 중' : '조회하기'}
-            </Button>
-          </form>
+      <section className={`${styles.workspace} ${viewMode === 'feedback' ? styles.withFeedback : ''}`} aria-label="이력서 관리">
+        <div className={styles.stage} aria-live="polite">
+          <div className={styles.topActions}>
+            {isEditing ? (
+              <>
+                <button className={styles.secondaryAction} disabled={isResumeActionPending} onClick={() => void handleSave(true)} type="button">
+                  {saveSubmitState === 'auto-save' ? '임시저장 중' : '임시저장'}
+                </button>
+                <button className={styles.primaryAction} disabled={isResumeActionPending} onClick={() => void handleSave(false)} type="button">
+                  {saveSubmitState === 'save' ? '저장 중' : '저장'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button className={styles.secondaryAction} onClick={() => setViewMode('edit')} type="button">
+                  이력서 수정하기
+                </button>
+                <button className={styles.primaryAction} disabled={isResumeActionPending} onClick={changeSubmissionStatus} type="button">
+                  {submissionSubmitState === 'submit'
+                    ? '제출 중'
+                    : submissionSubmitState === 'cancel'
+                      ? '취소 중'
+                      : resume && isSubmittedResume(resume)
+                        ? '제출 취소'
+                        : '제출'}
+                </button>
+              </>
+            )}
+          </div>
 
+          <div className={styles.sheetViewport}>
+            <button className={styles.pageArrow} type="button" aria-label="이전 페이지">
+              <Icon name="chevron-left" />
+            </button>
+            <div className={styles.spread} aria-label={isEditing ? '이력서 작성' : '이력서 미리보기'}>
+              {isEditing ? (
+                <>
+                  <ResumeEditorSheet className={styles.documentSheet} draft={draft} onChange={setDraft} pageIndex={0} />
+                  <ResumeEditorSheet className={styles.documentSheet} draft={draft} onChange={setDraft} pageIndex={1} />
+                </>
+              ) : (
+                sheetContents.map((content, index) => (
+                  <ResumeBookSheet
+                    ariaLabel={`${content.name} 이력서 ${index + 1}쪽`}
+                    className={styles.documentSheet}
+                    content={content}
+                    key={`${content.name}-${index}`}
+                  />
+                ))
+              )}
+            </div>
+            <button className={styles.pageArrow} type="button" aria-label="다음 페이지">
+              <Icon name="chevron-right" />
+            </button>
+          </div>
+
+          <p className={styles.pageCount}>2 / 5</p>
+
+          {isEditing ? (
+            <>
+              <div className={styles.editorToolbar} aria-label="이력서 편집 도구">
+                <button className={styles.iconTool} type="button" aria-label="이전">
+                  <Icon name="chevron-left" />
+                </button>
+                <button className={styles.iconTool} type="button" aria-label="다음">
+                  <Icon name="chevron-right" />
+                </button>
+                <span className={styles.toolDivider} aria-hidden="true" />
+                <button className={styles.textTool} type="button" aria-label="텍스트 추가">
+                  T
+                </button>
+                <button className={styles.textTool} type="button" aria-label="이미지 추가">
+                  □
+                </button>
+                <button className={styles.textTool} type="button" aria-label="업로드">
+                  ↑
+                </button>
+              </div>
+              <label className={styles.feedbackToggle}>
+                <span>피드백 보기</span>
+                <input
+                  checked={viewMode === 'feedback'}
+                  onChange={(event) => setViewMode(event.target.checked ? 'feedback' : 'edit')}
+                  type="checkbox"
+                />
+                <span className={styles.switchTrack} aria-hidden="true" />
+              </label>
+            </>
+          ) : null}
+
+          {loadState.kind === 'loading' ? <p className={styles.statusMessage}>이력서를 불러오는 중입니다.</p> : null}
           {loadState.kind === 'failure' ? (
-            <p className={styles.feedback} role="alert">
+            <p className={styles.statusMessage} role="alert">
               {loadState.message}
             </p>
           ) : null}
-
-          {loadState.kind === 'success' ? (
-            <dl className={styles.summary} aria-label="조회된 이력서 정보">
-              <div>
-                <dt>공개 상태</dt>
-                <dd>{loadState.resume.isPublic ? '공개' : '비공개'}</dd>
-              </div>
-              <div>
-                <dt>저장 시각</dt>
-                <dd>{loadState.resume.savedAt}</dd>
-              </div>
-              <div>
-                <dt>제출 상태</dt>
-                <dd>{loadState.resume.submissionStatus}</dd>
-              </div>
-            </dl>
+          {actionFeedback ? (
+            <p
+              aria-live={actionFeedback.tone === 'error' ? 'assertive' : 'polite'}
+              className={styles.statusMessage}
+              role={actionFeedback.tone === 'error' ? 'alert' : 'status'}
+            >
+              {actionFeedback.message}
+            </p>
           ) : null}
 
-          {loadState.kind === 'success' ? (
-            <div className={styles.resumeActions}>
-              <Button disabled={isResumeActionPending} onClick={changeVisibility} type="button">
-                {visibilitySubmitState === 'pending'
-                  ? '변경 중'
-                  : loadState.resume.isPublic
-                    ? '비공개로 변경'
-                    : '공개로 변경'}
-              </Button>
-              <Button
-                disabled={isResumeActionPending}
-                onClick={changeSubmissionStatus}
-                type="button"
-                variant="bordered-dark"
-              >
-                {submissionSubmitState === 'submit'
-                  ? '제출 중'
-                  : submissionSubmitState === 'cancel'
-                    ? '취소 중'
-                    : isSubmittedResume(loadState.resume)
-                      ? '제출 취소'
-                      : '제출하기'}
-              </Button>
-              {actionFeedback ? (
-                <p
-                  aria-live={actionFeedback.tone === 'error' ? 'assertive' : 'polite'}
-                  className={styles.actionFeedback}
-                  role={actionFeedback.tone === 'error' ? 'alert' : 'status'}
-                >
-                  {actionFeedback.message}
-                </p>
-              ) : null}
+          {resume ? (
+            <button className={styles.visibilityButton} disabled={isResumeActionPending} onClick={changeVisibility} type="button">
+              {visibilitySubmitState === 'pending' ? '공개 변경 중' : resume.isPublic ? '공개 중' : '비공개'}
+            </button>
+          ) : null}
+        </div>
+
+        {viewMode === 'feedback' ? (
+          <aside className={styles.feedbackPanel} aria-label="피드백 목록">
+            <div className={styles.feedbackHeader}>
+              <h2>피드백 목록</h2>
+              <button className={styles.closeButton} onClick={() => setViewMode('edit')} type="button" aria-label="피드백 목록 닫기">
+                ×
+              </button>
             </div>
-          ) : null}
-        </div>
-
-        <div className={styles.viewer} aria-live="polite">
-          {sheetContent ? (
-            <ResumeBookSheet ariaLabel={`${sheetContent.name} 내 이력서`} content={sheetContent} />
-          ) : (
-            <div className={styles.emptyState}>조회된 이력서가 없습니다.</div>
-          )}
-        </div>
+            <div className={styles.feedbackListHeader}>선택하기</div>
+            <ul className={styles.feedbackList}>
+              {feedbackItems.map((item) => (
+                <li className={`${styles.feedbackItem} ${item.isOpen ? styles.openFeedbackItem : ''}`} key={item.id}>
+                  <button className={styles.feedbackItemButton} type="button">
+                    <span className={styles.feedbackTitle}>
+                      {item.title}
+                      <span>1일 전</span>
+                    </span>
+                    <span aria-hidden="true">{item.isOpen ? '⌃' : '⌄'}</span>
+                  </button>
+                  {item.isOpen ? <p>{item.detail}</p> : null}
+                </li>
+              ))}
+            </ul>
+          </aside>
+        ) : null}
       </section>
     </main>
   )

@@ -1,0 +1,244 @@
+.sheet {
+  display: flex;
+  width: var(--resume-book-sheet-width, 551px);
+  height: var(--resume-book-sheet-height, 780px);
+  flex-direction: column;
+  padding: var(--resume-book-sheet-padding, 24px);
+  overflow: hidden;
+  color: var(--repo-text-black);
+  background: var(--repo-gray-50);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+}
+
+.sheetHeader {
+  display: grid;
+  grid-template-columns: var(--resume-book-sheet-avatar-size, 56px) minmax(0, 1fr) var(--resume-book-sheet-qr-size, 56px);
+  gap: var(--resume-book-sheet-header-gap, 16px);
+  align-items: start;
+}
+
+.profileImage {
+  width: var(--resume-book-sheet-avatar-size, 56px);
+  height: var(--resume-book-sheet-avatar-size, 56px);
+  border-radius: var(--repo-radius-pill);
+  background:
+    radial-gradient(circle at 64% 40%, transparent 0 32%, var(--repo-gray-200) 34% 51%, transparent 53%),
+    radial-gradient(circle at 48% 48%, var(--repo-gray-50) 0 30%, var(--repo-gray-300) 32% 60%, transparent 62%),
+    var(--repo-gray-100);
+}
+
+.identity {
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.metaRow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  color: var(--repo-text-black);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.qrCode {
+  display: grid;
+  width: var(--resume-book-sheet-qr-size, 56px);
+  height: var(--resume-book-sheet-qr-size, 56px);
+  align-items: end;
+  background:
+    repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 12px),
+    repeating-linear-gradient(0deg, #000 0 6px, transparent 6px 12px);
+  background-color: var(--repo-gray-50);
+  background-blend-mode: multiply;
+}
+
+.qrCode input {
+  width: 100%;
+  min-width: 0;
+  padding: 2px;
+  border: 0;
+  color: var(--repo-text-black);
+  background: rgb(255 255 255 / 82%);
+  font-size: 8px;
+  line-height: 1;
+  text-align: center;
+}
+
+.nameInput,
+.majorInput,
+.metaInput,
+.introTitleInput,
+.pillInput,
+.introduceInput,
+.listInput,
+.pageContentInput {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--repo-text-black);
+  background: transparent;
+  letter-spacing: 0;
+}
+
+.nameInput::placeholder,
+.majorInput::placeholder,
+.metaInput::placeholder,
+.introTitleInput::placeholder,
+.pillInput::placeholder,
+.introduceInput::placeholder,
+.listInput::placeholder,
+.pageContentInput::placeholder {
+  color: var(--repo-gray-400);
+}
+
+.nameInput:focus,
+.majorInput:focus,
+.metaInput:focus,
+.introTitleInput:focus,
+.pillInput:focus,
+.introduceInput:focus,
+.listInput:focus,
+.pageContentInput:focus,
+.qrCode input:focus {
+  outline: 1px solid var(--repo-main);
+  outline-offset: 1px;
+  background: rgb(56 193 31 / 8%);
+}
+
+.nameInput {
+  flex: 0 1 88px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.majorInput {
+  flex: 1 1 160px;
+  color: var(--repo-gray-500);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.metaInput {
+  flex: 1 1 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.introBox {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-top: 22px;
+  border-radius: 8px;
+  background: var(--repo-gray-100);
+}
+
+.introTitleInput {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.introduceInput {
+  height: 54px;
+  resize: none;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.section {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.section h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.pillInput {
+  width: min(100%, 264px);
+  min-height: 24px;
+  padding: 5px 16px;
+  border-radius: var(--repo-radius-pill);
+  background: var(--repo-gray-100);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.detailSection {
+  display: grid;
+  gap: 6px;
+  padding-top: 10px;
+  margin-top: 12px;
+  border-top: 1px dashed var(--repo-gray-300);
+}
+
+.detailSection h4 {
+  margin: 0;
+  color: var(--repo-gray-400);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.listInput {
+  height: 52px;
+  resize: none;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.pageContentInput {
+  min-height: 64px;
+  margin-top: 12px;
+  resize: none;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  .sheet {
+    min-height: 640px;
+  }
+
+  .sheetHeader {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+  }
+
+  .nameInput {
+    font-size: 20px;
+  }
+}

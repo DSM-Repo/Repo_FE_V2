@@ -47,6 +47,22 @@
   --repo-font-title-large-size: 48px;
   --repo-font-title-large-line-height: 120%;
 
+  --repo-font-display-small-weight: 600;
+  --repo-font-display-small-size: 52px;
+  --repo-font-display-small-line-height: 120%;
+
+  --repo-font-display-medium-weight: 600;
+  --repo-font-display-medium-size: 64px;
+  --repo-font-display-medium-line-height: 120%;
+
+  --repo-font-display-large-weight: 700;
+  --repo-font-display-large-size: 84px;
+  --repo-font-display-large-line-height: 120%;
+
+  --repo-font-display-mega-weight: 600;
+  --repo-font-display-mega-size: 96px;
+  --repo-font-display-mega-line-height: 120%;
+
   --repo-font-resume-small-weight: 600;
   --repo-font-resume-small-size: 10px;
   --repo-font-resume-small-line-height: 120%;
@@ -126,6 +142,30 @@
   font-size: var(--repo-font-title-large-size);
   font-weight: var(--repo-font-title-large-weight);
   line-height: var(--repo-font-title-large-line-height);
+}
+
+.text-display-small {
+  font-size: var(--repo-font-display-small-size);
+  font-weight: var(--repo-font-display-small-weight);
+  line-height: var(--repo-font-display-small-line-height);
+}
+
+.text-display-medium {
+  font-size: var(--repo-font-display-medium-size);
+  font-weight: var(--repo-font-display-medium-weight);
+  line-height: var(--repo-font-display-medium-line-height);
+}
+
+.text-display-large {
+  font-size: var(--repo-font-display-large-size);
+  font-weight: var(--repo-font-display-large-weight);
+  line-height: var(--repo-font-display-large-line-height);
+}
+
+.text-display-mega {
+  font-size: var(--repo-font-display-mega-size);
+  font-weight: var(--repo-font-display-mega-weight);
+  line-height: var(--repo-font-display-mega-line-height);
 }
 
 .text-resume-small {

@@ -1,6 +1,120 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('auth login route', () => {
+  test('routes a successful student login to the student home view', async ({ page }) => {
+    await page.route('**/user/login', async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          accessToken: 'student-access-token',
+          refreshToken: 'student-refresh-token',
+          tokenType: 'Bearer',
+        }),
+        contentType: 'application/json',
+        headers: {
+          'access-control-allow-origin': '*',
+        },
+        status: 200,
+      })
+    })
+
+    await page.goto('/login')
+    await page.getByLabel('이메일').fill('student@dsm.hs.kr')
+    await page.getByLabel('비밀번호', { exact: true }).fill('repo-password')
+    await page.getByRole('button', { name: '로그인' }).click()
+
+    await expect(page).toHaveURL(/\/home$/)
+    const mainNavigation = page.getByRole('navigation', { name: '주요 메뉴' })
+    await expect(mainNavigation.getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
+    await expect(mainNavigation.getByRole('link', { name: '학생 관리' })).toHaveCount(0)
+  })
+
+  test('keeps the student header when a student opens the library', async ({ page }) => {
+    await page.route('**/user/login', async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          accessToken: 'student-access-token',
+          refreshToken: 'student-refresh-token',
+          tokenType: 'Bearer',
+        }),
+        contentType: 'application/json',
+        headers: {
+          'access-control-allow-origin': '*',
+        },
+        status: 200,
+      })
+    })
+
+    await page.goto('/login')
+    await page.getByLabel('이메일').fill('student@dsm.hs.kr')
+    await page.getByLabel('비밀번호', { exact: true }).fill('repo-password')
+    await page.getByRole('button', { name: '로그인' }).click()
+    await page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link', { name: '도서관' }).click()
+
+    await expect(page).toHaveURL(/\/library$/)
+    const mainNavigation = page.getByRole('navigation', { name: '주요 메뉴' })
+    await expect(mainNavigation.getByRole('link', { name: '도서관' })).toHaveAttribute('aria-current', 'page')
+    await expect(mainNavigation.getByRole('link', { name: '홈' })).toHaveAttribute('href', '/home')
+    await expect(mainNavigation.getByRole('link', { name: '학생 관리' })).toHaveCount(0)
+  })
+
+  test('routes a successful teacher login mode to student management', async ({ page }) => {
+    await page.route('**/user/login', async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          accessToken: 'teacher-access-token',
+          refreshToken: 'teacher-refresh-token',
+          tokenType: 'Bearer',
+        }),
+        contentType: 'application/json',
+        headers: {
+          'access-control-allow-origin': '*',
+        },
+        status: 200,
+      })
+    })
+
+    await page.goto('/login')
+    await page.getByRole('button', { name: '선생님으로 전환하기' }).click()
+    await page.getByLabel('이메일').fill('teacher@dsm.hs.kr')
+    await page.getByLabel('비밀번호', { exact: true }).fill('repo-password')
+    await page.getByRole('button', { name: '로그인' }).click()
+
+    await expect(page).toHaveURL(/\/students$/)
+    await expect(page.getByRole('heading', { level: 1, name: '학생 관리' })).toBeVisible()
+    const mainNavigation = page.getByRole('navigation', { name: '주요 메뉴' })
+    await expect(mainNavigation.getByRole('link', { name: '학생 관리' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  test('keeps the teacher header when a teacher opens the library', async ({ page }) => {
+    await page.route('**/user/login', async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          accessToken: 'teacher-access-token',
+          refreshToken: 'teacher-refresh-token',
+          tokenType: 'Bearer',
+        }),
+        contentType: 'application/json',
+        headers: {
+          'access-control-allow-origin': '*',
+        },
+        status: 200,
+      })
+    })
+
+    await page.goto('/login')
+    await page.getByRole('button', { name: '선생님으로 전환하기' }).click()
+    await page.getByLabel('이메일').fill('teacher@dsm.hs.kr')
+    await page.getByLabel('비밀번호', { exact: true }).fill('repo-password')
+    await page.getByRole('button', { name: '로그인' }).click()
+    await page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link', { name: '도서관' }).click()
+
+    await expect(page).toHaveURL(/\/library$/)
+    const mainNavigation = page.getByRole('navigation', { name: '주요 메뉴' })
+    await expect(mainNavigation.getByRole('link', { name: '도서관' })).toHaveAttribute('aria-current', 'page')
+    await expect(mainNavigation.getByRole('link', { name: '학생 관리' })).toHaveAttribute('href', '/students')
+    await expect(mainNavigation.getByRole('link', { name: '홈' })).toHaveCount(0)
+  })
+
   test('renders the student login view and switches to teacher login', async ({ page }) => {
     await page.goto('/login')
 

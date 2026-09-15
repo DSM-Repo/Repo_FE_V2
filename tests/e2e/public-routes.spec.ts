@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('public route smoke', () => {
-  test('redirects the public home route to login', async ({ page }) => {
+  test('renders the public landing page', async ({ page }) => {
     await page.goto('/')
 
-    await expect(page).toHaveURL(/\/login$/)
-    await expect(page.getByRole('heading', { name: '학생 로그인' })).toBeVisible()
+    await expect(page).toHaveURL('/')
+    await expect(page.getByRole('heading', { name: /이력서, 온라인으로/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Repo 사용하기' }).first()).toBeVisible()
   })
 
   test('does not render a public portfolio slug without loaded data', async ({ request }) => {

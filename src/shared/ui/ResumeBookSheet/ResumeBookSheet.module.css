@@ -1,22 +1,22 @@
 .sheet {
-  width: 423px;
-  height: 599px;
+  width: var(--resume-book-sheet-width, 423px);
+  height: var(--resume-book-sheet-height, 599px);
   overflow: hidden;
-  padding: 20px;
+  padding: var(--resume-book-sheet-padding, 20px);
   color: var(--repo-text-black);
   background: var(--repo-gray-50);
 }
 
 .sheetHeader {
   display: grid;
-  grid-template-columns: 50px minmax(0, 1fr) 47px;
-  gap: 13px;
+  grid-template-columns: var(--resume-book-sheet-avatar-size, 50px) minmax(0, 1fr) var(--resume-book-sheet-qr-size, 47px);
+  gap: var(--resume-book-sheet-header-gap, 13px);
   align-items: start;
 }
 
 .profileImage {
-  width: 47px;
-  height: 47px;
+  width: var(--resume-book-sheet-avatar-size, 47px);
+  height: var(--resume-book-sheet-avatar-size, 47px);
   border-radius: var(--repo-radius-pill);
   background:
     radial-gradient(circle at 58% 42%, #ffffff 0 8px, #d7d7d7 9px 10px, transparent 11px),
@@ -65,8 +65,8 @@
 }
 
 .qrCode {
-  width: 47px;
-  height: 47px;
+  width: var(--resume-book-sheet-qr-size, 47px);
+  height: var(--resume-book-sheet-qr-size, 47px);
   margin-left: auto;
   background:
     linear-gradient(90deg, #000 50%, transparent 0) 0 0 / 9px 9px,
