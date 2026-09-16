@@ -118,7 +118,7 @@ export default function ResumeBookPage() {
       if (!accessToken) {
         setLoadState({
           kind: 'failure',
-          message: '로그인 후 도서관을 이용할 수 있습니다.',
+          message: '공개된 포트폴리오 문서가 없습니다.',
         })
         return
       }
