@@ -24,8 +24,15 @@ const teacherNavigationItems = [
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
 
+const STUDENT_SEARCH_PAGE_SIZE = 20
+
 type LibraryPageContentProps = {
   readonly showsLoadError: boolean
+}
+
+type StudentSearchCursor = {
+  readonly key: string
+  readonly page: number
 }
 
 type LibraryLoadState =
@@ -114,10 +121,16 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
   const [loadState, setLoadState] = useState<LibraryLoadState>({ kind: 'loading' })
   const [searchKeyword, setSearchKeyword] = useState('')
   const [studentSearchState, setStudentSearchState] = useState<StudentSearchState>({ kind: 'loading' })
+  const [studentSearchCursor, setStudentSearchCursor] = useState<StudentSearchCursor>({ key: '', page: 0 })
+  const [isLoadingMoreStudents, setIsLoadingMoreStudents] = useState(false)
   const selectedDate = parseSelectedDate(searchParams.get('date'))
   const navigationItems = role === 'teacher' ? teacherNavigationItems : studentNavigationItems
   const libraryBooks = loadState.kind === 'success' ? loadState.books.map(toLibraryBookCard) : []
   const normalizedSearchKeyword = searchKeyword.trim()
+  const studentSearchKey = selectedDate === undefined ? '' : `${selectedDate}:${normalizedSearchKeyword}`
+  const studentSearchPage = studentSearchCursor.key === studentSearchKey ? studentSearchCursor.page : 0
+  const canLoadMoreStudents =
+    studentSearchState.kind === 'success' && studentSearchState.students.length < studentSearchState.totalElements
 
   useEffect(() => {
     let ignoresResult = false
@@ -174,23 +187,36 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
         return
       }
 
-      setStudentSearchState({ kind: 'loading' })
+      if (studentSearchPage === 0) {
+        setIsLoadingMoreStudents(false)
+        setStudentSearchState({ kind: 'loading' })
+      } else {
+        setIsLoadingMoreStudents(true)
+      }
+
       const result = await searchLibraryStudents({
         accessToken,
         date: selectedDate,
         keyword: normalizedSearchKeyword,
+        page: studentSearchPage,
+        size: STUDENT_SEARCH_PAGE_SIZE,
       })
 
       if (ignoresResult) {
         return
       }
 
+      setIsLoadingMoreStudents(false)
+
       if (result.kind === 'success') {
-        setStudentSearchState({
+        setStudentSearchState((currentState) => ({
           kind: 'success',
-          students: result.students,
+          students:
+            studentSearchPage === 0 || currentState.kind !== 'success'
+              ? result.students
+              : [...currentState.students, ...result.students],
           totalElements: result.totalElements,
-        })
+        }))
         return
       }
 
@@ -205,7 +231,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     return () => {
       ignoresResult = true
     }
-  }, [accessToken, normalizedSearchKeyword, selectedDate])
+  }, [accessToken, normalizedSearchKeyword, selectedDate, studentSearchPage])
 
   return (
     <main className={styles.page}>
@@ -282,6 +308,21 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                     />
                   ))
                 : null}
+              {canLoadMoreStudents ? (
+                <button
+                  className={styles.loadMoreButton}
+                  disabled={isLoadingMoreStudents}
+                  type="button"
+                  onClick={() =>
+                    setStudentSearchCursor({
+                      key: studentSearchKey,
+                      page: studentSearchPage + 1,
+                    })
+                  }
+                >
+                  {isLoadingMoreStudents ? '불러오는 중' : '더 보기'}
+                </button>
+              ) : null}
             </div>
           </section>
         )}

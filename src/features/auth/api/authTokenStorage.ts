@@ -17,9 +17,18 @@ export function getSavedAuthRole(): AuthLoginRole | undefined {
 }
 
 export function getSavedAccessToken(): string | undefined {
-  const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)?.trim()
+  try {
+    const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)?.trim()
 
-  return accessToken || undefined
+    return accessToken || undefined
+  } catch (error) {
+    if (error instanceof DOMException || error instanceof Error) {
+      console.warn('저장된 인증 토큰을 읽지 못했습니다.', error)
+      return undefined
+    }
+
+    throw error
+  }
 }
 
 export function saveAuthRole(role: AuthLoginRole) {

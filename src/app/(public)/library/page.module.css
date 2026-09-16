@@ -96,6 +96,39 @@
   gap: var(--space-3);
 }
 
+.loadMoreButton {
+  justify-self: center;
+  min-width: 120px;
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: 8px;
+  color: var(--repo-gray-50);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  cursor: pointer;
+  transition:
+    background 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.loadMoreButton:hover:not(:disabled) {
+  background: var(--repo-bg-main-lighter);
+}
+
+.loadMoreButton:disabled {
+  color: var(--repo-gray-500);
+  cursor: wait;
+}
+
+.loadMoreButton:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 3px;
+}
+
 .toastLayer {
   position: absolute;
   z-index: 10;

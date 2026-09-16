@@ -144,6 +144,61 @@ test.describe('public route smoke', () => {
     await expect(page.getByRole('link', { name: /오혜민/ })).toBeVisible()
   })
 
+  test('loads the next public student search page when more students exist', async ({ page }) => {
+    const firstPageStudents = Array.from({ length: 20 }, (_, index) => ({
+      major: '백엔드',
+      studentId: index + 1,
+      studentName: `학생${index + 1}`,
+    }))
+
+    await page.addInitScript(
+      ({ key, value }) => window.localStorage.setItem(key, value),
+      { key: accessTokenStorageKey, value: testAccessToken },
+    )
+    await page.route('http://127.0.0.1:8080/library', async (route) => {
+      await route.fulfill({
+        body: JSON.stringify([{ cohort: 9, date: 2026, year: 3 }]),
+        contentType: 'application/json',
+        headers: {
+          'access-control-allow-origin': '*',
+        },
+        status: 200,
+      })
+    })
+    await page.route('http://127.0.0.1:8080/library/search?*', async (route) => {
+      const url = new URL(route.request().url())
+      const pageNumber = url.searchParams.get('page')
+
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
+      expect(url.searchParams.get('date')).toBe('2026')
+      expect(url.searchParams.get('size')).toBe('20')
+
+      await route.fulfill({
+        body: JSON.stringify({
+          content:
+            pageNumber === '1'
+              ? [{ major: '백엔드', studentId: 21, studentName: '학생21' }]
+              : firstPageStudents,
+          totalElements: 21,
+        }),
+        contentType: 'application/json',
+        headers: {
+          'access-control-allow-origin': '*',
+        },
+        status: 200,
+      })
+    })
+
+    await page.goto('/library?date=2026')
+
+    await expect(page.getByRole('link', { name: '학생1 백엔드 이력서 보기' })).toBeVisible()
+    await expect(page.getByRole('link', { name: /학생21/ })).toHaveCount(0)
+    await page.getByRole('button', { name: '더 보기' }).click()
+
+    await expect(page.getByRole('link', { name: /학생21/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: '더 보기' })).toHaveCount(0)
+  })
+
   test('renders one public library resume from the student detail API', async ({ page }) => {
     await page.addInitScript(
       ({ key, value }) => window.localStorage.setItem(key, value),
