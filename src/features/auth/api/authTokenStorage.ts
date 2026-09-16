@@ -16,6 +16,21 @@ export function getSavedAuthRole(): AuthLoginRole | undefined {
   return isAuthLoginRole(role) ? role : undefined
 }
 
+export function getSavedAccessToken(): string | undefined {
+  try {
+    const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)?.trim()
+
+    return accessToken || undefined
+  } catch (error) {
+    if (error instanceof DOMException || error instanceof Error) {
+      console.warn('저장된 인증 토큰을 읽지 못했습니다.', error)
+      return undefined
+    }
+
+    throw error
+  }
+}
+
 export function saveAuthRole(role: AuthLoginRole) {
   window.localStorage.setItem(AUTH_LOGIN_ROLE_STORAGE_KEY, role)
 }

@@ -21,6 +21,7 @@ const tscArgs = [
   'tests/unit/feedbackApi.test.ts',
   'tests/unit/feedbackApiFallback.test.ts',
   'tests/unit/internalHref.test.ts',
+  'tests/unit/libraryApi.test.ts',
   'tests/unit/resumeApi.test.ts',
   'src/features/auth/api/authApi.ts',
   'src/features/auth/api/authApi.types.ts',
@@ -28,6 +29,9 @@ const tscArgs = [
   'src/features/feedback/api/feedbackApi.ts',
   'src/features/feedback/api/feedbackApi.types.ts',
   'src/features/feedback/api/feedbackHttpClient.ts',
+  'src/features/library/api/libraryApi.ts',
+  'src/features/library/api/libraryApi.types.ts',
+  'src/features/library/api/libraryHttpClient.ts',
   'src/features/resume/api/resumeApi.ts',
   'src/features/resume/api/resumeApi.types.ts',
   'src/features/resume/api/resumeHttpClient.ts',
@@ -65,5 +69,9 @@ writeFileSync(
   emittedFeedbackApiPath,
   emittedFeedbackApi.replace("from './feedbackHttpClient'", "from './feedbackHttpClient.js'"),
 )
+
+const emittedLibraryApiPath = join(outDir, 'src/features/library/api/libraryApi.js')
+const emittedLibraryApi = readFileSync(emittedLibraryApiPath, 'utf8')
+writeFileSync(emittedLibraryApiPath, emittedLibraryApi.replace("from './libraryHttpClient'", "from './libraryHttpClient.js'"))
 
 run('node', ['--test', `${outDir}/tests/unit/*.test.js`])

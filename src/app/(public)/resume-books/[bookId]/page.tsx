@@ -1,322 +1,213 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 
-import type { AppHeaderItem } from '@/shared/ui'
-import { AppHeader, Button, CheckboxOption, SearchField, Tag, Toast } from '@/shared/ui'
+import { getSavedAccessToken } from '@/features/auth/api'
+import {
+  getLibraryResumeByStudentId,
+  type LibraryResume,
+  type LibraryResumePage,
+} from '@/features/library/api'
+import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
+import { AppHeader, ResumeBookSheet } from '@/shared/ui'
 
 import styles from './page.module.css'
 
 const navigationItems = [
-  { href: '/majors', label: '전공 관리', value: 'majors' },
-  { href: '/students', label: '학생 관리', value: 'students' },
+  { href: '/home', label: '홈', value: 'home' },
+  { href: '/resume', label: '이력서 관리', value: 'resume' },
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
 
-type MajorFilterOption = {
-  readonly chipLabel: string
-  readonly label: string
-  readonly value: string
+type ResumeLoadState =
+  | {
+      readonly kind: 'failure'
+      readonly message: string
+    }
+  | {
+      readonly kind: 'loading'
+    }
+  | {
+      readonly kind: 'success'
+      readonly resume: LibraryResume
+    }
+
+function subscribeToSavedAccessToken(onStoreChange: () => void) {
+  window.addEventListener('storage', onStoreChange)
+
+  return () => window.removeEventListener('storage', onStoreChange)
 }
 
-const majorFilters: readonly MajorFilterOption[] = []
-
-const classFilters = ['1반', '2반', '3반', '4반'] as const
-const hasDocument = false
-
-type MajorFilterValue = MajorFilterOption['value']
-type ClassFilterValue = (typeof classFilters)[number]
-
-type FilterState = {
-  readonly classes: readonly ClassFilterValue[]
-  readonly majors: readonly MajorFilterValue[]
+function getSavedAccessTokenSnapshot(): string | undefined {
+  return getSavedAccessToken()
 }
 
-type FilterSectionKey = 'classes' | 'majors'
-
-const defaultFilters: FilterState = {
-  classes: [],
-  majors: [],
+function getServerAccessTokenSnapshot(): string | undefined {
+  return undefined
 }
 
-const defaultExpandedFilterSections: Record<FilterSectionKey, boolean> = {
-  classes: false,
-  majors: false,
+function parseStudentId(value: string): number | undefined {
+  const studentId = Number(value)
+
+  if (!Number.isSafeInteger(studentId) || studentId <= 0) {
+    return undefined
+  }
+
+  return studentId
+}
+
+function toHeadline(resume: LibraryResume) {
+  return `${resume.date}학년도 ${resume.cohort}기 ${resume.year}학년`
+}
+
+function toSheetContent(resume: LibraryResume, page: LibraryResumePage): ResumeBookSheetContent {
+  return {
+    activities: [],
+    contests: [],
+    email: resume.email,
+    headline: toHeadline(resume),
+    introduce: resume.introduce,
+    majorName: resume.majorName,
+    name: resume.name,
+    pageContent: page.content,
+    portfolioUrl: resume.portfolioUrl,
+    projects: [],
+    skills: [],
+  }
+}
+
+function sortResumePages(pages: readonly LibraryResumePage[]) {
+  return [...pages].sort((leftPage, rightPage) => leftPage.index - rightPage.index)
 }
 
 export default function ResumeBookPage() {
-  const router = useRouter()
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [showsDownloadToast, setShowsDownloadToast] = useState(false)
-  const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters)
-  const [draftFilters, setDraftFilters] = useState<FilterState>(defaultFilters)
-  const [expandedFilterSections, setExpandedFilterSections] = useState(defaultExpandedFilterSections)
-  const downloadToastTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const params = useParams<{ readonly bookId: string }>()
+  const accessToken = useSyncExternalStore(
+    subscribeToSavedAccessToken,
+    getSavedAccessTokenSnapshot,
+    getServerAccessTokenSnapshot,
+  )
+  const studentId = parseStudentId(params.bookId)
+  const [loadState, setLoadState] = useState<ResumeLoadState>({ kind: 'loading' })
+  const pageState: ResumeLoadState = useMemo(
+    () =>
+      studentId === undefined
+        ? {
+            kind: 'failure',
+            message: '학생 ID 형식이 올바르지 않습니다.',
+          }
+        : loadState,
+    [loadState, studentId],
+  )
+  const sortedPages = useMemo(
+    () => (pageState.kind === 'success' ? sortResumePages(pageState.resume.pages) : []),
+    [pageState],
+  )
 
   useEffect(() => {
-    return () => {
-      if (downloadToastTimerId.current) {
-        clearTimeout(downloadToastTimerId.current)
-      }
-    }
-  }, [])
-
-  const openFilter = () => {
-    setDraftFilters(appliedFilters)
-    setExpandedFilterSections(defaultExpandedFilterSections)
-    setIsFilterOpen(true)
-  }
-
-  const closeFilter = () => {
-    setDraftFilters(appliedFilters)
-    setIsFilterOpen(false)
-  }
-
-  const applyFilters = () => {
-    setAppliedFilters(draftFilters)
-    setIsFilterOpen(false)
-  }
-
-  const resetFilters = () => {
-    const emptyFilters: FilterState = { classes: [], majors: [] }
-
-    setDraftFilters(emptyFilters)
-    setAppliedFilters(emptyFilters)
-  }
-
-  const toggleFilterSection = (sectionKey: FilterSectionKey) => {
-    setExpandedFilterSections((currentSections) => ({
-      ...currentSections,
-      [sectionKey]: !currentSections[sectionKey],
-    }))
-  }
-
-  const removeMajorFilter = (value: MajorFilterValue) => {
-    setAppliedFilters((currentFilters) => ({
-      ...currentFilters,
-      majors: currentFilters.majors.filter((major) => major !== value),
-    }))
-  }
-
-  const removeClassFilter = (value: ClassFilterValue) => {
-    setAppliedFilters((currentFilters) => ({
-      ...currentFilters,
-      classes: currentFilters.classes.filter((className) => className !== value),
-    }))
-  }
-
-  const toggleMajorFilter = (value: MajorFilterValue, checked: boolean) => {
-    setDraftFilters((currentFilters) => ({
-      ...currentFilters,
-      majors: checked
-        ? [...currentFilters.majors, value]
-        : currentFilters.majors.filter((major) => major !== value),
-    }))
-  }
-
-  const toggleClassFilter = (value: ClassFilterValue, checked: boolean) => {
-    setDraftFilters((currentFilters) => ({
-      ...currentFilters,
-      classes: checked
-        ? [...currentFilters.classes, value]
-        : currentFilters.classes.filter((className) => className !== value),
-    }))
-  }
-
-  const showDownloadToast = () => {
-    if (!hasDocument) {
+    if (studentId === undefined) {
       return
     }
 
-    if (downloadToastTimerId.current) {
-      clearTimeout(downloadToastTimerId.current)
+    let ignoresResult = false
+    const validStudentId = studentId
+
+    async function loadResume() {
+      if (!accessToken) {
+        setLoadState({
+          kind: 'failure',
+          message: '공개된 포트폴리오 문서가 없습니다.',
+        })
+        return
+      }
+
+      setLoadState({ kind: 'loading' })
+      const result = await getLibraryResumeByStudentId({ accessToken, studentId: validStudentId })
+
+      if (ignoresResult) {
+        return
+      }
+
+      if (result.kind === 'success') {
+        setLoadState({
+          kind: 'success',
+          resume: result.resume,
+        })
+        return
+      }
+
+      setLoadState({
+        kind: 'failure',
+        message: result.message,
+      })
     }
 
-    setShowsDownloadToast(true)
-    downloadToastTimerId.current = setTimeout(() => {
-      setShowsDownloadToast(false)
-      downloadToastTimerId.current = null
-    }, 2500)
-  }
+    void loadResume()
 
-  const hasAppliedFilters = appliedFilters.majors.length > 0 || appliedFilters.classes.length > 0
-  const normalizedSearchQuery = searchQuery.trim()
-  const showsEmptySearchResult = normalizedSearchQuery.length > 0
+    return () => {
+      ignoresResult = true
+    }
+  }, [accessToken, studentId])
 
   return (
-    <main className={styles.page} data-filter-open={isFilterOpen}>
+    <main className={styles.page}>
       <AppHeader activeItem="library" items={navigationItems} />
       <section className={styles.workspace} aria-label="레주메북 포트폴리오 열람">
         <div className={styles.contentLayer}>
-          <div className={styles.toolbar}>
-            <div className={styles.searchGroup}>
-              <button
-                aria-label="필터 열기"
-                aria-expanded={isFilterOpen}
-                aria-haspopup="dialog"
-                className={styles.filterButton}
-                type="button"
-                onClick={openFilter}
-              >
-                <FilterIcon />
-              </button>
-              <SearchField
-                className={styles.searchField}
-                spellCheck={false}
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </div>
-            {hasDocument ? (
-              <Button className={styles.downloadButton} onClick={showDownloadToast}>
-                전체 PDF 다운로드
-              </Button>
-            ) : null}
-          </div>
-
-          {showsDownloadToast ? (
-            <div className={styles.toastLayer}>
-              <Toast variant="success">PDF 다운로드에 성공했습니다.</Toast>
-            </div>
-          ) : null}
-
-          {hasAppliedFilters && !showsEmptySearchResult ? (
-            <div className={styles.activeFilters} aria-label="적용된 필터">
-              {appliedFilters.classes.map((className) => (
-                <Tag key={className} removeLabel={`${className} 필터 삭제`} onRemove={() => removeClassFilter(className)}>
-                  {className}
-                </Tag>
-              ))}
-              {appliedFilters.majors.map((major) => {
-                const option = majorFilters.find((filter) => filter.value === major)
-
-                return option ? (
-                  <Tag key={major} removeLabel={`${option.chipLabel} 필터 삭제`} onRemove={() => removeMajorFilter(major)}>
-                    {option.chipLabel}
-                  </Tag>
-                ) : null
-              })}
-            </div>
-          ) : null}
-
-          {showsEmptySearchResult ? (
-            <SearchEmptyState searchQuery={normalizedSearchQuery} onReturn={() => router.push('/library')} />
-          ) : (
+          {pageState.kind === 'loading' ? (
             <section className={styles.emptyState} aria-live="polite">
-              <p className={styles.emptyMessage}>공개된 포트폴리오 문서가 없습니다.</p>
+              <p className={styles.emptyMessage}>공개 이력서를 불러오는 중입니다.</p>
             </section>
-          )}
+          ) : null}
+          {pageState.kind === 'failure' ? (
+            <section className={styles.emptyState} aria-live="polite">
+              <p className={styles.emptyMessage}>{pageState.message}</p>
+              <Link className={styles.returnButton} href="/library">
+                도서관 돌아가기
+              </Link>
+            </section>
+          ) : null}
+          {pageState.kind === 'success' ? (
+            <section className={styles.viewer} aria-labelledby="resume-book-title">
+              <header className={styles.resumeHeader}>
+                <Link className={styles.backLink} href={`/library?date=${pageState.resume.date}`}>
+                  {pageState.resume.date}학년도 목록
+                </Link>
+                <h1 className={styles.resumeTitle} id="resume-book-title">
+                  {pageState.resume.name} 이력서
+                </h1>
+                <p className={styles.resumeMeta}>
+                  {[pageState.resume.studentNumber, pageState.resume.majorName, pageState.resume.email]
+                    .filter(Boolean)
+                    .join(' | ')}
+                </p>
+              </header>
+              {sortedPages.length > 0 ? (
+                <>
+                  <div className={styles.sheets}>
+                    {sortedPages.map((page) => (
+                      <ResumeBookSheet
+                        ariaLabel={`${pageState.resume.name} 이력서 ${page.index + 1}쪽`}
+                        content={toSheetContent(pageState.resume, page)}
+                        key={page.id}
+                      />
+                    ))}
+                  </div>
+                  <p className={styles.pageIndicator}>
+                    <strong>{sortedPages.length}</strong>쪽 공개됨
+                  </p>
+                </>
+              ) : (
+                <section className={styles.emptyState} aria-live="polite">
+                  <p className={styles.emptyMessage}>공개된 포트폴리오 문서가 없습니다.</p>
+                </section>
+              )}
+            </section>
+          ) : null}
         </div>
-
-        {isFilterOpen ? (
-          <aside className={styles.filterPanel} role="dialog" aria-label="필터링" aria-modal="true">
-            <header className={styles.filterHeader}>
-              <h2>필터링</h2>
-              <button className={styles.closeButton} type="button" aria-label="필터 닫기" onClick={closeFilter}>
-                ×
-              </button>
-            </header>
-
-            <div className={styles.filterBody}>
-              <FilterSection
-                expanded={expandedFilterSections.majors}
-                title="전공"
-                onToggle={() => toggleFilterSection('majors')}
-              >
-                {majorFilters.map((filter) => (
-                  <CheckboxOption
-                    checked={draftFilters.majors.includes(filter.value)}
-                    key={filter.value}
-                    onCheckedChange={(checked) => toggleMajorFilter(filter.value, checked)}
-                  >
-                    {filter.label}
-                  </CheckboxOption>
-                ))}
-              </FilterSection>
-
-              <FilterSection
-                expanded={expandedFilterSections.classes}
-                title="반"
-                onToggle={() => toggleFilterSection('classes')}
-              >
-                {classFilters.map((className) => (
-                  <CheckboxOption
-                    checked={draftFilters.classes.includes(className)}
-                    key={className}
-                    onCheckedChange={(checked) => toggleClassFilter(className, checked)}
-                  >
-                    {className}
-                  </CheckboxOption>
-                ))}
-              </FilterSection>
-            </div>
-
-            <footer className={styles.filterActions}>
-              <Button className={styles.resetButton} variant="bordered-dark" onClick={resetFilters}>
-                초기화
-              </Button>
-              <Button className={styles.applyButton} onClick={applyFilters}>
-                적용하기
-              </Button>
-            </footer>
-          </aside>
-        ) : null}
       </section>
     </main>
-  )
-}
-
-function SearchEmptyState({
-  onReturn,
-  searchQuery,
-}: {
-  readonly onReturn: () => void
-  readonly searchQuery: string
-}) {
-  return (
-    <section className={styles.emptyState} aria-live="polite">
-      <p className={styles.emptyMessage}>
-        입력하신 &apos;{searchQuery}&apos;와(과) 일치하는 학생이 없습니다.
-        <br />
-        이름을 다시 확인해주세요.
-      </p>
-      <Button className={styles.returnButton} iconRight="chevron-right" variant="bordered-dark" onClick={onReturn}>
-        도서관 돌아가기
-      </Button>
-    </section>
-  )
-}
-
-function FilterSection({
-  children,
-  expanded,
-  onToggle,
-  title,
-}: {
-  readonly children: ReactNode
-  readonly expanded: boolean
-  readonly onToggle: () => void
-  readonly title: string
-}) {
-  return (
-    <section className={styles.filterSection}>
-      <button className={styles.filterSectionTitle} type="button" aria-expanded={expanded} onClick={onToggle}>
-        <span>{title}</span>
-        <span className={styles.filterSectionIcon} aria-hidden="true">
-          ⌃
-        </span>
-      </button>
-      {expanded ? <div className={styles.filterOptions}>{children}</div> : null}
-    </section>
-  )
-}
-
-function FilterIcon() {
-  return (
-    <svg aria-hidden="true" className={styles.filterIcon} fill="none" viewBox="0 0 24 24">
-      <path d="M4 5H20L14 12V19L10 17V12L4 5Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="2" />
-    </svg>
   )
 }

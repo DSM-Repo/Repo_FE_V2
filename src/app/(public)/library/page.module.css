@@ -54,6 +54,81 @@
   text-align: center;
 }
 
+.studentSearch {
+  display: grid;
+  gap: var(--space-6);
+  width: min(100%, 720px);
+  margin: var(--space-10) auto 0;
+}
+
+.studentSearchHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.backLink {
+  flex: 0 0 auto;
+  color: var(--repo-gray-400);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--repo-gray-50);
+}
+
+.backLink:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 3px;
+}
+
+.searchField.searchField {
+  width: min(100%, 360px);
+  min-height: 50px;
+}
+
+.studentRows {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.loadMoreButton {
+  justify-self: center;
+  min-width: 120px;
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: 8px;
+  color: var(--repo-gray-50);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  cursor: pointer;
+  transition:
+    background 120ms ease-out,
+    color 120ms ease-out;
+}
+
+.loadMoreButton:hover:not(:disabled) {
+  background: var(--repo-bg-main-lighter);
+}
+
+.loadMoreButton:disabled {
+  color: var(--repo-gray-500);
+  cursor: wait;
+}
+
+.loadMoreButton:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 3px;
+}
+
 .toastLayer {
   position: absolute;
   z-index: 10;
@@ -95,6 +170,15 @@
     margin-top: 47px;
   }
 
+  .studentSearchHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .searchField.searchField {
+    width: 100%;
+  }
+
   .toastLayer {
     top: 148px;
   }
@@ -112,7 +196,6 @@
 
 @media (min-width: 981px) {
   .page {
-    height: 100dvh;
-    overflow: hidden;
+    min-height: 100dvh;
   }
 }

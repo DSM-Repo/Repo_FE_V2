@@ -3,6 +3,7 @@ export {
   AUTH_ACCESS_TOKEN_STORAGE_KEY,
   AUTH_LOGIN_ROLE_STORAGE_KEY,
   AUTH_REFRESH_TOKEN_STORAGE_KEY,
+  getSavedAccessToken,
   getSavedAuthRole,
   saveAuthRole,
   saveAuthTokens,
