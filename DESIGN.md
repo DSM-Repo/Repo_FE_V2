@@ -158,8 +158,11 @@ All spacing derives from 4px.
 | --- | --- | --- | --- |
 | Micro | 120ms | ease-out | Button and row feedback |
 | Standard | 200ms | ease-in-out | Modal and selected state shifts |
+| Landing reveal | 480ms | cubic-bezier(0.2, 0, 0, 1) | Public landing hero line and section entry |
+| Landing scroll | IntersectionObserver reveal | cubic-bezier(0.2, 0, 0, 1) | Public landing sections revealed when entering the viewport |
 
-Only `transform`, `opacity`, background, border, and color transitions are used in this component pass.
+Only `transform`, `opacity`, `filter`, background, border, and color transitions are used in this component pass.
+Landing motion follows a Toss-style reveal pattern: line-level 16px y-offsets, fast opacity settling, nearly no blur, no decorative scale, and internal staggered groups. Reduced-motion users receive the fully settled layout without transform animation.
 
 ## 7. Depth & Surface
 
