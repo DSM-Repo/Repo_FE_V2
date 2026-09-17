@@ -27,7 +27,7 @@ export type AuthRequestResponse =
     }
 
 const AUTH_REQUEST_TIMEOUT_MS = 8_000
-const AUTH_API_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL?.trim()
+const AUTH_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 function getAuthApiConfig(): AuthApiConfig {
   if (!AUTH_API_BASE_URL) {

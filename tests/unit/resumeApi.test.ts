@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-process.env.NEXT_PUBLIC_AUTH_API_BASE_URL = 'https://api.example.test'
+process.env.NEXT_PUBLIC_API_BASE_URL = 'https://api.example.test'
 
 const resumeApi = await import('../../src/features/resume/api/resumeApi.js')
 

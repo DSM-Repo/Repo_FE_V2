@@ -17,7 +17,7 @@ pnpm install
 pnpm dev
 ```
 
-`NEXT_PUBLIC_AUTH_API_BASE_URL`은 로그인 화면이 호출할 auth API origin입니다. 브라우저에 노출되는 공개 설정이므로 비밀값을 넣지 않습니다.
+`NEXT_PUBLIC_API_BASE_URL`은 브라우저에서 모든 백엔드 API 요청을 보낼 origin입니다. 브라우저에 노출되는 공개 설정이므로 비밀값을 넣지 않습니다.
 
 ## Verification
 

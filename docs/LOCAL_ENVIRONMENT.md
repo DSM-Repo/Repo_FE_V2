@@ -38,7 +38,7 @@ Next.js 전환은 완료되었습니다. Playwright 설정은 별도 작업 단�
 
 | 변수명 | 예시 | 설명 |
 | --- | --- | --- |
-| `NEXT_PUBLIC_AUTH_API_BASE_URL` | `http://localhost:8080` | 브라우저에서 인증 요청을 보낼 백엔드 origin입니다. |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://52.78.201.218` | 브라우저에서 모든 백엔드 API 요청을 보낼 origin입니다. |
 
 `NEXT_PUBLIC_` 변수는 클라이언트 번들에 포함되는 공개 설정입니다. 토큰, 비밀번호, Workers Secret 같은 비밀값을 넣지 않습니다.
 

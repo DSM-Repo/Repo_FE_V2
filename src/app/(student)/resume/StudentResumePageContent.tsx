@@ -29,37 +29,19 @@ const navigationItems = [
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
 
-const sampleSheetContent = {
-  activities: [
-    { date: '2025.12.25', title: '제 1회 SCSC 온라인 해커톤 2위' },
-    { date: '2025.07.18', title: '2025 교내 해커톤 우수상' },
-  ],
-  contests: ['제4회 2026 블레이버스 MVP 개발 해커톤', '제 1회 SCSC온라인 해커톤', '2025 교내 해커톤'],
-  email: 'mare2mare6@gmail.com',
-  headline: 'Frontend Developer',
-  introTitle: '안녕하세요 저는 디자이너가 되고 싶은 인간입니다',
-  introduce:
-    '새벽자습너무 졸립니다. 뭘 적지.. 한줄소개는 이런식으로 쭉쭉 들어갑니다. 줄넘김 가능합니다. 자기소개자기소개자기소개자기소개자기소개자기소개.. 최대 4줄이면 충분하겠지만..',
-  majorName: '2415 인공지능소프트웨어과',
-  name: '최하은',
-  portfolioUrl: 'https://repo.dev',
-  projects: ['TEENS', '스플', 'D-ask', 'DSG', 'Studiz', 'hear', '마음씨', 'Repo'],
-  skills: ['Figma', 'illustrator', 'photoshop'],
-} satisfies ResumeBookSheetContent
-
 const defaultResumeDraft = {
-  activities: sampleSheetContent.activities,
-  contests: sampleSheetContent.contests,
-  email: sampleSheetContent.email,
-  headline: sampleSheetContent.headline,
-  introTitle: sampleSheetContent.introTitle,
-  introduce: sampleSheetContent.introduce,
-  majorName: sampleSheetContent.majorName,
-  name: sampleSheetContent.name,
+  activities: [],
+  contests: [],
+  email: '',
+  headline: '전공미정',
+  introTitle: '',
+  introduce: '',
+  majorName: '2415 인공지능소프트웨어과',
+  name: '홍길동',
   pageContents: ['', ''],
-  portfolioUrl: sampleSheetContent.portfolioUrl,
-  projects: sampleSheetContent.projects,
-  skills: sampleSheetContent.skills,
+  portfolioUrl: '',
+  projects: [],
+  skills: [],
 } satisfies ResumeDraft
 
 const feedbackItems = [
@@ -138,13 +120,17 @@ type ActionFeedback = {
   readonly tone: 'error' | 'neutral'
 }
 
-function toInitialViewMode(mode: string | null): ViewMode {
+function toInitialViewMode(mode: string | null, resumeId: string): ViewMode {
   if (mode === 'edit') {
     return 'edit'
   }
 
   if (mode === 'feedback') {
     return 'feedback'
+  }
+
+  if (!resumeId.trim()) {
+    return 'edit'
   }
 
   return 'view'
@@ -219,6 +205,26 @@ function toResumePages(draft: ResumeDraft, resume?: Resume): readonly ResumePage
   })
 }
 
+function toSavedDraftResume(input: {
+  readonly draft: ResumeDraft
+  readonly pages: readonly ResumePage[]
+  readonly resumeId: string
+  readonly savedAt: string
+}): Resume {
+  return {
+    id: input.resumeId,
+    introduce: input.draft.introduce,
+    isPublic: false,
+    majorName: input.draft.majorName,
+    name: input.draft.name,
+    pages: input.pages,
+    portfolioUrl: input.draft.portfolioUrl,
+    profileImageUrl: '',
+    savedAt: input.savedAt,
+    submissionStatus: 'ONGOING',
+  }
+}
+
 function toFailureMessage(result: Exclude<ResumeDetailResult, { readonly kind: 'success' }>) {
   return result.message
 }
@@ -239,7 +245,7 @@ export function StudentResumePageContent() {
   const searchParams = useSearchParams()
   const requestedResumeId = searchParams.get('resumeId') ?? ''
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' })
-  const [viewMode, setViewMode] = useState<ViewMode>(() => toInitialViewMode(searchParams.get('mode')))
+  const [viewMode, setViewMode] = useState<ViewMode>(() => toInitialViewMode(searchParams.get('mode'), requestedResumeId))
   const [draft, setDraft] = useState<ResumeDraft>(defaultResumeDraft)
   const [visibilitySubmitState, setVisibilitySubmitState] = useState<VisibilitySubmitState>('idle')
   const [submissionSubmitState, setSubmissionSubmitState] = useState<SubmissionSubmitState>('idle')
@@ -455,6 +461,16 @@ export function StudentResumePageContent() {
           savedAt: result.savedAt,
         },
       })
+    } else {
+      setLoadState({
+        kind: 'success',
+        resume: toSavedDraftResume({
+          draft,
+          pages,
+          resumeId: result.resumeId,
+          savedAt: result.savedAt,
+        }),
+      })
     }
 
     setActionFeedback({
@@ -533,24 +549,6 @@ export function StudentResumePageContent() {
 
           {isEditing ? (
             <>
-              <div className={styles.editorToolbar} aria-label="이력서 편집 도구">
-                <button className={styles.iconTool} type="button" aria-label="이전">
-                  <Icon name="chevron-left" />
-                </button>
-                <button className={styles.iconTool} type="button" aria-label="다음">
-                  <Icon name="chevron-right" />
-                </button>
-                <span className={styles.toolDivider} aria-hidden="true" />
-                <button className={styles.textTool} type="button" aria-label="텍스트 추가">
-                  T
-                </button>
-                <button className={styles.textTool} type="button" aria-label="이미지 추가">
-                  □
-                </button>
-                <button className={styles.textTool} type="button" aria-label="업로드">
-                  ↑
-                </button>
-              </div>
               <label className={styles.feedbackToggle}>
                 <span>피드백 보기</span>
                 <input

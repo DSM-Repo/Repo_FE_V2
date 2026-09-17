@@ -32,8 +32,7 @@ export type ResumeRequestResponse =
     }
 
 const RESUME_REQUEST_TIMEOUT_MS = 8_000
-const RESUME_API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ?? process.env.NEXT_PUBLIC_AUTH_API_BASE_URL?.trim()
+const RESUME_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 function getResumeApiConfig(): ResumeApiConfig {
   if (!RESUME_API_BASE_URL) {

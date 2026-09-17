@@ -102,12 +102,12 @@
 }
 
 .documentSheet {
-  --resume-book-sheet-width: clamp(270px, 28.7vw, 551px);
-  --resume-book-sheet-height: clamp(382px, 40.6vw, 780px);
-  --resume-book-sheet-padding: clamp(16px, 1.25vw, 24px);
-  --resume-book-sheet-avatar-size: clamp(38px, 2.92vw, 56px);
-  --resume-book-sheet-qr-size: clamp(38px, 2.92vw, 56px);
-  --resume-book-sheet-header-gap: 16px;
+  --resume-book-sheet-width: clamp(340px, 44vw, 900px);
+  --resume-book-sheet-height: clamp(481px, 62.2vw, 1273px);
+  --resume-book-sheet-padding: clamp(24px, 2.08vw, 40px);
+  --resume-book-sheet-avatar-size: clamp(44px, 4.68vw, 96px);
+  --resume-book-sheet-qr-size: clamp(44px, 4.79vw, 92px);
+  --resume-book-sheet-header-gap: clamp(14px, 1.46vw, 28px);
 }
 
 .pageArrow {
@@ -386,8 +386,8 @@
   }
 
   .documentSheet {
-    --resume-book-sheet-width: clamp(250px, 35vw, 430px);
-    --resume-book-sheet-height: clamp(354px, 49.5vw, 609px);
+    --resume-book-sheet-width: clamp(360px, 43vw, 560px);
+    --resume-book-sheet-height: clamp(510px, 61vw, 792px);
   }
 }
 
@@ -409,7 +409,14 @@
   }
 
   .spread {
+    align-items: flex-start;
     flex-wrap: wrap;
+  }
+
+  .documentSheet {
+    --resume-book-sheet-width: min(551px, calc(100vw - 48px));
+    --resume-book-sheet-height: auto;
+    --resume-book-sheet-min-height: 780px;
   }
 
   .feedbackPanel {
@@ -439,6 +446,7 @@
   .documentSheet {
     --resume-book-sheet-width: min(551px, calc(100vw - 32px));
     --resume-book-sheet-height: auto;
+    --resume-book-sheet-min-height: 640px;
   }
 
   .editorToolbar {

@@ -28,8 +28,7 @@ export type LibraryRequestResponse =
 const LIBRARY_REQUEST_TIMEOUT_MS = 8_000
 const DEFAULT_LIBRARY_SEARCH_PAGE = 0
 const DEFAULT_LIBRARY_SEARCH_SIZE = 20
-const LIBRARY_API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ?? process.env.NEXT_PUBLIC_AUTH_API_BASE_URL?.trim()
+const LIBRARY_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 function getLibraryApiConfig(): LibraryApiConfig {
   if (!LIBRARY_API_BASE_URL) {

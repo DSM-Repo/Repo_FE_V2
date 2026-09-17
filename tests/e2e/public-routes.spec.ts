@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 const accessTokenStorageKey = 'repo.auth.accessToken'
+const apiBaseUrl = 'http://52.78.201.218'
 const testAccessToken = 'e2e-access-token'
 
 test.describe('public route smoke', () => {
@@ -35,7 +36,7 @@ test.describe('public route smoke', () => {
       ({ key, value }) => window.localStorage.setItem(key, value),
       { key: accessTokenStorageKey, value: testAccessToken },
     )
-    await page.route('http://127.0.0.1:8080/library', async (route) => {
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
       expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
 
       await route.fulfill({
@@ -73,7 +74,7 @@ test.describe('public route smoke', () => {
       ({ key, value }) => window.localStorage.setItem(key, value),
       { key: accessTokenStorageKey, value: testAccessToken },
     )
-    await page.route('http://127.0.0.1:8080/library', async (route) => {
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
       expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
 
       await route.fulfill({
@@ -103,7 +104,7 @@ test.describe('public route smoke', () => {
       ({ key, value }) => window.localStorage.setItem(key, value),
       { key: accessTokenStorageKey, value: testAccessToken },
     )
-    await page.route('http://127.0.0.1:8080/library', async (route) => {
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
       await route.fulfill({
         body: JSON.stringify([{ cohort: 9, date: 2026, year: 3 }]),
         contentType: 'application/json',
@@ -113,7 +114,7 @@ test.describe('public route smoke', () => {
         status: 200,
       })
     })
-    await page.route('http://127.0.0.1:8080/library/search?*', async (route) => {
+    await page.route(`${apiBaseUrl}/library/search?*`, async (route) => {
       const url = new URL(route.request().url())
 
       expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
@@ -155,7 +156,7 @@ test.describe('public route smoke', () => {
       ({ key, value }) => window.localStorage.setItem(key, value),
       { key: accessTokenStorageKey, value: testAccessToken },
     )
-    await page.route('http://127.0.0.1:8080/library', async (route) => {
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
       await route.fulfill({
         body: JSON.stringify([{ cohort: 9, date: 2026, year: 3 }]),
         contentType: 'application/json',
@@ -165,7 +166,7 @@ test.describe('public route smoke', () => {
         status: 200,
       })
     })
-    await page.route('http://127.0.0.1:8080/library/search?*', async (route) => {
+    await page.route(`${apiBaseUrl}/library/search?*`, async (route) => {
       const url = new URL(route.request().url())
       const pageNumber = url.searchParams.get('page')
 
@@ -204,7 +205,7 @@ test.describe('public route smoke', () => {
       ({ key, value }) => window.localStorage.setItem(key, value),
       { key: accessTokenStorageKey, value: testAccessToken },
     )
-    await page.route('http://127.0.0.1:8080/library/1', async (route) => {
+    await page.route(`${apiBaseUrl}/library/1`, async (route) => {
       expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
 
       await route.fulfill({
@@ -216,8 +217,8 @@ test.describe('public route smoke', () => {
           majorName: '백엔드',
           name: '김태균',
           pages: [
-            { content: 'API 설계와 테스트 자동화를 좋아합니다.', id: 'page-1', index: 0 },
-            { content: '협업 과정에서 문서화를 중요하게 생각합니다.', id: 'page-2', index: 1 },
+            { content: '# API 설계와 테스트 자동화를 좋아합니다.\n**문서화**를 중요하게 생각합니다.', id: 'page-1', index: 0 },
+            { content: '## 협업 과정\n진행 과정을 기록합니다.', id: 'page-2', index: 1 },
           ],
           portfolioUrl: 'https://portfolio.example.test',
           profileImageUrl: 'https://cdn.example.test/profile.png',
@@ -239,7 +240,8 @@ test.describe('public route smoke', () => {
 
     await expect(page.getByRole('heading', { name: '김태균 이력서' })).toBeVisible()
     await expect(page.getByText('30101 | 백엔드 | student@example.com')).toBeVisible()
-    await expect(page.getByText('API 설계와 테스트 자동화를 좋아합니다.')).toBeVisible()
-    await expect(page.getByText('협업 과정에서 문서화를 중요하게 생각합니다.')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'API 설계와 테스트 자동화를 좋아합니다.' })).toBeVisible()
+    await expect(page.getByText('문서화')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 2, name: '협업 과정' })).toBeVisible()
   })
 })

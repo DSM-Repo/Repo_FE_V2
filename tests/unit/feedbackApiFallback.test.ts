@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 process.env.NEXT_PUBLIC_API_BASE_URL = '   '
-process.env.NEXT_PUBLIC_AUTH_API_BASE_URL = 'https://fallback-api.example.test'
 
 const feedbackApi = await import('../../src/features/feedback/api/feedbackApi.js')
 
@@ -12,27 +11,9 @@ test.afterEach(() => {
   globalThis.fetch = originalFetch
 })
 
-test('createFeedback falls back to auth API base URL when feedback API base URL is blank', async () => {
-  let requestedUrl = ''
-
-  globalThis.fetch = async (input) => {
-    requestedUrl = String(input)
-
-    return new Response(
-      JSON.stringify({
-        createdAt: '2026-09-14T10:05:42.213Z',
-        feedbackId: 'feedback-id',
-        pageId: 'page-id',
-        x: 0.1,
-        y: 0.2,
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        status: 201,
-      },
-    )
+test('createFeedback returns configuration-error when API base URL is blank', async () => {
+  globalThis.fetch = async () => {
+    throw new Error('fetch should not be called without API base URL')
   }
 
   const result = await feedbackApi.createFeedback({
@@ -44,6 +25,8 @@ test('createFeedback falls back to auth API base URL when feedback API base URL 
     y: 0.2,
   })
 
-  assert.equal(requestedUrl, 'https://fallback-api.example.test/feedback')
-  assert.equal(result.kind, 'success')
+  assert.deepEqual(result, {
+    kind: 'configuration-error',
+    message: 'API 주소가 설정되지 않았습니다.',
+  })
 })
