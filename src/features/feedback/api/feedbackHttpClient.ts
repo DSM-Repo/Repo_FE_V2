@@ -10,6 +10,7 @@ import type {
   FeedbackPendingInput,
   FeedbackUpdateInput,
 } from './feedbackApi.types'
+import { sendAuthenticatedRequest } from '../../auth/api/authenticatedRequest'
 
 type FeedbackApiConfig =
   | {
@@ -76,33 +77,12 @@ async function sendFeedbackRequest(path: string, init: RequestInit): Promise<Fee
     }
   }
 
-  const controller = new AbortController()
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), FEEDBACK_REQUEST_TIMEOUT_MS)
-  const complete = () => globalThis.clearTimeout(timeoutId)
-
-  try {
-    const response = await fetch(buildFeedbackUrl(config.baseUrl, path), {
-      ...init,
-      signal: controller.signal,
-    })
-
-    return {
-      complete,
-      kind: 'response',
-      value: response,
-    }
-  } catch (error) {
-    complete()
-
-    if (error instanceof DOMException || error instanceof TypeError) {
-      return {
-        kind: 'network-error',
-        message: '피드백 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
-      }
-    }
-
-    throw error
-  }
+  return sendAuthenticatedRequest({
+    init,
+    networkErrorMessage: '피드백 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    timeoutMs: FEEDBACK_REQUEST_TIMEOUT_MS,
+    url: buildFeedbackUrl(config.baseUrl, path),
+  })
 }
 
 export async function postFeedbackRequest(input: FeedbackCreateInput): Promise<FeedbackRequestResponse> {

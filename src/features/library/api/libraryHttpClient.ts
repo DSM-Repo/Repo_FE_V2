@@ -1,6 +1,7 @@
 'use client'
 
 import type { LibraryAuthInput, LibraryResumeInput, LibrarySearchInput } from './libraryApi.types'
+import { sendAuthenticatedRequest } from '../../auth/api/authenticatedRequest'
 
 type LibraryApiConfig =
   | {
@@ -95,33 +96,12 @@ async function sendLibraryRequest(path: string, init: RequestInit): Promise<Libr
     }
   }
 
-  const controller = new AbortController()
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), LIBRARY_REQUEST_TIMEOUT_MS)
-  const complete = () => globalThis.clearTimeout(timeoutId)
-
-  try {
-    const response = await fetch(buildLibraryUrl(config.baseUrl, path).href, {
-      ...init,
-      signal: controller.signal,
-    })
-
-    return {
-      complete,
-      kind: 'response',
-      value: response,
-    }
-  } catch (error) {
-    complete()
-
-    if (error instanceof DOMException || error instanceof TypeError) {
-      return {
-        kind: 'network-error',
-        message: '도서관 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
-      }
-    }
-
-    throw error
-  }
+  return sendAuthenticatedRequest({
+    init,
+    networkErrorMessage: '도서관 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    timeoutMs: LIBRARY_REQUEST_TIMEOUT_MS,
+    url: buildLibraryUrl(config.baseUrl, path).href,
+  })
 }
 
 function buildAuthorizationHeader(input: LibraryAuthInput) {
@@ -154,32 +134,13 @@ export async function getLibrarySearchRequest(input: LibrarySearchInput): Promis
     }
   }
 
-  const controller = new AbortController()
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), LIBRARY_REQUEST_TIMEOUT_MS)
-  const complete = () => globalThis.clearTimeout(timeoutId)
-
-  try {
-    const response = await fetch(buildLibrarySearchUrl(config.baseUrl, input), {
+  return sendAuthenticatedRequest({
+    init: {
       headers: buildAuthorizationHeader(input),
       method: 'GET',
-      signal: controller.signal,
-    })
-
-    return {
-      complete,
-      kind: 'response',
-      value: response,
-    }
-  } catch (error) {
-    complete()
-
-    if (error instanceof DOMException || error instanceof TypeError) {
-      return {
-        kind: 'network-error',
-        message: '도서관 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
-      }
-    }
-
-    throw error
-  }
+    },
+    networkErrorMessage: '도서관 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    timeoutMs: LIBRARY_REQUEST_TIMEOUT_MS,
+    url: buildLibrarySearchUrl(config.baseUrl, input),
+  })
 }
