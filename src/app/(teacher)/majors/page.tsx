@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { getSavedAccessToken } from '@/features/auth/api'
+import { createMajor, deleteMajor, getMajors, type Major as ApiMajor } from '@/features/major/api'
 import type { AppHeaderItem, MajorListItem, ToastVariant } from '@/shared/ui'
 import { AppHeader, Button, Dropdown, LinkRow, MajorInputGroup, MajorList, Toast } from '@/shared/ui'
 
@@ -14,8 +16,8 @@ const navigationItems = [
 ] satisfies readonly AppHeaderItem[]
 
 type Major = MajorListItem & {
-  readonly createdAt: string
   readonly hasStudents: boolean
+  readonly majorId: number
 }
 
 type Student = {
@@ -51,11 +53,14 @@ const classFilters = [
   { label: '4반', value: '4' },
 ]
 
-const createdAtFormatter = new Intl.DateTimeFormat('ko-KR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-})
+function toMajor(major: ApiMajor): Major {
+  return {
+    hasStudents: false,
+    id: String(major.majorId),
+    majorId: major.majorId,
+    name: major.name,
+  }
+}
 
 export default function TeacherMajorsPage() {
   const [majors, setMajors] = useState<readonly Major[]>(initialMajors)
@@ -65,7 +70,9 @@ export default function TeacherMajorsPage() {
   const [selectedYear, setSelectedYear] = useState('all')
   const [selectedClass, setSelectedClass] = useState('all')
   const [notice, setNotice] = useState<Notice | null>(null)
-  const nextMajorId = useRef(initialMajors.length + 1)
+  const [isLoadingMajors, setIsLoadingMajors] = useState(false)
+  const [isSubmittingMajor, setIsSubmittingMajor] = useState(false)
+  const [isDeletingMajor, setIsDeletingMajor] = useState(false)
   const noticeTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const selectedMajor = majors.find((major) => major.id === selectedMajorId) ?? null
@@ -89,7 +96,7 @@ export default function TeacherMajorsPage() {
     }
   }, [])
 
-  const showNotice = (nextNotice: Notice) => {
+  const showNotice = useCallback((nextNotice: Notice) => {
     if (noticeTimerId.current) {
       clearTimeout(noticeTimerId.current)
     }
@@ -99,6 +106,46 @@ export default function TeacherMajorsPage() {
       setNotice(null)
       noticeTimerId.current = null
     }, 2500)
+  }, [])
+
+  const loadMajors = useCallback(async () => {
+    const accessToken = getSavedAccessToken()
+
+    if (!accessToken) {
+      showNotice({ message: '로그인 후 전공 목록을 조회할 수 있습니다.', variant: 'error' })
+      return
+    }
+
+    setIsLoadingMajors(true)
+
+    const result = await getMajors({ accessToken })
+
+    setIsLoadingMajors(false)
+
+    if (result.kind !== 'success') {
+      showNotice({ message: result.message, variant: 'error' })
+      return
+    }
+
+    setMajors(result.value.majors.map(toMajor))
+    setSelectedMajorId((currentId) => {
+      if (!currentId || result.value.majors.some((major) => String(major.majorId) === currentId)) {
+        return currentId
+      }
+
+      return null
+    })
+  }, [showNotice])
+
+  useEffect(() => {
+    void Promise.resolve().then(loadMajors)
+  }, [loadMajors])
+
+  const toFailureNotice = (message: string): Notice => {
+    return {
+      message,
+      variant: 'error',
+    }
   }
 
   const selectMajor = (majorId: string) => {
@@ -107,30 +154,71 @@ export default function TeacherMajorsPage() {
     setSelectedClass('all')
   }
 
-  const addMajor = () => {
+  const addMajor = async () => {
     const normalizedMajorName = majorName.trim()
+
+    if (isSubmittingMajor) {
+      return
+    }
 
     if (!normalizedMajorName) {
       setMajorNameError('전공명을 입력해 주세요.')
       return
     }
 
-    const newMajor: Major = {
-      createdAt: createdAtFormatter.format(new Date()),
-      hasStudents: false,
-      id: `major-${nextMajorId.current}`,
-      name: normalizedMajorName,
+    const accessToken = getSavedAccessToken()
+
+    if (!accessToken) {
+      showNotice({ message: '로그인 후 전공을 추가할 수 있습니다.', variant: 'error' })
+      return
     }
 
-    nextMajorId.current += 1
-    setMajors((currentMajors) => [...currentMajors, newMajor])
+    setIsSubmittingMajor(true)
+
+    const result = await createMajor({
+      accessToken,
+      name: normalizedMajorName,
+    })
+
+    setIsSubmittingMajor(false)
+
+    if (result.kind !== 'success') {
+      showNotice(toFailureNotice(result.message))
+      return
+    }
+
+    const newMajor = toMajor(result.major)
+
+    setMajors((currentMajors) => [...currentMajors, newMajor].sort((left, right) => left.name.localeCompare(right.name, 'ko')))
+    setSelectedMajorId(newMajor.id)
     setMajorName('')
     setMajorNameError(undefined)
     showNotice({ message: '전공이 추가되었습니다.', variant: 'success' })
   }
 
-  const deleteSelectedMajor = () => {
-    if (!selectedMajor) {
+  const deleteSelectedMajor = async () => {
+    if (!selectedMajor || isDeletingMajor) {
+      return
+    }
+
+    const accessToken = getSavedAccessToken()
+
+    if (!accessToken) {
+      showNotice({ message: '로그인 후 전공을 삭제할 수 있습니다.', variant: 'error' })
+      return
+    }
+
+    setIsDeletingMajor(true)
+
+    const result = await deleteMajor({
+      accessToken,
+      majorId: selectedMajor.majorId,
+    })
+
+    setIsDeletingMajor(false)
+
+    if (result.kind !== 'success') {
+      showNotice(toFailureNotice(result.message))
       return
     }
 
@@ -161,7 +249,7 @@ export default function TeacherMajorsPage() {
           noValidate
           onSubmit={(event) => {
             event.preventDefault()
-            addMajor()
+            void addMajor()
           }}
         >
           <MajorInputGroup
@@ -175,8 +263,8 @@ export default function TeacherMajorsPage() {
               }
             }}
           />
-          <Button className={styles.addButton} iconRight="plus" type="submit">
-            전공 추가
+          <Button className={styles.addButton} disabled={isSubmittingMajor} iconRight="plus" type="submit">
+            {isSubmittingMajor ? '추가 중' : '전공 추가'}
           </Button>
         </form>
 
@@ -194,7 +282,7 @@ export default function TeacherMajorsPage() {
             <section className={styles.detailPanel} aria-labelledby="selected-major-title">
               <header className={styles.detailHeader}>
                 <h2 id="selected-major-title">{selectedMajor.name}</h2>
-                <p>생성일 : {selectedMajor.createdAt}</p>
+                <p>학생들이 선택할 수 있는 전공입니다.</p>
               </header>
 
               <div className={styles.detailDivider} />
@@ -240,11 +328,13 @@ export default function TeacherMajorsPage() {
                 )}
               </div>
 
-              <button className={styles.deleteButton} type="button" onClick={deleteSelectedMajor}>
+              <button className={styles.deleteButton} disabled={isDeletingMajor} type="button" onClick={() => void deleteSelectedMajor()}>
                 <TrashIcon />
-                <span>전공 삭제</span>
+                <span>{isDeletingMajor ? '삭제 중' : '전공 삭제'}</span>
               </button>
             </section>
+          ) : isLoadingMajors ? (
+            <p className={styles.emptyMessage}>전공 목록을 불러오는 중입니다.</p>
           ) : null}
         </div>
       </section>
