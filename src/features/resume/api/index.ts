@@ -14,6 +14,8 @@ export type {
   ResumeDetailInput,
   ResumeDetailResult,
   ResumePage,
+  ResumePageType,
+  ResumeProject,
   ResumeSave,
   ResumeSaveInput,
   ResumeSaveResult,

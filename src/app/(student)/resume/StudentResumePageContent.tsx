@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-import { AUTH_ACCESS_TOKEN_STORAGE_KEY } from '@/features/auth/api'
+import { getSavedAccessToken } from '@/features/auth/api'
 import {
   autoSaveResume,
   cancelResumeSubmission,
@@ -17,6 +17,7 @@ import {
   type ResumeSubmissionResult,
   type ResumeVisibilityResult,
 } from '@/features/resume/api'
+import { getUserMe, type UserMe, type UserMeResult } from '@/features/user/api'
 import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
 import { AppHeader, Icon, ResumeBookSheet } from '@/shared/ui'
 
@@ -40,6 +41,9 @@ const defaultResumeDraft = {
   name: '홍길동',
   pageContents: ['', ''],
   portfolioUrl: '',
+  projectEndDate: '',
+  projectImageUrl: '',
+  projectStartDate: '',
   projects: [],
   skills: [],
 } satisfies ResumeDraft
@@ -138,18 +142,20 @@ function toInitialViewMode(mode: string | null, resumeId: string): ViewMode {
 
 function toResumeBookSheetContent(resume: Resume, pageIndex: number): ResumeBookSheetContent {
   const page = resume.pages.find((resumePage) => resumePage.index === pageIndex) ?? resume.pages[pageIndex] ?? resume.pages[0]
+  const project = page?.project
 
   return {
     activities: [],
-    contests: [],
+    contests: project?.summary ? [project.summary] : [],
+    email: resume.email,
     headline: resume.submissionStatus,
     introduce: resume.introduce,
     majorName: resume.majorName,
     name: resume.name,
     pageContent: page?.content,
     portfolioUrl: resume.portfolioUrl,
-    projects: [],
-    skills: [],
+    projects: project?.name ? [project.name] : [],
+    skills: resume.skills,
   }
 }
 
@@ -173,15 +179,23 @@ function toDraftSheetContent(draft: ResumeDraft, pageIndex: 0 | 1): ResumeBookSh
 function toResumeDraft(resume: Resume): ResumeDraft {
   const firstPage = resume.pages.find((resumePage) => resumePage.index === 0) ?? resume.pages[0]
   const secondPage = resume.pages.find((resumePage) => resumePage.index === 1) ?? resume.pages[1]
+  const project = secondPage?.project
 
   return {
     ...defaultResumeDraft,
+    contests: project?.summary ? [project.summary] : [],
+    email: resume.email,
     headline: resume.submissionStatus,
     introduce: resume.introduce,
     majorName: resume.majorName,
     name: resume.name,
     pageContents: [firstPage?.content ?? '', secondPage?.content ?? ''],
     portfolioUrl: resume.portfolioUrl,
+    projectEndDate: project?.endDate ?? '',
+    projectImageUrl: project?.imageUrl ?? '',
+    projectStartDate: project?.startDate ?? '',
+    projects: project?.name ? [project.name] : [],
+    skills: resume.skills,
   }
 }
 
@@ -196,11 +210,29 @@ function toSheetSpreadContent(resume: Resume | undefined, draft: ResumeDraft): r
 function toResumePages(draft: ResumeDraft, resume?: Resume): readonly ResumePage[] {
   return draft.pageContents.map((content, index) => {
     const existingPage = resume?.pages.find((resumePage) => resumePage.index === index) ?? resume?.pages[index]
+    const type = index === 1 ? 'PROJECT' : 'PROFILE'
+
+    if (type === 'PROJECT') {
+      return {
+        content,
+        id: existingPage?.id ?? `page-${index + 1}`,
+        index,
+        project: {
+          endDate: draft.projectEndDate,
+          imageUrl: draft.projectImageUrl,
+          name: draft.projects[0] ?? '',
+          startDate: draft.projectStartDate,
+          summary: draft.contests[0] ?? '',
+        },
+        type,
+      }
+    }
 
     return {
       content,
       id: existingPage?.id ?? `page-${index + 1}`,
       index,
+      type,
     }
   })
 }
@@ -212,6 +244,7 @@ function toSavedDraftResume(input: {
   readonly savedAt: string
 }): Resume {
   return {
+    email: input.draft.email,
     id: input.resumeId,
     introduce: input.draft.introduce,
     isPublic: false,
@@ -221,6 +254,7 @@ function toSavedDraftResume(input: {
     portfolioUrl: input.draft.portfolioUrl,
     profileImageUrl: '',
     savedAt: input.savedAt,
+    skills: input.draft.skills,
     submissionStatus: 'ONGOING',
   }
 }
@@ -241,6 +275,22 @@ function isSubmittedResume(resume: Resume) {
   return resume.submissionStatus !== 'ONGOING'
 }
 
+function toUserFailureMessage(result: Exclude<UserMeResult, { readonly kind: 'success' }>) {
+  return result.message
+}
+
+function toUserMajorLine(user: UserMe) {
+  return `${user.classInfo.schoolNumber} ${user.major ?? ''}`.trim()
+}
+
+function applyUserToDraft(draft: ResumeDraft, user: UserMe): ResumeDraft {
+  return {
+    ...draft,
+    majorName: toUserMajorLine(user),
+    name: user.name,
+  }
+}
+
 export function StudentResumePageContent() {
   const searchParams = useSearchParams()
   const requestedResumeId = searchParams.get('resumeId') ?? ''
@@ -251,8 +301,41 @@ export function StudentResumePageContent() {
   const [submissionSubmitState, setSubmissionSubmitState] = useState<SubmissionSubmitState>('idle')
   const [saveSubmitState, setSaveSubmitState] = useState<SaveSubmitState>('idle')
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback>()
+  const [userLoadMessage, setUserLoadMessage] = useState<string>()
   const viewedResumeIdRef = useRef<string | undefined>(undefined)
   const requestedResumeIdRef = useRef<string | undefined>(undefined)
+
+  useEffect(() => {
+    const accessToken = getSavedAccessToken()
+
+    if (!accessToken) {
+      return
+    }
+
+    let isActive = true
+
+    const loadUser = async () => {
+      const result = await getUserMe({ accessToken })
+
+      if (!isActive) {
+        return
+      }
+
+      if (result.kind === 'success') {
+        setDraft((currentDraft) => applyUserToDraft(currentDraft, result.user))
+        setUserLoadMessage(undefined)
+        return
+      }
+
+      setUserLoadMessage(toUserFailureMessage(result))
+    }
+
+    void loadUser()
+
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   const loadResume = useCallback(async (nextResumeId: string) => {
     const trimmedResumeId = nextResumeId.trim()
@@ -261,7 +344,7 @@ export function StudentResumePageContent() {
       return
     }
 
-    const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)
+    const accessToken = getSavedAccessToken()
 
     if (!accessToken) {
       setLoadState({ kind: 'failure', message: '로그인 후 이력서를 조회할 수 있습니다.' })
@@ -307,7 +390,7 @@ export function StudentResumePageContent() {
       return
     }
 
-    const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)
+    const accessToken = getSavedAccessToken()
 
     if (!accessToken) {
       setActionFeedback({ message: '로그인 후 공개 여부를 변경할 수 있습니다.', tone: 'error' })
@@ -360,7 +443,7 @@ export function StudentResumePageContent() {
       return
     }
 
-    const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)
+    const accessToken = getSavedAccessToken()
 
     if (!accessToken) {
       setActionFeedback({ message: '로그인 후 이력서를 제출하거나 취소할 수 있습니다.', tone: 'error' })
@@ -411,7 +494,7 @@ export function StudentResumePageContent() {
       return
     }
 
-    const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)
+    const accessToken = getSavedAccessToken()
 
     if (!accessToken) {
       setActionFeedback({ message: '로그인 후 이력서를 저장할 수 있습니다.', tone: 'error' })
@@ -432,9 +515,11 @@ export function StudentResumePageContent() {
         })
       : await saveResume({
           accessToken,
+          email: draft.email,
           introduce: draft.introduce,
           pages,
           portfolioUrl: draft.portfolioUrl,
+          skills: draft.skills,
         })
 
     setSaveSubmitState('idle')
@@ -455,10 +540,12 @@ export function StudentResumePageContent() {
         kind: 'success',
         resume: {
           ...activeResume,
+          email: draft.email,
           introduce: draft.introduce,
           pages,
           portfolioUrl: draft.portfolioUrl,
           savedAt: result.savedAt,
+          skills: draft.skills,
         },
       })
     } else {
@@ -574,6 +661,11 @@ export function StudentResumePageContent() {
               role={actionFeedback.tone === 'error' ? 'alert' : 'status'}
             >
               {actionFeedback.message}
+            </p>
+          ) : null}
+          {userLoadMessage ? (
+            <p className={styles.statusMessage} role="alert">
+              {userLoadMessage}
             </p>
           ) : null}
 

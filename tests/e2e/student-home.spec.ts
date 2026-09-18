@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+const apiBaseUrl = 'http://52.78.201.218'
+
 test.describe('student home page', () => {
   test('renders the student dashboard content and navigation state', async ({ page }) => {
     await page.goto('/home')
@@ -18,6 +20,80 @@ test.describe('student home page', () => {
       'aria-valuenow',
       '0',
     )
+  })
+
+  test('renders logged-in user info and resume progress from API', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem('repo.auth.accessToken', 'access-token')
+    })
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      expect(route.request().headers()['authorization']).toBe('Bearer access-token')
+
+      await route.fulfill({
+        body: JSON.stringify({
+          classInfo: {
+            classNumber: 4,
+            grade: 2,
+            number: 15,
+            schoolNumber: '2415',
+          },
+          introduce: '나만의 이력서를 작성 중입니다.',
+          major: '인공지능소프트웨어과',
+          name: '홍길동',
+          profileImageUrl: '',
+          progress: {
+            sections: [
+              { completed: true, key: 'PROFILE', name: '내 정보' },
+              { completed: false, key: 'ACTIVITY', name: '활동' },
+              { completed: false, key: 'PROJECT', name: '프로젝트' },
+            ],
+            totalPercent: 35,
+          },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.goto('/home')
+
+    await expect(page.getByRole('heading', { level: 1, name: /홍길동/ })).toBeVisible()
+    await expect(page.getByText('2415 인공지능소프트웨어과')).toBeVisible()
+    await expect(page.getByText('나만의 이력서를 작성 중입니다.')).toBeVisible()
+    await expect(page.getByRole('progressbar', { name: '이력서 완성도 35%' })).toHaveAttribute('aria-valuenow', '35')
+    await expect(page.getByText('완료')).toHaveCount(1)
+  })
+
+  test('redirects to login when auth reissue fails after protected API rejection', async ({ page }) => {
+    await page.addInitScript(() => {
+      if (window.localStorage.getItem('repo.e2e.seeded-auth')) {
+        return
+      }
+
+      window.localStorage.setItem('repo.auth.accessToken', 'expired-token')
+      window.localStorage.setItem('repo.auth.refreshToken', 'expired-refresh-token')
+      window.localStorage.setItem('repo.e2e.seeded-auth', 'true')
+    })
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      expect(route.request().headers()['authorization']).toBe('Bearer expired-token')
+
+      await route.fulfill({
+        status: 401,
+      })
+    })
+    await page.route(`${apiBaseUrl}/user/refresh`, async (route) => {
+      expect(route.request().headers()['refresh-token']).toBe('expired-refresh-token')
+
+      await route.fulfill({
+        status: 403,
+      })
+    })
+
+    await page.goto('/home')
+
+    await expect(page).toHaveURL(/\/login$/)
+    await expect(page.evaluate(() => window.localStorage.getItem('repo.auth.accessToken'))).resolves.toBeNull()
+    await expect(page.evaluate(() => window.localStorage.getItem('repo.auth.refreshToken'))).resolves.toBeNull()
   })
 
   test('links to resume management and library from shortcut cards', async ({ page }) => {

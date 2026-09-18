@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+const apiBaseUrl = 'http://52.78.201.218'
+
 test.describe('student resume management', () => {
   test('opens a blank resume in write mode by default', async ({ page }) => {
     await page.setViewportSize({ height: 1080, width: 1920 })
@@ -78,16 +80,53 @@ test.describe('student resume management', () => {
     await page.addInitScript(() => {
       window.localStorage.setItem('repo.auth.accessToken', 'access-token')
     })
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          classInfo: {
+            classNumber: 1,
+            grade: 2,
+            number: 10,
+            schoolNumber: '2110',
+          },
+          introduce:
+            '새벽자습너무 졸립니다. 뭘 적지.. 한줄소개는 이런식으로 쭉쭉 들어갑니다. 줄넘김 가능합니다. 자기소개자기소개자기소개자기소개자기소개자기소개..',
+          major: null,
+          name: '오혜민',
+          profileImageUrl: null,
+          progress: {
+            sections: [],
+            totalPercent: 0,
+          },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
     await page.route('**/resume/save', async (route) => {
       const requestBody: unknown = route.request().postDataJSON()
 
       expect(requestBody).toEqual({
+        email: 'student@example.com',
         introduce: '새 이력서를 작성합니다.',
         pages: [
-          { content: '# 첫 번째 페이지 내용\n**굵은 내용**', id: 'page-1', index: 0 },
-          { content: '', id: 'page-2', index: 1 },
+          { content: '# 첫 번째 페이지 내용\n**굵은 내용**', id: 'page-1', index: 0, type: 'PROFILE' },
+          {
+            content: '## 프로젝트 회고',
+            id: 'page-2',
+            index: 1,
+            project: {
+              endDate: '2026-09-18',
+              imageUrl: '',
+              name: 'Repo',
+              startDate: '2026-09-01',
+              summary: '디지털 레주메 플랫폼',
+            },
+            type: 'PROJECT',
+          },
         ],
         portfolioUrl: '',
+        skills: ['React', 'TypeScript'],
       })
 
       await route.fulfill({
@@ -100,9 +139,18 @@ test.describe('student resume management', () => {
     await page.setViewportSize({ height: 1080, width: 1920 })
     await page.goto('/resume')
 
-    await page.getByLabel('이름').first().fill('김레포')
+    await expect(page.getByLabel('이름').first()).toHaveValue('오혜민')
+    await expect(page.getByLabel('학번 전공')).toHaveValue('2110')
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('')
+    await page.getByLabel('이메일').first().fill('student@example.com')
     await page.getByLabel('자기소개 내용').first().fill('새 이력서를 작성합니다.')
+    await page.getByRole('textbox', { name: '기술스택' }).fill('React, TypeScript')
     await page.getByLabel('1쪽 추가 내용').fill('# 첫 번째 페이지 내용\n**굵은 내용**')
+    await page.getByLabel('프로젝트 이름').fill('Repo')
+    await page.getByLabel('프로젝트 시작일').fill('2026-09-01')
+    await page.getByLabel('프로젝트 종료일').fill('2026-09-18')
+    await page.getByRole('textbox', { name: '프로젝트 소개' }).fill('디지털 레주메 플랫폼')
+    await page.getByLabel('2쪽 추가 내용').fill('## 프로젝트 회고')
     await page.getByRole('button', { exact: true, name: '저장' }).click()
 
     await expect(page.getByRole('status')).toContainText('이력서를 저장했습니다.')

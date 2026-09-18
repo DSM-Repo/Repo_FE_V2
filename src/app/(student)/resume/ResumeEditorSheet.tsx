@@ -19,6 +19,9 @@ export type ResumeDraft = {
   readonly name: string
   readonly pageContents: readonly [string, string]
   readonly portfolioUrl: string
+  readonly projectEndDate: string
+  readonly projectImageUrl: string
+  readonly projectStartDate: string
   readonly projects: readonly string[]
   readonly skills: readonly string[]
 }
@@ -85,9 +88,27 @@ export function ResumeEditorSheet({ className, draft, onChange, pageIndex }: Res
               value={toLineText(draft.projects)}
             />
             <div className={styles.projectDateRow}>
-              <span>202X-XX-XX</span>
+              <label className={styles.srOnly} htmlFor="resume-project-start-date">
+                프로젝트 시작일
+              </label>
+              <input
+                className={styles.projectDateInput}
+                id="resume-project-start-date"
+                onChange={(event) => updateDraft({ projectStartDate: event.target.value })}
+                placeholder="202X-XX-XX"
+                value={draft.projectStartDate}
+              />
               <span aria-hidden="true">~</span>
-              <span>202X-XX-XX</span>
+              <label className={styles.srOnly} htmlFor="resume-project-end-date">
+                프로젝트 종료일
+              </label>
+              <input
+                className={styles.projectDateInput}
+                id="resume-project-end-date"
+                onChange={(event) => updateDraft({ projectEndDate: event.target.value })}
+                placeholder="202X-XX-XX"
+                value={draft.projectEndDate}
+              />
               <button className={styles.inlineIconButton} type="button" aria-label="프로젝트 기간 수정">
                 ✎
               </button>

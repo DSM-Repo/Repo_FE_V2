@@ -7,6 +7,7 @@ import type {
   ResumeSubmissionInput,
   ResumeVisibilityInput,
 } from './resumeApi.types'
+import { sendAuthenticatedRequest } from '../../auth/api/authenticatedRequest'
 
 type ResumeApiConfig =
   | {
@@ -73,33 +74,12 @@ async function sendResumeRequest(path: string, init: RequestInit): Promise<Resum
     }
   }
 
-  const controller = new AbortController()
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), RESUME_REQUEST_TIMEOUT_MS)
-  const complete = () => globalThis.clearTimeout(timeoutId)
-
-  try {
-    const response = await fetch(buildResumeUrl(config.baseUrl, path), {
-      ...init,
-      signal: controller.signal,
-    })
-
-    return {
-      complete,
-      kind: 'response',
-      value: response,
-    }
-  } catch (error) {
-    complete()
-
-    if (error instanceof DOMException || error instanceof TypeError) {
-      return {
-        kind: 'network-error',
-        message: '이력서 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
-      }
-    }
-
-    throw error
-  }
+  return sendAuthenticatedRequest({
+    init,
+    networkErrorMessage: '이력서 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    timeoutMs: RESUME_REQUEST_TIMEOUT_MS,
+    url: buildResumeUrl(config.baseUrl, path),
+  })
 }
 
 export async function getResumeRequest(input: ResumeDetailInput): Promise<ResumeRequestResponse> {
@@ -145,9 +125,11 @@ export async function postResumeSubmitCancelRequest(input: ResumeSubmissionInput
 export async function postResumeSaveRequest(input: ResumeSaveInput): Promise<ResumeRequestResponse> {
   return sendResumeRequest('resume/save', {
     body: JSON.stringify({
+      email: input.email,
       introduce: input.introduce,
       pages: input.pages,
       portfolioUrl: input.portfolioUrl,
+      skills: input.skills,
     }),
     headers: {
       Authorization: `Bearer ${input.accessToken}`,

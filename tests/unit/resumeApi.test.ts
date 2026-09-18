@@ -31,7 +31,7 @@ test('getResumeById sends the resume id with bearer auth and returns parsed resu
         isPublic: true,
         majorName: 'Frontend Developer',
         name: '홍길동',
-        pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+        pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
         portfolioUrl: 'https://repo.example.test/hong',
         profileImageUrl: 'https://repo.example.test/profile.png',
         savedAt: '2026-09-07T14:35:06.220Z',
@@ -57,15 +57,17 @@ test('getResumeById sends the resume id with bearer auth and returns parsed resu
   assert.deepEqual(result, {
     kind: 'success',
     resume: {
+      email: '',
       id: '66c73ec4c92f1d2d087e9012',
       introduce: '사용자 소개',
       isPublic: true,
       majorName: 'Frontend Developer',
       name: '홍길동',
-      pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+      pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
       portfolioUrl: 'https://repo.example.test/hong',
       profileImageUrl: 'https://repo.example.test/profile.png',
       savedAt: '2026-09-07T14:35:06.220Z',
+      skills: [],
       submissionStatus: 'ONGOING',
     },
   })
@@ -118,7 +120,7 @@ test('getResumeById keeps the request timeout active until the response body is 
           isPublic: true,
           majorName: 'Frontend Developer',
           name: '홍길동',
-          pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+          pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
           portfolioUrl: 'https://repo.example.test/hong',
           profileImageUrl: 'https://repo.example.test/profile.png',
           savedAt: '2026-09-07T14:35:06.220Z',
@@ -332,9 +334,11 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
 
   const result = await resumeApi.saveResume({
     accessToken: 'access-token',
+    email: 'student@example.test',
     introduce: '사용자 소개',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
     portfolioUrl: 'https://repo.example.test/hong',
+    skills: ['React', 'TypeScript'],
   })
 
   assert.equal(requestedUrl, 'https://api.example.test/resume/save')
@@ -344,9 +348,11 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
   assert.equal(
     requestedBody,
     JSON.stringify({
+      email: 'student@example.test',
       introduce: '사용자 소개',
-      pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+      pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
       portfolioUrl: 'https://repo.example.test/hong',
+      skills: ['React', 'TypeScript'],
     }),
   )
   assert.deepEqual(result, {
@@ -385,14 +391,14 @@ test('autoSaveResume sends pages with bearer auth and returns parsed auto-save s
 
   const result = await resumeApi.autoSaveResume({
     accessToken: 'access-token',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
   })
 
   assert.equal(requestedUrl, 'https://api.example.test/resume/auto-save')
   assert.equal(requestedMethod, 'POST')
   assert.equal(requestedAuthorization, 'Bearer access-token')
   assert.equal(requestedContentType, 'application/json')
-  assert.equal(requestedBody, JSON.stringify({ pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }] }))
+  assert.equal(requestedBody, JSON.stringify({ pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }] }))
   assert.deepEqual(result, {
     autoSaved: true,
     kind: 'success',
@@ -412,9 +418,11 @@ test('saveResume returns server-error when the response body is not save state',
 
   const result = await resumeApi.saveResume({
     accessToken: 'access-token',
+    email: 'student@example.test',
     introduce: '사용자 소개',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
     portfolioUrl: 'https://repo.example.test/hong',
+    skills: ['React', 'TypeScript'],
   })
 
   assert.deepEqual(result, {
@@ -434,7 +442,7 @@ test('autoSaveResume returns server-error when the response body is not auto-sav
 
   const result = await resumeApi.autoSaveResume({
     accessToken: 'access-token',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0 }],
+    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
   })
 
   assert.deepEqual(result, {

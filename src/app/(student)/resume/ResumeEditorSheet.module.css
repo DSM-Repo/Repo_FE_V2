@@ -90,6 +90,7 @@
 .introduceInput,
 .skillInput,
 .activityInput,
+.projectDateInput,
 .projectNameInput,
 .projectIntroInput,
 .projectContentInput {
@@ -109,6 +110,7 @@
 .introduceInput::placeholder,
 .skillInput::placeholder,
 .activityInput::placeholder,
+.projectDateInput::placeholder,
 .projectNameInput::placeholder,
 .projectIntroInput::placeholder,
 .projectContentInput::placeholder {
@@ -122,6 +124,7 @@
 .introduceInput:focus,
 .skillInput:focus,
 .activityInput:focus,
+.projectDateInput:focus,
 .projectNameInput:focus,
 .projectIntroInput:focus,
 .projectContentInput:focus,
@@ -303,6 +306,13 @@
   font-size: clamp(22px, 1.98vw, 38px);
   font-weight: var(--repo-font-title-small-weight);
   line-height: 1.15;
+}
+
+.projectDateInput {
+  width: 72px;
+  flex: 0 0 auto;
+  color: var(--repo-gray-500);
+  font: inherit;
 }
 
 .inlineIconButton {

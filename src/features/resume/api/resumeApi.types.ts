@@ -1,10 +1,23 @@
+export type ResumePageType = 'PROFILE' | 'PROJECT'
+
+export type ResumeProject = {
+  readonly endDate: string
+  readonly imageUrl: string
+  readonly name: string
+  readonly startDate: string
+  readonly summary: string
+}
+
 export type ResumePage = {
   readonly content: string
   readonly id: string
   readonly index: number
+  readonly project?: ResumeProject
+  readonly type: ResumePageType
 }
 
 export type Resume = {
+  readonly email: string
   readonly id: string
   readonly introduce: string
   readonly isPublic: boolean
@@ -14,6 +27,7 @@ export type Resume = {
   readonly portfolioUrl: string
   readonly profileImageUrl: string
   readonly savedAt: string
+  readonly skills: readonly string[]
   readonly submissionStatus: string
 }
 
@@ -29,9 +43,11 @@ export type ResumeVisibilityInput = {
 
 export type ResumeSaveInput = {
   readonly accessToken: string
+  readonly email: string
   readonly introduce: string
   readonly pages: readonly ResumePage[]
   readonly portfolioUrl: string
+  readonly skills: readonly string[]
 }
 
 export type ResumeAutoSaveInput = {

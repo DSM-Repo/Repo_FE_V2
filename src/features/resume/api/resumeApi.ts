@@ -8,6 +8,8 @@ import type {
   ResumeDetailInput,
   ResumeDetailResult,
   ResumePage,
+  ResumePageType,
+  ResumeProject,
   ResumeSave,
   ResumeSaveInput,
   ResumeSaveResult,
@@ -64,6 +66,43 @@ function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function isResumePageType(value: unknown): value is ResumePageType {
+  return value === 'PROFILE' || value === 'PROJECT'
+}
+
+function inferResumePageType(index: number): ResumePageType {
+  return index === 1 ? 'PROJECT' : 'PROFILE'
+}
+
+function parseStringList(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    return undefined
+  }
+
+  return value
+}
+
+function parseResumeProject(value: unknown): ResumeProject | undefined {
+  if (
+    !isJsonRecord(value) ||
+    typeof value['endDate'] !== 'string' ||
+    typeof value['imageUrl'] !== 'string' ||
+    typeof value['name'] !== 'string' ||
+    typeof value['startDate'] !== 'string' ||
+    typeof value['summary'] !== 'string'
+  ) {
+    return undefined
+  }
+
+  return {
+    endDate: value['endDate'],
+    imageUrl: value['imageUrl'],
+    name: value['name'],
+    startDate: value['startDate'],
+    summary: value['summary'],
+  }
+}
+
 function parseResumePage(value: unknown): ResumePage | undefined {
   if (
     !isJsonRecord(value) ||
@@ -74,10 +113,34 @@ function parseResumePage(value: unknown): ResumePage | undefined {
     return undefined
   }
 
+  const type = value['type'] === undefined ? inferResumePageType(value['index']) : value['type']
+  const rawProject = value['project']
+
+  if (!isResumePageType(type)) {
+    return undefined
+  }
+
+  if (rawProject === undefined || rawProject === null) {
+    return {
+      content: value['content'],
+      id: value['id'],
+      index: value['index'],
+      type,
+    }
+  }
+
+  const project = parseResumeProject(rawProject)
+
+  if (!project) {
+    return undefined
+  }
+
   return {
     content: value['content'],
     id: value['id'],
     index: value['index'],
+    project,
+    type,
   }
 }
 
@@ -112,12 +175,14 @@ function parseResume(value: unknown): Resume | undefined {
   }
 
   const pages = parseResumePages(value['pages'])
+  const skills = value['skills'] === undefined ? [] : parseStringList(value['skills'])
 
-  if (!pages) {
+  if (!pages || !skills) {
     return undefined
   }
 
   return {
+    email: typeof value['email'] === 'string' ? value['email'] : '',
     id: value['id'],
     introduce: value['introduce'],
     isPublic: value['isPublic'],
@@ -127,6 +192,7 @@ function parseResume(value: unknown): Resume | undefined {
     portfolioUrl: value['portfolioUrl'],
     profileImageUrl: value['profileImageUrl'],
     savedAt: value['savedAt'],
+    skills,
     submissionStatus: value['submissionStatus'],
   }
 }
