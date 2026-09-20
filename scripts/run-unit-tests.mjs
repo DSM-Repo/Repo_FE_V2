@@ -25,6 +25,7 @@ const tscArgs = [
   'tests/unit/majorApi.test.ts',
   'tests/unit/resumeApi.test.ts',
   'tests/unit/userApi.test.ts',
+  'src/features/auth/api/authAccessToken.ts',
   'src/features/auth/api/authApi.ts',
   'src/features/auth/api/authApi.types.ts',
   'src/features/auth/api/authenticatedRequest.ts',
@@ -67,7 +68,19 @@ run('tsc', tscArgs)
 
 const emittedAuthApiPath = join(outDir, 'src/features/auth/api/authApi.js')
 const emittedAuthApi = readFileSync(emittedAuthApiPath, 'utf8')
-writeFileSync(emittedAuthApiPath, emittedAuthApi.replace("from './authHttpClient'", "from './authHttpClient.js'"))
+writeFileSync(
+  emittedAuthApiPath,
+  emittedAuthApi
+    .replace("from './authAccessToken'", "from './authAccessToken.js'")
+    .replace("from './authHttpClient'", "from './authHttpClient.js'"),
+)
+
+const emittedAuthTokenStoragePath = join(outDir, 'src/features/auth/api/authTokenStorage.js')
+const emittedAuthTokenStorage = readFileSync(emittedAuthTokenStoragePath, 'utf8')
+writeFileSync(
+  emittedAuthTokenStoragePath,
+  emittedAuthTokenStorage.replace("from './authAccessToken'", "from './authAccessToken.js'"),
+)
 
 const emittedAuthenticatedRequestPath = join(outDir, 'src/features/auth/api/authenticatedRequest.js')
 const emittedAuthenticatedRequest = readFileSync(emittedAuthenticatedRequestPath, 'utf8')

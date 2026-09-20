@@ -1,8 +1,17 @@
 import { expect, test } from '@playwright/test'
 
+import { authenticateAs } from './auth-fixtures'
+
 const apiBaseUrl = 'http://52.78.201.218'
 
 test.describe('student resume management', () => {
+  test.beforeEach(async ({ page }) => {
+    await authenticateAs(page, 'STUDENT')
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      await route.fulfill({ status: 500 })
+    })
+  })
+
   test('opens a blank resume in write mode by default', async ({ page }) => {
     await page.setViewportSize({ height: 1080, width: 1920 })
     await page.goto('/resume')
@@ -55,10 +64,7 @@ test.describe('student resume management', () => {
 
     const pageContentInput = page.getByLabel('1쪽 추가 내용')
 
-    await pageContentInput.click()
-    await pageContentInput.pressSequentially('# 오혜민')
-    await pageContentInput.press('Enter')
-    await pageContentInput.pressSequentially('**안녕**')
+    await pageContentInput.fill('# 오혜민\n**안녕**')
 
     await expect(pageContentInput).toHaveValue('# 오혜민\n**안녕**')
     await expect(page.locator('h1').filter({ hasText: '오혜민' })).toBeVisible()
@@ -77,9 +83,6 @@ test.describe('student resume management', () => {
   })
 
   test('saves the blank resume as a new resume', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem('repo.auth.accessToken', 'access-token')
-    })
     await page.route(`${apiBaseUrl}/user`, async (route) => {
       await route.fulfill({
         body: JSON.stringify({

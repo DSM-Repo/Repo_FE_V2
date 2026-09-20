@@ -4,6 +4,7 @@ import type {
   ResumeAutoSaveInput,
   ResumeDetailInput,
   ResumeSaveInput,
+  ResumeStudentStatusListInput,
   ResumeSubmissionInput,
   ResumeVisibilityInput,
 } from './resumeApi.types'
@@ -86,6 +87,29 @@ export async function getResumeRequest(input: ResumeDetailInput): Promise<Resume
   const encodedResumeId = encodeURIComponent(input.resumeId)
 
   return sendResumeRequest(`resume/${encodedResumeId}`, {
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'GET',
+  })
+}
+
+export async function getResumeStudentStatusesRequest(
+  input: ResumeStudentStatusListInput,
+): Promise<ResumeRequestResponse> {
+  const searchParams = new URLSearchParams()
+
+  if (input.grade !== undefined) {
+    searchParams.set('grade', String(input.grade))
+  }
+
+  if (input.classNumber !== undefined) {
+    searchParams.set('classNumber', String(input.classNumber))
+  }
+
+  const query = searchParams.size > 0 ? `?${searchParams.toString()}` : ''
+
+  return sendResumeRequest(`resume/students${query}`, {
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
     },

@@ -13,6 +13,10 @@ import type {
   ResumeSave,
   ResumeSaveInput,
   ResumeSaveResult,
+  ResumeStudentStatus,
+  ResumeStudentStatusListInput,
+  ResumeStudentStatusListResult,
+  ResumeSubmissionStatus,
   ResumeSubmission,
   ResumeSubmissionInput,
   ResumeSubmissionResult,
@@ -22,6 +26,7 @@ import type {
 } from './resumeApi.types'
 import {
   getResumeRequest,
+  getResumeStudentStatusesRequest,
   patchResumeVisibilityRequest,
   postResumeAutoSaveRequest,
   postResumeSaveRequest,
@@ -55,6 +60,10 @@ const INVALID_AUTO_SAVE_RESPONSE = {
   kind: 'server-error',
   message: '이력서 자동 저장 응답 형식이 올바르지 않습니다.',
 } as const satisfies ResumeAutoSaveResult
+const INVALID_STUDENT_STATUS_RESPONSE = {
+  kind: 'server-error',
+  message: '학생 이력서 제출 현황 응답 형식이 올바르지 않습니다.',
+} as const satisfies ResumeStudentStatusListResult
 const RESPONSE_BODY_STREAM_FAILURE = {
   kind: 'network-error',
   message: '이력서 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
@@ -243,6 +252,66 @@ function parseResumeAutoSave(value: unknown): ResumeAutoSave | undefined {
   }
 }
 
+function isResumeSubmissionStatus(value: unknown): value is ResumeSubmissionStatus {
+  return value === 'DELETED' || value === 'ONGOING' || value === 'RELEASED' || value === 'SUBMITTED'
+}
+
+function parseResumeStudentStatus(value: unknown): ResumeStudentStatus | undefined {
+  if (
+    !isJsonRecord(value) ||
+    typeof value['classNumber'] !== 'number' ||
+    typeof value['grade'] !== 'number' ||
+    typeof value['majorName'] !== 'string' ||
+    typeof value['name'] !== 'string' ||
+    typeof value['number'] !== 'number' ||
+    typeof value['schoolNumber'] !== 'string' ||
+    typeof value['studentId'] !== 'number' ||
+    !isResumeSubmissionStatus(value['submissionStatus']) ||
+    typeof value['submitted'] !== 'boolean'
+  ) {
+    return undefined
+  }
+
+  const resumeId = value['resumeId']
+  const submittedAt = value['submittedAt']
+
+  if (resumeId !== undefined && resumeId !== null && typeof resumeId !== 'string') {
+    return undefined
+  }
+
+  if (submittedAt !== undefined && submittedAt !== null && typeof submittedAt !== 'string') {
+    return undefined
+  }
+
+  return {
+    classNumber: value['classNumber'],
+    grade: value['grade'],
+    majorName: value['majorName'],
+    name: value['name'],
+    number: value['number'],
+    ...(typeof resumeId === 'string' ? { resumeId } : {}),
+    schoolNumber: value['schoolNumber'],
+    studentId: value['studentId'],
+    submissionStatus: value['submissionStatus'],
+    submitted: value['submitted'],
+    ...(typeof submittedAt === 'string' ? { submittedAt } : {}),
+  }
+}
+
+function parseResumeStudentStatuses(value: unknown): readonly ResumeStudentStatus[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const students = value.map(parseResumeStudentStatus)
+
+  if (students.some((student) => student === undefined)) {
+    return undefined
+  }
+
+  return students.filter((student) => student !== undefined)
+}
+
 function toResponseBodyReadFailure<InvalidResponse extends { readonly kind: 'server-error'; readonly message: string }>(
   error: unknown,
   invalidResponse: InvalidResponse,
@@ -377,6 +446,49 @@ async function readAutoSaveResponseBody(response: ResumeHttpResponse): Promise<R
   }
 }
 
+async function readStudentStatusResponseBody(response: ResumeHttpResponse): Promise<ResumeStudentStatusListResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.value.json()
+  } catch (error) {
+    return toResponseBodyReadFailure(error, INVALID_STUDENT_STATUS_RESPONSE)
+  } finally {
+    response.complete()
+  }
+
+  if (
+    !isJsonRecord(responseBody) ||
+    (responseBody['classNumber'] !== undefined &&
+      responseBody['classNumber'] !== null &&
+      typeof responseBody['classNumber'] !== 'number') ||
+    (responseBody['grade'] !== undefined && responseBody['grade'] !== null && typeof responseBody['grade'] !== 'number') ||
+    typeof responseBody['lastUpdatedAt'] !== 'string' ||
+    typeof responseBody['numberOfData'] !== 'number' ||
+    (responseBody['schoolYear'] !== undefined &&
+      responseBody['schoolYear'] !== null &&
+      typeof responseBody['schoolYear'] !== 'number')
+  ) {
+    return INVALID_STUDENT_STATUS_RESPONSE
+  }
+
+  const students = parseResumeStudentStatuses(responseBody['students'])
+
+  if (!students) {
+    return INVALID_STUDENT_STATUS_RESPONSE
+  }
+
+  return {
+    classNumber: typeof responseBody['classNumber'] === 'number' ? responseBody['classNumber'] : undefined,
+    grade: typeof responseBody['grade'] === 'number' ? responseBody['grade'] : undefined,
+    kind: 'success',
+    lastUpdatedAt: responseBody['lastUpdatedAt'],
+    numberOfData: responseBody['numberOfData'],
+    schoolYear: typeof responseBody['schoolYear'] === 'number' ? responseBody['schoolYear'] : undefined,
+    students,
+  }
+}
+
 export async function getResumeById(input: ResumeDetailInput): Promise<ResumeDetailResult> {
   const response = await getResumeRequest(input)
 
@@ -407,6 +519,34 @@ export async function getResumeById(input: ResumeDetailInput): Promise<ResumeDet
   return {
     kind: 'server-error',
     message: '이력서 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function getStudentResumeStatuses(
+  input: ResumeStudentStatusListInput,
+): Promise<ResumeStudentStatusListResult> {
+  const response = await getResumeStudentStatusesRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readStudentStatusResponseBody(response)
+  }
+
+  response.complete()
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '학생 이력서 제출 현황을 조회할 권한이 없습니다.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '학생 이력서 제출 현황 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }
 

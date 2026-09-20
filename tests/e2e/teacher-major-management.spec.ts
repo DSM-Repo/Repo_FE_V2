@@ -1,14 +1,18 @@
 import { expect, test } from '@playwright/test'
 
+import { authenticateWithAccessToken, createTestAccessToken } from './auth-fixtures'
+
 const apiBaseUrl = 'http://52.78.201.218'
+const teacherAccessToken = createTestAccessToken('TEACHER')
 
 test.describe('teacher major management', () => {
+  test.beforeEach(async ({ page }) => {
+    await authenticateWithAccessToken(page, teacherAccessToken)
+  })
+
   test('renders the teacher-only major list and active navigation', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem('repo.auth.accessToken', 'teacher-token')
-    })
     await page.route(`${apiBaseUrl}/major`, async (route) => {
-      expect(route.request().headers()['authorization']).toBe('Bearer teacher-token')
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${teacherAccessToken}`)
 
       await route.fulfill({
         body: JSON.stringify({ majors: [], numberOfData: 0 }),
@@ -28,9 +32,6 @@ test.describe('teacher major management', () => {
   })
 
   test('validates, adds, and announces a major', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem('repo.auth.accessToken', 'teacher-token')
-    })
     await page.route(`${apiBaseUrl}/major`, async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
@@ -42,7 +43,7 @@ test.describe('teacher major management', () => {
       }
 
       expect(route.request().method()).toBe('POST')
-      expect(route.request().headers()['authorization']).toBe('Bearer teacher-token')
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${teacherAccessToken}`)
       expect(route.request().postDataJSON()).toEqual({ name: 'Backend Developer' })
 
       await route.fulfill({
@@ -69,9 +70,6 @@ test.describe('teacher major management', () => {
   })
 
   test('shows an empty student state for a newly added major', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem('repo.auth.accessToken', 'teacher-token')
-    })
     await page.route(`${apiBaseUrl}/major`, async (route) => {
       await route.fulfill({
         body: JSON.stringify({ majors: [{ majorId: 1, name: 'Backend Developer' }], numberOfData: 1 }),
@@ -88,9 +86,6 @@ test.describe('teacher major management', () => {
   })
 
   test('deletes the selected major with a toast', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem('repo.auth.accessToken', 'teacher-token')
-    })
     await page.route(`${apiBaseUrl}/major`, async (route) => {
       await route.fulfill({
         body: JSON.stringify({ majors: [{ majorId: 1, name: 'Backend Developer' }], numberOfData: 1 }),
@@ -100,7 +95,7 @@ test.describe('teacher major management', () => {
     })
     await page.route(`${apiBaseUrl}/major/1`, async (route) => {
       expect(route.request().method()).toBe('DELETE')
-      expect(route.request().headers()['authorization']).toBe('Bearer teacher-token')
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${teacherAccessToken}`)
 
       await route.fulfill({
         status: 204,

@@ -1,10 +1,11 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
 
-import type { AppHeaderItem } from '@/shared/ui'
-import { AppHeader, ClassCard, SearchField, Toast } from '@/shared/ui'
+import { getSavedAccessToken } from '@/features/auth/api'
+import { getStudentResumeStatuses, type ResumeStudentStatus } from '@/features/resume/api'
+import type { AppHeaderItem, LinkRowTone } from '@/shared/ui'
+import { AppHeader, ClassCard, LinkRow, SearchField, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -30,7 +31,40 @@ type SelectedClass = {
   readonly classNumber: ClassNumber
 }
 
-const classSize = 0
+type StudentLoadState =
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'failure'; readonly message: string }
+  | {
+      readonly kind: 'success'
+      readonly lastUpdatedAt: string
+      readonly schoolYear: number | undefined
+      readonly students: readonly ResumeStudentStatus[]
+    }
+
+const submissionLabels: Record<ResumeStudentStatus['submissionStatus'], string> = {
+  DELETED: '삭제됨',
+  ONGOING: '작성 중',
+  RELEASED: '공개됨',
+  SUBMITTED: '제출 완료',
+}
+const emptyStudents: readonly ResumeStudentStatus[] = []
+
+function getStudentTone(student: ResumeStudentStatus): LinkRowTone {
+  return student.submitted ? 'submitted' : 'missing'
+}
+
+function formatUpdatedAt(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+}
 
 export default function TeacherStudentsPage() {
   return (
@@ -41,12 +75,54 @@ export default function TeacherStudentsPage() {
 }
 
 function TeacherStudentsContent() {
-  const searchParams = useSearchParams()
   const [selectedClass, setSelectedClass] = useState<SelectedClass | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [loadState, setLoadState] = useState<StudentLoadState>({ kind: 'loading' })
   const dialogCloseButtonRef = useRef<HTMLButtonElement | null>(null)
   const dialogTriggerRef = useRef<HTMLButtonElement | null>(null)
-  const showsLoadError = searchParams.get('error') === 'students'
+
+  useEffect(() => {
+    let isActive = true
+
+    const loadStudents = async () => {
+      await Promise.resolve()
+
+      if (!isActive) {
+        return
+      }
+
+      const accessToken = getSavedAccessToken()
+
+      if (!accessToken) {
+        setLoadState({ kind: 'failure', message: '로그인 정보가 없어 학생 목록을 불러올 수 없습니다.' })
+        return
+      }
+
+      const result = await getStudentResumeStatuses({ accessToken })
+
+      if (!isActive) {
+        return
+      }
+
+      if (result.kind !== 'success') {
+        setLoadState({ kind: 'failure', message: result.message })
+        return
+      }
+
+      setLoadState({
+        kind: 'success',
+        lastUpdatedAt: result.lastUpdatedAt,
+        schoolYear: result.schoolYear,
+        students: result.students,
+      })
+    }
+
+    void loadStudents()
+
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   useEffect(() => {
     if (!selectedClass) {
@@ -75,17 +151,36 @@ function TeacherStudentsContent() {
       return ''
     }
 
-    return `2026 ${selectedClass.grade}학년 ${selectedClass.classNumber}반`
-  }, [selectedClass])
+    const schoolYear = loadState.kind === 'success' ? loadState.schoolYear : undefined
+    const yearLabel = schoolYear ? `${schoolYear} ` : ''
 
-  const hasSearchQuery = searchQuery.trim().length > 0
+    return `${yearLabel}${selectedClass.grade}학년 ${selectedClass.classNumber}반`
+  }, [loadState, selectedClass])
+
+  const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase('ko-KR')
+  const students = loadState.kind === 'success' ? loadState.students : emptyStudents
+  const selectedStudents = useMemo(() => {
+    if (!selectedClass) {
+      return []
+    }
+
+    return students.filter(
+      (student) =>
+        student.grade === selectedClass.grade &&
+        student.classNumber === selectedClass.classNumber &&
+        (!normalizedSearchQuery || student.name.toLocaleLowerCase('ko-KR').includes(normalizedSearchQuery)),
+    )
+  }, [normalizedSearchQuery, selectedClass, students])
+
+  const countStudents = (grade: Grade, classNumber: ClassNumber) =>
+    students.filter((student) => student.grade === grade && student.classNumber === classNumber).length
 
   return (
     <main className={styles.page} data-dialog-open={selectedClass ? 'true' : 'false'}>
       <AppHeader activeItem="students" items={navigationItems} />
-      {showsLoadError ? (
+      {loadState.kind === 'failure' ? (
         <div className={styles.toastLayer}>
-          <Toast variant="error">학생 목록을 불러오는 데 실패했습니다. 잠시 후 다시 시도해 주세요.</Toast>
+          <Toast variant="error">{loadState.message}</Toast>
         </div>
       ) : null}
 
@@ -114,7 +209,7 @@ function TeacherStudentsContent() {
                 <div className={styles.classList}>
                   {classes.map((classNumber) => (
                     <ClassCard
-                      count={classSize}
+                      count={countStudents(grade.value, classNumber)}
                       key={`${grade.value}-${classNumber}`}
                       title={`${classNumber}반`}
                       onClick={(event) => {
@@ -152,14 +247,44 @@ function TeacherStudentsContent() {
                 <h2 className={styles.dialogTitle} id="class-dialog-title">
                   {selectedClassLabel}
                 </h2>
+                {loadState.kind === 'success' ? (
+                  <p className={styles.updatedAt}>최근 갱신 {formatUpdatedAt(loadState.lastUpdatedAt)}</p>
+                ) : null}
               </header>
 
               <div className={styles.dialogDivider} />
 
               <div className={styles.studentRows} aria-label={`${selectedClassLabel} 학생 제출 현황`}>
-                <p className={styles.emptyMessage}>
-                  {hasSearchQuery ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
-                </p>
+                {loadState.kind === 'loading' ? <p className={styles.emptyMessage}>학생 목록을 불러오는 중입니다.</p> : null}
+                {loadState.kind === 'failure' ? (
+                  <p className={styles.emptyMessage} role="alert">
+                    {loadState.message}
+                  </p>
+                ) : null}
+                {loadState.kind === 'success' && selectedStudents.length === 0 ? (
+                  <p className={styles.emptyMessage}>
+                    {normalizedSearchQuery ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
+                  </p>
+                ) : null}
+                {loadState.kind === 'success'
+                  ? selectedStudents.map((student) => {
+                      const sharedProps = {
+                        actionLabel: student.resumeId ? '레주메 보러가기' : '이력서 없음',
+                        className: styles.studentRow,
+                        key: student.studentId,
+                        meta: student.majorName,
+                        status: submissionLabels[student.submissionStatus],
+                        title: `${student.schoolNumber} ${student.name}`,
+                        tone: getStudentTone(student),
+                      } as const
+
+                      return student.resumeId ? (
+                        <LinkRow {...sharedProps} href={`/students/${student.resumeId}`} />
+                      ) : (
+                        <LinkRow {...sharedProps} disabled />
+                      )
+                    })
+                  : null}
               </div>
             </section>
           </div>

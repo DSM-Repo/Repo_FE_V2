@@ -14,6 +14,109 @@ test.afterEach(() => {
   globalThis.clearTimeout = originalClearTimeout
 })
 
+test('getStudentResumeStatuses sends class filters and returns parsed submission statuses', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+
+  // Given: the teacher status endpoint returns submitted and unsubmitted students.
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+
+    return new Response(
+      JSON.stringify({
+        classNumber: 2,
+        grade: 1,
+        lastUpdatedAt: '2026-09-20T09:00:00Z',
+        numberOfData: 2,
+        schoolYear: 2026,
+        students: [
+          {
+            classNumber: 2,
+            grade: 1,
+            majorName: 'Frontend',
+            name: '김학생',
+            number: 1,
+            resumeId: 'resume-1',
+            schoolNumber: '1201',
+            studentId: 11,
+            submissionStatus: 'SUBMITTED',
+            submitted: true,
+            submittedAt: '2026-09-19T12:00:00Z',
+          },
+          {
+            classNumber: 2,
+            grade: 1,
+            majorName: '',
+            name: '이학생',
+            number: 2,
+            resumeId: null,
+            schoolNumber: '1202',
+            studentId: 12,
+            submissionStatus: 'ONGOING',
+            submitted: false,
+            submittedAt: null,
+          },
+        ],
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+  }
+
+  // When: a teacher requests one class.
+  const result = await resumeApi.getStudentResumeStatuses({
+    accessToken: 'teacher-access-token',
+    classNumber: 2,
+    grade: 1,
+  })
+
+  // Then: the API contract is preserved for the teacher UI.
+  assert.equal(requestedUrl, 'https://api.example.test/resume/students?grade=1&classNumber=2')
+  assert.equal(requestedMethod, 'GET')
+  assert.equal(requestedAuthorization, 'Bearer teacher-access-token')
+  assert.deepEqual(result, {
+    classNumber: 2,
+    grade: 1,
+    kind: 'success',
+    lastUpdatedAt: '2026-09-20T09:00:00Z',
+    numberOfData: 2,
+    schoolYear: 2026,
+    students: [
+      {
+        classNumber: 2,
+        grade: 1,
+        majorName: 'Frontend',
+        name: '김학생',
+        number: 1,
+        resumeId: 'resume-1',
+        schoolNumber: '1201',
+        studentId: 11,
+        submissionStatus: 'SUBMITTED',
+        submitted: true,
+        submittedAt: '2026-09-19T12:00:00Z',
+      },
+      {
+        classNumber: 2,
+        grade: 1,
+        majorName: '',
+        name: '이학생',
+        number: 2,
+        schoolNumber: '1202',
+        studentId: 12,
+        submissionStatus: 'ONGOING',
+        submitted: false,
+      },
+    ],
+  })
+})
+
 test('getResumeById sends the resume id with bearer auth and returns parsed resume data', async () => {
   let requestedUrl = ''
   let requestedMethod = ''

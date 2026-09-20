@@ -1,8 +1,38 @@
 import { expect, test } from '@playwright/test'
 
+import { authenticateWithAccessToken, createTestAccessToken } from './auth-fixtures'
+
 const apiBaseUrl = 'http://52.78.201.218'
+const studentAccessToken = createTestAccessToken('STUDENT')
+const defaultUser = {
+  classInfo: {
+    classNumber: 1,
+    grade: 1,
+    number: 1,
+    schoolNumber: '1101',
+  },
+  introduce: '',
+  major: null,
+  name: '테스트 학생',
+  profileImageUrl: null,
+  progress: {
+    sections: [],
+    totalPercent: 0,
+  },
+} as const
 
 test.describe('student home page', () => {
+  test.beforeEach(async ({ page }) => {
+    await authenticateWithAccessToken(page, studentAccessToken)
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify(defaultUser),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+  })
+
   test('renders the student dashboard content and navigation state', async ({ page }) => {
     await page.goto('/home')
 
@@ -14,7 +44,7 @@ test.describe('student home page', () => {
     )
     await expect(mainNavigation.getByRole('link', { name: '도서관' })).toHaveAttribute('href', '/library')
 
-    await expect(page.getByRole('heading', { level: 1, name: '내 정보가 없습니다.' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /테스트 학생/ })).toBeVisible()
     await expect(page.getByText('이력서를 저장하면 홈에서 내 정보를 확인할 수 있습니다.')).toBeVisible()
     await expect(page.getByRole('progressbar', { name: '이력서 완성도 0%' })).toHaveAttribute(
       'aria-valuenow',
@@ -23,11 +53,8 @@ test.describe('student home page', () => {
   })
 
   test('renders logged-in user info and resume progress from API', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.setItem('repo.auth.accessToken', 'access-token')
-    })
     await page.route(`${apiBaseUrl}/user`, async (route) => {
-      expect(route.request().headers()['authorization']).toBe('Bearer access-token')
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${studentAccessToken}`)
 
       await route.fulfill({
         body: JSON.stringify({
@@ -65,24 +92,15 @@ test.describe('student home page', () => {
   })
 
   test('redirects to login when auth reissue fails after protected API rejection', async ({ page }) => {
-    await page.addInitScript(() => {
-      if (window.localStorage.getItem('repo.e2e.seeded-auth')) {
-        return
-      }
-
-      window.localStorage.setItem('repo.auth.accessToken', 'expired-token')
-      window.localStorage.setItem('repo.auth.refreshToken', 'expired-refresh-token')
-      window.localStorage.setItem('repo.e2e.seeded-auth', 'true')
-    })
     await page.route(`${apiBaseUrl}/user`, async (route) => {
-      expect(route.request().headers()['authorization']).toBe('Bearer expired-token')
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${studentAccessToken}`)
 
       await route.fulfill({
         status: 401,
       })
     })
     await page.route(`${apiBaseUrl}/user/refresh`, async (route) => {
-      expect(route.request().headers()['refresh-token']).toBe('expired-refresh-token')
+      expect(route.request().headers()['refresh-token']).toBe('test-refresh-token')
 
       await route.fulfill({
         status: 403,
@@ -182,7 +200,7 @@ test.describe('student home page', () => {
     await page.setViewportSize({ height: 844, width: 390 })
     await page.goto('/home')
 
-    await expect(page.getByRole('heading', { level: 1, name: '내 정보가 없습니다.' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /테스트 학생/ })).toBeVisible()
     await expect(page.getByRole('progressbar', { name: '이력서 완성도 0%' })).toBeVisible()
     await expect(page.getByRole('link', { name: /이력서 관리 바로가기/ })).toBeVisible()
     await expect(page.getByRole('heading', { name: '알림 목록' })).toBeVisible()

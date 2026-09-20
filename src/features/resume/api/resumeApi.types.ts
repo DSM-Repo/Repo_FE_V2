@@ -59,6 +59,12 @@ export type ResumeSubmissionInput = {
   readonly accessToken: string
 }
 
+export type ResumeStudentStatusListInput = {
+  readonly accessToken: string
+  readonly classNumber?: number
+  readonly grade?: number
+}
+
 export type ResumeVisibility = {
   readonly isPublic: boolean
 }
@@ -76,6 +82,37 @@ export type ResumeSave = {
 export type ResumeAutoSave = ResumeSave & {
   readonly autoSaved: boolean
 }
+
+export type ResumeSubmissionStatus = 'DELETED' | 'ONGOING' | 'RELEASED' | 'SUBMITTED'
+
+export type ResumeStudentStatus = {
+  readonly classNumber: number
+  readonly grade: number
+  readonly majorName: string
+  readonly name: string
+  readonly number: number
+  readonly resumeId?: string
+  readonly schoolNumber: string
+  readonly studentId: number
+  readonly submissionStatus: ResumeSubmissionStatus
+  readonly submitted: boolean
+  readonly submittedAt?: string
+}
+
+export type ResumeStudentStatusListResult =
+  | {
+      readonly classNumber: number | undefined
+      readonly grade: number | undefined
+      readonly kind: 'success'
+      readonly lastUpdatedAt: string
+      readonly numberOfData: number
+      readonly schoolYear: number | undefined
+      readonly students: readonly ResumeStudentStatus[]
+    }
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
 
 export type ResumeDetailResult =
   | {

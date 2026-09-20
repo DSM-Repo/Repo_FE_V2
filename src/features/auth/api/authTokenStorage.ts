@@ -1,23 +1,16 @@
 'use client'
 
 import type { AuthLoginRole } from './authApi.types'
+import { getAuthRoleFromAccessToken } from './authAccessToken'
 
 export const AUTH_ACCESS_TOKEN_STORAGE_KEY = 'repo.auth.accessToken'
-export const AUTH_LOGIN_ROLE_STORAGE_KEY = 'repo.auth.loginRole'
 export const AUTH_REFRESH_TOKEN_STORAGE_KEY = 'repo.auth.refreshToken'
-
-function isAuthLoginRole(value: string | null): value is AuthLoginRole {
-  return value === 'student' || value === 'teacher'
-}
+const LEGACY_AUTH_LOGIN_ROLE_STORAGE_KEY = 'repo.auth.loginRole'
 
 export function getSavedAuthRole(): AuthLoginRole | undefined {
-  if (typeof window === 'undefined') {
-    return undefined
-  }
+  const accessToken = getSavedAccessToken()
 
-  const role = window.localStorage.getItem(AUTH_LOGIN_ROLE_STORAGE_KEY)
-
-  return isAuthLoginRole(role) ? role : undefined
+  return accessToken ? getAuthRoleFromAccessToken(accessToken) : undefined
 }
 
 export function getSavedAccessToken(): string | undefined {
@@ -58,14 +51,6 @@ export function getSavedRefreshToken(): string | undefined {
   }
 }
 
-export function saveAuthRole(role: AuthLoginRole) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  window.localStorage.setItem(AUTH_LOGIN_ROLE_STORAGE_KEY, role)
-}
-
 export function saveAuthAccessToken(accessToken: string) {
   if (typeof window === 'undefined') {
     return
@@ -81,6 +66,7 @@ export function saveAuthTokens(input: { readonly accessToken: string; readonly r
 
   window.localStorage.setItem(AUTH_ACCESS_TOKEN_STORAGE_KEY, input.accessToken)
   window.localStorage.setItem(AUTH_REFRESH_TOKEN_STORAGE_KEY, input.refreshToken)
+  window.localStorage.removeItem(LEGACY_AUTH_LOGIN_ROLE_STORAGE_KEY)
 }
 
 export function clearAuthTokens() {
@@ -90,4 +76,5 @@ export function clearAuthTokens() {
 
   window.localStorage.removeItem(AUTH_ACCESS_TOKEN_STORAGE_KEY)
   window.localStorage.removeItem(AUTH_REFRESH_TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(LEGACY_AUTH_LOGIN_ROLE_STORAGE_KEY)
 }
