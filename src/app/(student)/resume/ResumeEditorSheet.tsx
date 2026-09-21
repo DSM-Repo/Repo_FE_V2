@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
 
 import type { Major } from '@/features/major/api'
+import type { ResumePageType } from '@/features/resume/api'
 import { Icon } from '@/shared/ui'
 
 import { MarkdownTextarea } from './MarkdownTextarea'
@@ -13,20 +14,32 @@ export type ResumeDraftActivity = {
   readonly title: string
 }
 
+export type ResumeDraftProject = {
+  readonly endDate: string
+  readonly imageUrl: string
+  readonly name: string
+  readonly startDate: string
+  readonly summary: string
+}
+
+export type ResumeDraftPage = {
+  readonly content: string
+  readonly id?: string
+  readonly index: number
+  readonly project?: ResumeDraftProject
+  readonly type: ResumePageType
+}
+
 export type ResumeDraft = {
   readonly activities: readonly ResumeDraftActivity[]
-  readonly contests: readonly string[]
   readonly email: string
   readonly headline: string
+  readonly introduce: string
   readonly introTitle: string
-  readonly majorName: string
   readonly name: string
-  readonly pageContents: readonly [string, string]
+  readonly pages: readonly ResumeDraftPage[]
   readonly portfolioUrl: string
-  readonly projectEndDate: string
-  readonly projectImageUrl: string
-  readonly projectStartDate: string
-  readonly projects: readonly string[]
+  readonly schoolNumber: string
   readonly skills: readonly string[]
 }
 
@@ -38,18 +51,47 @@ export type ResumeEditorSheetProps = {
   readonly majors?: readonly Major[]
   readonly onChange: (nextDraft: ResumeDraft) => void
   readonly onMajorChange?: (majorId: number) => void
-  readonly pageIndex: 0 | 1
+  readonly pageIndex: number
 }
 
-function toLineText(values: readonly string[]) {
-  return values.join('\n')
+const emptyProject: ResumeDraftProject = {
+  endDate: '',
+  imageUrl: '',
+  name: '',
+  startDate: '',
+  summary: '',
 }
 
-function toLineValues(value: string) {
-  return value
-    .split('\n')
-    .map((item) => item.trim())
-    .filter(Boolean)
+export function getDepartmentFromSchoolNumber(schoolNumber: string) {
+  const normalizedSchoolNumber = schoolNumber.trim()
+  const grade = normalizedSchoolNumber[0]
+  const classNumber = normalizedSchoolNumber[1]
+
+  if (grade === '1') {
+    return '공통과정'
+  }
+
+  if (grade !== '2' && grade !== '3') {
+    return ''
+  }
+
+  if (classNumber === '1' || classNumber === '2') {
+    return '소프트웨어개발과'
+  }
+
+  if (classNumber === '3') {
+    return '임베디드소프트웨어과'
+  }
+
+  if (classNumber === '4') {
+    return '인공지능소프트웨어과'
+  }
+
+  return ''
+}
+
+function toStudentMeta(schoolNumber: string) {
+  return [schoolNumber.trim(), getDepartmentFromSchoolNumber(schoolNumber)].filter(Boolean).join(' ')
 }
 
 export function ResumeEditorSheet({
@@ -63,18 +105,28 @@ export function ResumeEditorSheet({
   pageIndex,
 }: ResumeEditorSheetProps) {
   const [skillInput, setSkillInput] = useState('')
+  const introBodyRef = useRef<HTMLTextAreaElement>(null)
+  const isSkillComposingRef = useRef(false)
   const sheetClassName = [styles.sheet, className].filter(Boolean).join(' ')
   const selectedMajor = majors.find((major) => major.name === draft.headline)
+  const page = draft.pages[pageIndex]
+
+  if (!page) {
+    return null
+  }
 
   const updateDraft = (patch: Partial<ResumeDraft>) => {
     onChange({ ...draft, ...patch })
   }
 
-  const updatePageContent = (value: string) => {
-    const pageContents: readonly [string, string] =
-      pageIndex === 0 ? [value, draft.pageContents[1]] : [draft.pageContents[0], value]
+  const updatePage = (patch: Partial<ResumeDraftPage>) => {
+    updateDraft({
+      pages: draft.pages.map((draftPage, index) => (index === pageIndex ? { ...draftPage, ...patch } : draftPage)),
+    })
+  }
 
-    updateDraft({ pageContents })
+  const updateProject = (patch: Partial<ResumeDraftProject>) => {
+    updatePage({ project: { ...(page.project ?? emptyProject), ...patch } })
   }
 
   const addSkill = () => {
@@ -89,7 +141,7 @@ export function ResumeEditorSheet({
   }
 
   const handleSkillKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== 'Enter') {
+    if (event.key !== 'Enter' || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || isSkillComposingRef.current) {
       return
     }
 
@@ -97,49 +149,80 @@ export function ResumeEditorSheet({
     addSkill()
   }
 
+  const handleIntroPaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = event.clipboardData.getData('text')
+
+    if (!pastedText.includes('\n')) {
+      return
+    }
+
+    event.preventDefault()
+    const [title = '', ...bodyLines] = pastedText.replace(/\r/g, '').split('\n')
+    updateDraft({ introTitle: title, introduce: bodyLines.join('\n') })
+    window.requestAnimationFrame(() => introBodyRef.current?.focus())
+  }
+
   const removeSkill = (skillToRemove: string) => {
     updateDraft({ skills: draft.skills.filter((skill) => skill !== skillToRemove) })
   }
 
-  if (pageIndex === 1) {
+  if (page.type === 'FREE') {
     return (
-      <article aria-label="이력서 작성 2쪽" className={sheetClassName}>
+      <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
+        <MarkdownTextarea
+          className={styles.freePageContentInput}
+          id={`resume-page-content-${page.index}`}
+          label={`${page.index + 1}쪽 추가 내용`}
+          onChange={(content) => updatePage({ content })}
+          placeholder="추가 내용을 작성해주세요."
+          toolbarLabel="추가 페이지 작성 도구"
+          value={page.content}
+        />
+      </article>
+    )
+  }
+
+  if (page.type === 'PROJECT') {
+    const project = page.project ?? emptyProject
+
+    return (
+      <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
         <header className={styles.projectHeader}>
           <button className={styles.projectImageButton} type="button" aria-label="프로젝트 이미지 추가">
             <Icon name="plus" />
           </button>
           <div className={styles.projectIdentity}>
-            <label className={styles.srOnly} htmlFor="resume-project-name">
+            <label className={styles.srOnly} htmlFor={`resume-project-name-${page.index}`}>
               프로젝트 이름
             </label>
             <input
               className={styles.projectNameInput}
-              id="resume-project-name"
-              onChange={(event) => updateDraft({ projects: toLineValues(event.target.value) })}
+              id={`resume-project-name-${page.index}`}
+              onChange={(event) => updateProject({ name: event.target.value })}
               placeholder="프로젝트 이름을 작성해주세요."
-              value={toLineText(draft.projects)}
+              value={project.name}
             />
             <div className={styles.projectDateRow}>
-              <label className={styles.srOnly} htmlFor="resume-project-start-date">
+              <label className={styles.srOnly} htmlFor={`resume-project-start-date-${page.index}`}>
                 프로젝트 시작일
               </label>
               <input
                 className={styles.projectDateInput}
-                id="resume-project-start-date"
-                onChange={(event) => updateDraft({ projectStartDate: event.target.value })}
+                id={`resume-project-start-date-${page.index}`}
+                onChange={(event) => updateProject({ startDate: event.target.value })}
                 placeholder="202X-XX-XX"
-                value={draft.projectStartDate}
+                value={project.startDate}
               />
               <span aria-hidden="true">~</span>
-              <label className={styles.srOnly} htmlFor="resume-project-end-date">
+              <label className={styles.srOnly} htmlFor={`resume-project-end-date-${page.index}`}>
                 프로젝트 종료일
               </label>
               <input
                 className={styles.projectDateInput}
-                id="resume-project-end-date"
-                onChange={(event) => updateDraft({ projectEndDate: event.target.value })}
+                id={`resume-project-end-date-${page.index}`}
+                onChange={(event) => updateProject({ endDate: event.target.value })}
                 placeholder="202X-XX-XX"
-                value={draft.projectEndDate}
+                value={project.endDate}
               />
               <button className={styles.inlineIconButton} type="button" aria-label="프로젝트 기간 수정">
                 ✎
@@ -149,33 +232,33 @@ export function ResumeEditorSheet({
         </header>
 
         <section className={styles.projectIntroBox} aria-label="프로젝트 소개">
-          <label className={styles.srOnly} htmlFor="resume-project-intro">
+          <label className={styles.srOnly} htmlFor={`resume-project-intro-${page.index}`}>
             프로젝트 소개
           </label>
           <input
             className={styles.projectIntroInput}
-            id="resume-project-intro"
-            onChange={(event) => updateDraft({ contests: [event.target.value].filter(Boolean) })}
+            id={`resume-project-intro-${page.index}`}
+            onChange={(event) => updateProject({ summary: event.target.value })}
             placeholder="프로젝트 소개를 입력해주세요."
-            value={draft.contests[0] ?? ''}
+            value={project.summary}
           />
         </section>
 
         <MarkdownTextarea
           className={styles.projectContentInput}
-          id="resume-page-content-1"
-          label="2쪽 추가 내용"
-          onChange={updatePageContent}
+          id={`resume-page-content-${page.index}`}
+          label={`${page.index + 1}쪽 추가 내용`}
+          onChange={(content) => updatePage({ content })}
           placeholder="프로젝트에서 수행한 역할과 기여 내용, 그리고 진행 과정에 대한 회고 등을 작성해 주세요."
           toolbarLabel="프로젝트 작성 도구"
-          value={draft.pageContents[1]}
+          value={page.content}
         />
       </article>
     )
   }
 
   return (
-    <article aria-label="이력서 작성 1쪽" className={sheetClassName}>
+    <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
       <header className={styles.profileHeader}>
         <button className={styles.profileImageButton} type="button" aria-label="프로필 이미지 추가">
           <Icon name="plus" />
@@ -218,16 +301,9 @@ export function ResumeEditorSheet({
             </select>
           </div>
           <div className={styles.metaRow}>
-            <label className={styles.srOnly} htmlFor="resume-major">
-              학번 전공
-            </label>
-            <input
-              className={styles.majorInput}
-              id="resume-major"
-              onChange={(event) => updateDraft({ majorName: event.target.value })}
-              placeholder="학번과 전공을 입력해주세요."
-              value={draft.majorName}
-            />
+            <span aria-label="학번 전공" className={styles.majorInput}>
+              {toStudentMeta(draft.schoolNumber)}
+            </span>
             <span aria-hidden="true">|</span>
             <label className={styles.srOnly} htmlFor="resume-email">
               이메일
@@ -250,13 +326,31 @@ export function ResumeEditorSheet({
         <label className={styles.srOnly} htmlFor="resume-intro-title">
           자기소개 제목
         </label>
-        <textarea
+        <input
           className={styles.introTitleInput}
           id="resume-intro-title"
           onChange={(event) => updateDraft({ introTitle: event.target.value })}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              introBodyRef.current?.focus()
+            }
+          }}
+          onPaste={handleIntroPaste}
           placeholder="한줄 자기소개를 작성해주세요."
-          rows={1}
           value={draft.introTitle}
+        />
+        <label className={styles.srOnly} htmlFor="resume-intro-body">
+          자기소개 내용
+        </label>
+        <textarea
+          className={styles.introBodyInput}
+          id="resume-intro-body"
+          onChange={(event) => updateDraft({ introduce: event.target.value })}
+          placeholder="자기소개 내용을 입력해주세요."
+          ref={introBodyRef}
+          rows={1}
+          value={draft.introduce}
         />
       </section>
 
@@ -286,6 +380,12 @@ export function ResumeEditorSheet({
           className={styles.skillInput}
           id="resume-skills"
           onChange={(event) => setSkillInput(event.target.value)}
+          onCompositionEnd={() => {
+            isSkillComposingRef.current = false
+          }}
+          onCompositionStart={() => {
+            isSkillComposingRef.current = true
+          }}
           onKeyDown={handleSkillKeyDown}
           placeholder="기술스택을 입력 후 Enter를 눌러 추가하세요."
           value={skillInput}
@@ -298,12 +398,12 @@ export function ResumeEditorSheet({
         </div>
         <MarkdownTextarea
           className={styles.activityInput}
-          id="resume-activities"
-          label="1쪽 추가 내용"
-          onChange={updatePageContent}
+          id={`resume-page-content-${page.index}`}
+          label={`${page.index + 1}쪽 추가 내용`}
+          onChange={(content) => updatePage({ content })}
           placeholder="활동 내용과 날짜, 상세를 입력해주세요."
           toolbarLabel="활동 작성 도구"
-          value={draft.pageContents[0]}
+          value={page.content}
         />
       </section>
     </article>

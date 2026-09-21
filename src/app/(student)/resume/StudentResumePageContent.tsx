@@ -14,20 +14,24 @@ import {
   saveResume,
   saveResumeId,
   submitResume,
-  updateResumeVisibility,
   type Resume,
   type ResumeDetailResult,
   type ResumePage,
   type ResumeSavePage,
   type ResumeSaveProject,
   type ResumeSubmissionResult,
-  type ResumeVisibilityResult,
 } from '@/features/resume/api'
 import { getUserMe, updateUserMajor, type UserMe, type UserMeResult } from '@/features/user/api'
 import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
 import { AppHeader, Icon, ResumeBookSheet, Toast } from '@/shared/ui'
 
-import { ResumeEditorSheet, type ResumeDraft } from './ResumeEditorSheet'
+import {
+  getDepartmentFromSchoolNumber,
+  ResumeEditorSheet,
+  type ResumeDraft,
+  type ResumeDraftPage,
+  type ResumeDraftProject,
+} from './ResumeEditorSheet'
 import styles from './page.module.css'
 
 const navigationItems = [
@@ -40,18 +44,17 @@ const AUTO_SAVE_IDLE_MS = 180_000
 
 const defaultResumeDraft = {
   activities: [],
-  contests: [],
   email: '',
   headline: '전공미정',
+  introduce: '',
   introTitle: '',
-  majorName: '',
   name: '',
-  pageContents: ['', ''],
+  pages: [
+    { content: '', index: 0, type: 'PROFILE' },
+    { content: '', index: 1, project: { endDate: '', imageUrl: '', name: '', startDate: '', summary: '' }, type: 'PROJECT' },
+  ],
   portfolioUrl: '',
-  projectEndDate: '',
-  projectImageUrl: '',
-  projectStartDate: '',
-  projects: [],
+  schoolNumber: '',
   skills: [],
 } satisfies ResumeDraft
 
@@ -123,7 +126,6 @@ type LoadState =
     }
 
 type ViewMode = 'view' | 'edit' | 'feedback'
-type VisibilitySubmitState = 'idle' | 'pending'
 type SubmissionSubmitState = 'idle' | 'submit' | 'cancel'
 type SaveSubmitState = 'auto-save' | 'idle' | 'save' | 'temporary-save'
 type SaveMode = 'auto' | 'manual' | 'temporary'
@@ -157,107 +159,104 @@ function toInitialViewMode(mode: string | null, resumeId: string): ViewMode {
   return 'view'
 }
 
-function toResumeBookSheetContent(resume: Resume, draft: ResumeDraft, pageIndex: number): ResumeBookSheetContent {
-  const page = resume.pages.find((resumePage) => resumePage.index === pageIndex) ?? resume.pages[pageIndex] ?? resume.pages[0]
-  const project = page?.project
+function splitIntroduction(value: string) {
+  const [introTitle = '', ...introduceLines] = value.replace(/\r/g, '').split('\n')
 
   return {
-    activities: [],
-    contests: project?.summary ? [project.summary] : [],
-    email: resume.email,
-    headline: draft.majorName,
-    introTitle: resume.introduce,
-    introduce: '',
-    majorName: draft.headline,
-    name: draft.name || resume.name,
-    pageContent: page?.content,
-    portfolioUrl: resume.portfolioUrl,
-    projects: project?.name ? [project.name] : [],
-    skills: resume.skills,
+    introduce: introduceLines.join('\n'),
+    introTitle,
   }
 }
 
-function toDraftSheetContent(draft: ResumeDraft, pageIndex: 0 | 1): ResumeBookSheetContent {
+function joinIntroduction(draft: ResumeDraft) {
+  return draft.introduce ? `${draft.introTitle}\n${draft.introduce}` : draft.introTitle
+}
+
+function toDraftProject(project: ResumePage['project']): ResumeDraftProject | undefined {
+  if (!project) {
+    return undefined
+  }
+
   return {
-    activities: draft.activities,
-    contests: draft.contests,
+    endDate: project.endDate,
+    imageUrl: project.imageUrl,
+    name: project.name,
+    startDate: project.startDate,
+    summary: project.summary,
+  }
+}
+
+function toDraftPage(page: ResumePage): ResumeDraftPage {
+  return {
+    content: page.content,
+    id: page.id,
+    index: page.index,
+    ...(page.project ? { project: toDraftProject(page.project) } : {}),
+    type: page.type,
+  }
+}
+
+function toSheetContent(draft: ResumeDraft, pageIndex: number): ResumeBookSheetContent {
+  const page = draft.pages[pageIndex]
+  const project = page?.project
+  const department = getDepartmentFromSchoolNumber(draft.schoolNumber)
+
+  return {
+    activities: page?.type === 'PROFILE' ? draft.activities : [],
+    contests: project?.summary ? [project.summary] : [],
     email: draft.email,
-    headline: draft.headline,
+    headline: [draft.schoolNumber, department].filter(Boolean).join(' '),
     introTitle: draft.introTitle,
-    introduce: '',
-    majorName: draft.majorName,
+    introduce: draft.introduce,
+    majorName: draft.headline,
     name: draft.name,
-    pageContent: draft.pageContents[pageIndex],
+    pageContent: page?.content,
     portfolioUrl: draft.portfolioUrl,
-    projects: draft.projects,
-    skills: draft.skills,
+    projects: project?.name ? [project.name] : [],
+    skills: page?.type === 'PROFILE' ? draft.skills : [],
   }
 }
 
 function toResumeDraft(resume: Resume): ResumeDraft {
-  const firstPage = resume.pages.find((resumePage) => resumePage.index === 0) ?? resume.pages[0]
-  const secondPage = resume.pages.find((resumePage) => resumePage.index === 1) ?? resume.pages[1]
-  const project = secondPage?.project
+  const introduction = splitIntroduction(resume.introduce)
+  const pages = [...resume.pages].sort((left, right) => left.index - right.index).map(toDraftPage)
 
   return {
     ...defaultResumeDraft,
-    contests: project?.summary ? [project.summary] : [],
     email: resume.email,
     headline: resume.majorName || '전공미정',
-    introTitle: resume.introduce,
-    majorName: '',
+    introduce: introduction.introduce,
+    introTitle: introduction.introTitle,
     name: resume.name,
-    pageContents: [firstPage?.content ?? '', secondPage?.content ?? ''],
+    pages: pages.length > 0 ? pages : defaultResumeDraft.pages,
     portfolioUrl: resume.portfolioUrl,
-    projectEndDate: project?.endDate ?? '',
-    projectImageUrl: project?.imageUrl ?? '',
-    projectStartDate: project?.startDate ?? '',
-    projects: project?.name ? [project.name] : [],
     skills: resume.skills,
   }
 }
 
-function toSheetSpreadContent(resume: Resume | undefined, draft: ResumeDraft): readonly [ResumeBookSheetContent, ResumeBookSheetContent] {
-  if (!resume) {
-    return [toDraftSheetContent(draft, 0), toDraftSheetContent(draft, 1)]
-  }
-
-  return [toResumeBookSheetContent(resume, draft, 0), toResumeBookSheetContent(resume, draft, 1)]
-}
-
 function toResumePages(draft: ResumeDraft, resume?: Resume): readonly ResumePage[] {
-  const updatedPages = draft.pageContents.map((content, index): ResumePage => {
-    const existingPage = resume?.pages.find((resumePage) => resumePage.index === index)
-    const type = index === 1 ? 'PROJECT' : 'PROFILE'
-
-    if (type === 'PROJECT') {
-      return {
-        content,
-        id: existingPage?.id ?? '',
-        index,
-        project: {
-          endDate: draft.projectEndDate,
-          imageUrl: draft.projectImageUrl,
-          name: draft.projects[0] ?? '',
-          startDate: draft.projectStartDate,
-          summary: draft.contests[0] ?? '',
-        },
-        type,
-      }
-    }
+  return draft.pages.map((page): ResumePage => {
+    const existingPage = resume?.pages.find((resumePage) => resumePage.index === page.index)
+    const project = page.project ?? existingPage?.project
 
     return {
-      content,
-      id: existingPage?.id ?? '',
-      index,
-      type,
+      content: page.content,
+      id: page.id ?? existingPage?.id ?? '',
+      index: page.index,
+      ...(project
+        ? {
+            project: {
+              endDate: project.endDate,
+              imageUrl: project.imageUrl,
+              name: project.name,
+              startDate: project.startDate,
+              summary: project.summary,
+            },
+          }
+        : {}),
+      type: page.type,
     }
   })
-
-  const updatedPageIndexes = new Set(updatedPages.map((page) => page.index))
-  const preservedPages = resume?.pages.filter((page) => !updatedPageIndexes.has(page.index)) ?? []
-
-  return [...updatedPages, ...preservedPages]
 }
 
 function toResumeSaveProject(project: ResumeSaveProject): ResumeSaveProject | undefined {
@@ -273,53 +272,19 @@ function toResumeSaveProject(project: ResumeSaveProject): ResumeSaveProject | un
 }
 
 function toResumeSavePages(draft: ResumeDraft, resume?: Resume): readonly ResumeSavePage[] {
-  const updatedPages = draft.pageContents.map((content, index): ResumeSavePage => {
-    const existingPage = resume?.pages.find((resumePage) => resumePage.index === index)
-    const type = index === 1 ? 'PROJECT' : 'PROFILE'
-
-    if (type === 'PROJECT') {
-      const project = toResumeSaveProject({
-        endDate: draft.projectEndDate,
-        imageUrl: draft.projectImageUrl,
-        name: draft.projects[0],
-        startDate: draft.projectStartDate,
-        summary: draft.contests[0],
-      })
-
-      return {
-        content,
-        ...(existingPage?.id ? { id: existingPage.id } : {}),
-        index,
-        ...(project ? { project } : {}),
-        type,
-      }
-    }
+  return draft.pages.map((page): ResumeSavePage => {
+    const existingPage = resume?.pages.find((resumePage) => resumePage.index === page.index)
+    const project = page.project ? toResumeSaveProject(page.project) : undefined
+    const pageId = page.id ?? existingPage?.id
 
     return {
-      content,
-      ...(existingPage?.id ? { id: existingPage.id } : {}),
-      index,
-      type,
+      content: page.content,
+      ...(pageId ? { id: pageId } : {}),
+      index: page.index,
+      ...(project ? { project } : {}),
+      type: page.type,
     }
   })
-
-  const updatedPageIndexes = new Set(updatedPages.map((page) => page.index))
-  const preservedPages =
-    resume?.pages
-      .filter((page) => !updatedPageIndexes.has(page.index))
-      .map((page): ResumeSavePage => {
-        const project = page.project ? toResumeSaveProject(page.project) : undefined
-
-        return {
-          content: page.content,
-          id: page.id,
-          index: page.index,
-          ...(project ? { project } : {}),
-          type: page.type,
-        }
-      }) ?? []
-
-  return [...updatedPages, ...preservedPages]
 }
 
 function toSavedDraftResume(input: {
@@ -331,7 +296,7 @@ function toSavedDraftResume(input: {
   return {
     email: input.draft.email,
     id: input.resumeId,
-    introduce: input.draft.introTitle,
+    introduce: joinIntroduction(input.draft),
     isPublic: false,
     majorName: input.draft.headline === '전공미정' ? '' : input.draft.headline,
     name: input.draft.name,
@@ -345,10 +310,6 @@ function toSavedDraftResume(input: {
 }
 
 function toFailureMessage(result: Exclude<ResumeDetailResult, { readonly kind: 'success' }>) {
-  return result.message
-}
-
-function toVisibilityFailureMessage(result: Exclude<ResumeVisibilityResult, { readonly kind: 'success' }>) {
   return result.message
 }
 
@@ -368,9 +329,8 @@ function applyUserToDraft(draft: ResumeDraft, user: UserMe): ResumeDraft {
   return {
     ...draft,
     headline: user.major ?? '전공미정',
-    introTitle: user.introduce,
-    majorName: user.classInfo.schoolNumber,
     name: user.name,
+    schoolNumber: user.classInfo.schoolNumber,
   }
 }
 
@@ -382,7 +342,6 @@ export function StudentResumePageContent() {
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' })
   const [viewMode, setViewMode] = useState<ViewMode>(() => toInitialViewMode(requestedMode, requestedResumeId))
   const [draft, setDraft] = useState<ResumeDraft>(defaultResumeDraft)
-  const [visibilitySubmitState, setVisibilitySubmitState] = useState<VisibilitySubmitState>('idle')
   const [submissionSubmitState, setSubmissionSubmitState] = useState<SubmissionSubmitState>('idle')
   const [saveSubmitState, setSaveSubmitState] = useState<SaveSubmitState>('idle')
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback>()
@@ -391,10 +350,12 @@ export function StudentResumePageContent() {
   const [majorSubmitState, setMajorSubmitState] = useState<MajorSubmitState>('idle')
   const [majors, setMajors] = useState<readonly Major[]>([])
   const [isDraftDirty, setIsDraftDirty] = useState(false)
+  const [spreadStartIndex, setSpreadStartIndex] = useState(0)
   const userRef = useRef<UserMe | undefined>(undefined)
   const viewedResumeIdRef = useRef<string | undefined>(undefined)
   const requestedResumeIdRef = useRef<string | undefined>(undefined)
   const draftRevisionRef = useRef(0)
+  const lastDraftChangeAtRef = useRef(0)
 
   useEffect(() => {
     let isActive = true
@@ -526,62 +487,9 @@ export function StudentResumePageContent() {
     void loadResume(resumeIdToLoad, !requestedResumeId)
   }, [loadResume, requestedResumeId])
 
-  const changeVisibility = async () => {
-    if (
-      loadState.kind !== 'success' ||
-      visibilitySubmitState === 'pending' ||
-      submissionSubmitState !== 'idle' ||
-      saveSubmitState !== 'idle'
-    ) {
-      return
-    }
-
-    const accessToken = getSavedAccessToken()
-
-    if (!accessToken) {
-      setActionFeedback({ message: '로그인 후 공개 여부를 변경할 수 있습니다.', tone: 'error' })
-      return
-    }
-
-    const nextIsPublic = !loadState.resume.isPublic
-    const activeResumeId = loadState.resume.id
-
-    setVisibilitySubmitState('pending')
-    setActionFeedback(undefined)
-
-    const result = await updateResumeVisibility({
-      accessToken,
-      isPublic: nextIsPublic,
-    })
-
-    setVisibilitySubmitState('idle')
-
-    if (viewedResumeIdRef.current !== activeResumeId) {
-      return
-    }
-
-    if (result.kind !== 'success') {
-      setActionFeedback({ message: toVisibilityFailureMessage(result), tone: 'error' })
-      return
-    }
-
-    setLoadState({
-      kind: 'success',
-      resume: {
-        ...loadState.resume,
-        isPublic: result.isPublic,
-      },
-    })
-    setActionFeedback({
-      message: result.isPublic ? '이력서를 공개로 변경했습니다.' : '이력서를 비공개로 변경했습니다.',
-      tone: 'success',
-    })
-  }
-
   const changeSubmissionStatus = async () => {
     if (
       loadState.kind !== 'success' ||
-      visibilitySubmitState === 'pending' ||
       submissionSubmitState !== 'idle' ||
       saveSubmitState !== 'idle'
     ) {
@@ -636,17 +544,38 @@ export function StudentResumePageContent() {
   }
 
   const resume = loadState.kind === 'success' ? loadState.resume : undefined
-  const sheetContents = toSheetSpreadContent(resume, draft)
   const isResumeActionPending =
-    visibilitySubmitState === 'pending' || submissionSubmitState !== 'idle' || saveSubmitState !== 'idle' || majorSubmitState === 'pending'
+    submissionSubmitState !== 'idle' || saveSubmitState !== 'idle' || majorSubmitState === 'pending'
   const isEditing = viewMode === 'edit' || viewMode === 'feedback'
+  const visiblePageIndexes = [spreadStartIndex, spreadStartIndex + 1].filter((index) => index < draft.pages.length)
+  const canMovePrevious = spreadStartIndex > 0
+  const canMoveNext = isEditing ? spreadStartIndex < draft.pages.length - 1 : spreadStartIndex + 2 < draft.pages.length
 
   const handleDraftChange = useCallback((nextDraft: ResumeDraft) => {
     draftRevisionRef.current += 1
+    lastDraftChangeAtRef.current = Date.now()
     setDraft(nextDraft)
     setIsDraftDirty(true)
     setActionFeedback(undefined)
   }, [])
+
+  const addProjectPage = useCallback(() => {
+    const nextPageIndex = draft.pages.reduce((highestIndex, page) => Math.max(highestIndex, page.index), -1) + 1
+    const nextPage: ResumeDraftPage = {
+      content: '',
+      index: nextPageIndex,
+      project: {
+        endDate: '',
+        imageUrl: '',
+        name: '',
+        startDate: '',
+        summary: '',
+      },
+      type: 'PROJECT',
+    }
+
+    handleDraftChange({ ...draft, pages: [...draft.pages, nextPage] })
+  }, [draft, handleDraftChange])
 
   const handleMajorChange = useCallback(
     async (majorId: number) => {
@@ -698,7 +627,7 @@ export function StudentResumePageContent() {
 
   const handleSave = useCallback(
     async (mode: SaveMode) => {
-      if (saveSubmitState !== 'idle' || visibilitySubmitState === 'pending' || submissionSubmitState !== 'idle') {
+      if (saveSubmitState !== 'idle' || submissionSubmitState !== 'idle') {
         return
       }
 
@@ -721,7 +650,7 @@ export function StudentResumePageContent() {
       const saveInput = {
         accessToken,
         email: draft.email,
-        introduce: draft.introTitle,
+        introduce: joinIntroduction(draft),
         pages: savePages,
         portfolioUrl: draft.portfolioUrl,
         skills: draft.skills,
@@ -765,7 +694,7 @@ export function StudentResumePageContent() {
           resume: {
             ...activeResume,
             email: draft.email,
-            introduce: draft.introTitle,
+            introduce: joinIntroduction(draft),
             pages,
             portfolioUrl: draft.portfolioUrl,
             savedAt: result.savedAt,
@@ -798,7 +727,7 @@ export function StudentResumePageContent() {
         tone: 'success',
       })
     },
-    [draft, loadState, requestedMode, requestedResumeId, router, saveSubmitState, submissionSubmitState, visibilitySubmitState],
+    [draft, loadState, requestedMode, requestedResumeId, router, saveSubmitState, submissionSubmitState],
   )
 
   useEffect(() => {
@@ -806,9 +735,22 @@ export function StudentResumePageContent() {
       return
     }
 
-    const timerId = window.setTimeout(() => {
-      void handleSave('auto')
-    }, AUTO_SAVE_IDLE_MS)
+    let timerId = 0
+
+    const scheduleAutoSave = (delay: number) => {
+      timerId = window.setTimeout(() => {
+        const remainingIdleTime = AUTO_SAVE_IDLE_MS - (Date.now() - lastDraftChangeAtRef.current)
+
+        if (remainingIdleTime > 0) {
+          scheduleAutoSave(remainingIdleTime)
+          return
+        }
+
+        void handleSave('auto')
+      }, delay)
+    }
+
+    scheduleAutoSave(AUTO_SAVE_IDLE_MS)
 
     return () => {
       window.clearTimeout(timerId)
@@ -855,41 +797,104 @@ export function StudentResumePageContent() {
           </div>
 
           <div className={styles.sheetViewport}>
-            <button className={styles.pageArrow} type="button" aria-label="이전 페이지">
+            <button
+              className={styles.pageArrow}
+              disabled={!canMovePrevious}
+              onClick={() => setSpreadStartIndex((currentIndex) => Math.max(0, currentIndex - 1))}
+              type="button"
+              aria-label="이전 페이지"
+            >
               <Icon name="chevron-left" />
             </button>
             <div className={styles.spread} aria-label={isEditing ? '이력서 작성' : '이력서 미리보기'}>
-              {isEditing ? (
-                <>
+              {visiblePageIndexes.map((pageIndex) =>
+                isEditing ? (
                   <ResumeEditorSheet
                     className={styles.documentSheet}
                     draft={draft}
                     isMajorLoading={majorLoadState.kind === 'loading'}
                     isMajorPending={majorSubmitState === 'pending'}
+                    key={draft.pages[pageIndex]?.index ?? pageIndex}
                     majors={majors}
                     onChange={handleDraftChange}
                     onMajorChange={(majorId) => void handleMajorChange(majorId)}
-                    pageIndex={0}
+                    pageIndex={pageIndex}
                   />
-                  <ResumeEditorSheet className={styles.documentSheet} draft={draft} onChange={handleDraftChange} pageIndex={1} />
-                </>
-              ) : (
-                sheetContents.map((content, index) => (
+                ) : (
                   <ResumeBookSheet
-                    ariaLabel={`${content.name} 이력서 ${index + 1}쪽`}
+                    ariaLabel={`${draft.name} 이력서 ${(draft.pages[pageIndex]?.index ?? pageIndex) + 1}쪽`}
                     className={styles.documentSheet}
-                    content={content}
-                    key={`${content.name}-${index}`}
+                    content={toSheetContent(draft, pageIndex)}
+                    key={draft.pages[pageIndex]?.index ?? pageIndex}
                   />
-                ))
+                ),
               )}
+              {isEditing && spreadStartIndex + 1 >= draft.pages.length ? (
+                <button
+                  className={`${styles.documentSheet} ${styles.addPageSheet}`}
+                  onClick={addProjectPage}
+                  type="button"
+                  aria-label="프로젝트 페이지 추가"
+                >
+                  <Icon name="plus" />
+                </button>
+              ) : null}
             </div>
-            <button className={styles.pageArrow} type="button" aria-label="다음 페이지">
+            <button
+              className={styles.pageArrow}
+              disabled={!canMoveNext}
+              onClick={() => setSpreadStartIndex((currentIndex) => Math.min(draft.pages.length - 1, currentIndex + 1))}
+              type="button"
+              aria-label="다음 페이지"
+            >
               <Icon name="chevron-right" />
             </button>
           </div>
 
-          <p className={styles.pageCount}>2 / 5</p>
+          <p className={styles.pageCount}>
+            {Math.min(spreadStartIndex + 2, draft.pages.length)} / {draft.pages.length}
+          </p>
+
+          {isEditing ? (
+            <div className={styles.editorToolbar} aria-label="이력서 페이지 도구">
+              <div className={styles.toolGroup}>
+                <button
+                  className={styles.iconTool}
+                  disabled={!canMovePrevious}
+                  onClick={() => setSpreadStartIndex((currentIndex) => Math.max(0, currentIndex - 1))}
+                  type="button"
+                  aria-label="이전 페이지"
+                >
+                  <Icon name="chevron-left" />
+                </button>
+                <button
+                  className={styles.iconTool}
+                  disabled={!canMoveNext}
+                  onClick={() => setSpreadStartIndex((currentIndex) => Math.min(draft.pages.length - 1, currentIndex + 1))}
+                  type="button"
+                  aria-label="다음 페이지"
+                >
+                  <Icon name="chevron-right" />
+                </button>
+              </div>
+              <div className={styles.toolGroup}>
+                <button
+                  className={styles.textTool}
+                  onClick={() => document.getElementById(`resume-page-content-${draft.pages[spreadStartIndex]?.index ?? 0}`)?.focus()}
+                  type="button"
+                  aria-label="텍스트 작성"
+                >
+                  T
+                </button>
+                <button className={styles.iconTool} disabled type="button" aria-label="이미지 추가 준비 중">
+                  <Icon name="image" />
+                </button>
+                <button className={styles.iconTool} disabled type="button" aria-label="파일 업로드 준비 중">
+                  <Icon name="upload" />
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {isEditing ? (
             <>
@@ -923,11 +928,6 @@ export function StudentResumePageContent() {
             </p>
           ) : null}
 
-          {resume ? (
-            <button className={styles.visibilityButton} disabled={isResumeActionPending} onClick={changeVisibility} type="button">
-              {visibilitySubmitState === 'pending' ? '공개 변경 중' : resume.isPublic ? '공개 중' : '비공개'}
-            </button>
-          ) : null}
         </div>
 
         {viewMode === 'feedback' ? (
