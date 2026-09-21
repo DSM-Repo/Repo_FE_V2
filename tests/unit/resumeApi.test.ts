@@ -4,6 +4,7 @@ import test from 'node:test'
 process.env.NEXT_PUBLIC_API_BASE_URL = 'https://api.example.test'
 
 const resumeApi = await import('../../src/features/resume/api/resumeApi.js')
+const userApi = await import('../../src/features/user/api/userApi.js')
 
 const originalFetch = globalThis.fetch
 const originalClearTimeout = globalThis.clearTimeout
@@ -12,6 +13,36 @@ const originalSetTimeout = globalThis.setTimeout
 test.afterEach(() => {
   globalThis.fetch = originalFetch
   globalThis.clearTimeout = originalClearTimeout
+})
+
+test('updateUserMajor sends the selected major id with bearer auth', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+  let requestedContentType = ''
+  let requestedBody = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+    requestedContentType = new Headers(init?.headers).get('Content-Type') ?? ''
+    requestedBody = String(init?.body ?? '')
+
+    return new Response(null, { status: 204 })
+  }
+
+  const result = await userApi.updateUserMajor({
+    accessToken: 'student-access-token',
+    majorId: 2,
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/user')
+  assert.equal(requestedMethod, 'PATCH')
+  assert.equal(requestedAuthorization, 'Bearer student-access-token')
+  assert.equal(requestedContentType, 'application/json')
+  assert.equal(requestedBody, JSON.stringify({ majorId: 2 }))
+  assert.deepEqual(result, { kind: 'success' })
 })
 
 test('getStudentResumeStatuses sends class filters and returns parsed submission statuses', async () => {
