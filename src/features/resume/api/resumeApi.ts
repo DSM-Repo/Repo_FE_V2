@@ -76,7 +76,11 @@ function isJsonRecord(value: unknown): value is JsonRecord {
 }
 
 function isResumePageType(value: unknown): value is ResumePageType {
-  return value === 'PROFILE' || value === 'PROJECT'
+  return value === 'FREE' || value === 'PROFILE' || value === 'PROJECT'
+}
+
+function isOptionalString(value: unknown): value is string | null | undefined {
+  return value === undefined || value === null || typeof value === 'string'
 }
 
 function inferResumePageType(index: number): ResumePageType {
@@ -94,21 +98,21 @@ function parseStringList(value: unknown): readonly string[] | undefined {
 function parseResumeProject(value: unknown): ResumeProject | undefined {
   if (
     !isJsonRecord(value) ||
-    typeof value['endDate'] !== 'string' ||
-    typeof value['imageUrl'] !== 'string' ||
-    typeof value['name'] !== 'string' ||
-    typeof value['startDate'] !== 'string' ||
-    typeof value['summary'] !== 'string'
+    (value['endDate'] !== undefined && value['endDate'] !== null && typeof value['endDate'] !== 'string') ||
+    (value['imageUrl'] !== undefined && value['imageUrl'] !== null && typeof value['imageUrl'] !== 'string') ||
+    (value['name'] !== undefined && value['name'] !== null && typeof value['name'] !== 'string') ||
+    (value['startDate'] !== undefined && value['startDate'] !== null && typeof value['startDate'] !== 'string') ||
+    (value['summary'] !== undefined && value['summary'] !== null && typeof value['summary'] !== 'string')
   ) {
     return undefined
   }
 
   return {
-    endDate: value['endDate'],
-    imageUrl: value['imageUrl'],
-    name: value['name'],
-    startDate: value['startDate'],
-    summary: value['summary'],
+    endDate: typeof value['endDate'] === 'string' ? value['endDate'] : '',
+    imageUrl: typeof value['imageUrl'] === 'string' ? value['imageUrl'] : '',
+    name: typeof value['name'] === 'string' ? value['name'] : '',
+    startDate: typeof value['startDate'] === 'string' ? value['startDate'] : '',
+    summary: typeof value['summary'] === 'string' ? value['summary'] : '',
   }
 }
 
@@ -171,20 +175,21 @@ function parseResume(value: unknown): Resume | undefined {
   if (
     !isJsonRecord(value) ||
     typeof value['id'] !== 'string' ||
-    typeof value['introduce'] !== 'string' ||
-    typeof value['isPublic'] !== 'boolean' ||
-    typeof value['majorName'] !== 'string' ||
-    typeof value['name'] !== 'string' ||
-    typeof value['portfolioUrl'] !== 'string' ||
-    typeof value['profileImageUrl'] !== 'string' ||
-    typeof value['savedAt'] !== 'string' ||
-    typeof value['submissionStatus'] !== 'string'
+    !isOptionalString(value['email']) ||
+    !isOptionalString(value['introduce']) ||
+    (value['isPublic'] !== undefined && value['isPublic'] !== null && typeof value['isPublic'] !== 'boolean') ||
+    !isOptionalString(value['majorName']) ||
+    !isOptionalString(value['name']) ||
+    !isOptionalString(value['portfolioUrl']) ||
+    !isOptionalString(value['profileImageUrl']) ||
+    !isOptionalString(value['savedAt']) ||
+    !isOptionalString(value['submissionStatus'])
   ) {
     return undefined
   }
 
   const pages = parseResumePages(value['pages'])
-  const skills = value['skills'] === undefined ? [] : parseStringList(value['skills'])
+  const skills = value['skills'] === undefined || value['skills'] === null ? [] : parseStringList(value['skills'])
 
   if (!pages || !skills) {
     return undefined
@@ -193,16 +198,16 @@ function parseResume(value: unknown): Resume | undefined {
   return {
     email: typeof value['email'] === 'string' ? value['email'] : '',
     id: value['id'],
-    introduce: value['introduce'],
-    isPublic: value['isPublic'],
-    majorName: value['majorName'],
-    name: value['name'],
+    introduce: typeof value['introduce'] === 'string' ? value['introduce'] : '',
+    isPublic: value['isPublic'] === true,
+    majorName: typeof value['majorName'] === 'string' ? value['majorName'] : '',
+    name: typeof value['name'] === 'string' ? value['name'] : '',
     pages,
-    portfolioUrl: value['portfolioUrl'],
-    profileImageUrl: value['profileImageUrl'],
-    savedAt: value['savedAt'],
+    portfolioUrl: typeof value['portfolioUrl'] === 'string' ? value['portfolioUrl'] : '',
+    profileImageUrl: typeof value['profileImageUrl'] === 'string' ? value['profileImageUrl'] : '',
+    savedAt: typeof value['savedAt'] === 'string' ? value['savedAt'] : '',
     skills,
-    submissionStatus: value['submissionStatus'],
+    submissionStatus: typeof value['submissionStatus'] === 'string' ? value['submissionStatus'] : 'ONGOING',
   }
 }
 

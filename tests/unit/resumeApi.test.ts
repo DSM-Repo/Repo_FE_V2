@@ -207,6 +207,85 @@ test('getResumeById sends the resume id with bearer auth and returns parsed resu
   })
 })
 
+test('getResumeById accepts nullable optional resume fields from the server contract', async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        email: null,
+        id: 'resume-id',
+        introduce: null,
+        isPublic: null,
+        majorName: null,
+        name: '오혜민',
+        pages: [
+          {
+            content: '프로젝트 내용',
+            id: 'project-page',
+            index: 1,
+            project: {
+              endDate: null,
+              imageUrl: null,
+              name: 'Repo',
+              startDate: null,
+              summary: null,
+            },
+            type: 'PROJECT',
+          },
+          { content: '자유 페이지', id: 'free-page', index: 2, project: null, type: 'FREE' },
+        ],
+        portfolioUrl: null,
+        profileImageUrl: null,
+        savedAt: null,
+        skills: null,
+        submissionStatus: null,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+
+  const result = await resumeApi.getResumeById({
+    accessToken: 'access-token',
+    resumeId: 'resume-id',
+  })
+
+  assert.deepEqual(result, {
+    kind: 'success',
+    resume: {
+      email: '',
+      id: 'resume-id',
+      introduce: '',
+      isPublic: false,
+      majorName: '',
+      name: '오혜민',
+      pages: [
+        {
+          content: '프로젝트 내용',
+          id: 'project-page',
+          index: 1,
+          project: {
+            endDate: '',
+            imageUrl: '',
+            name: 'Repo',
+            startDate: '',
+            summary: '',
+          },
+          type: 'PROJECT',
+        },
+        { content: '자유 페이지', id: 'free-page', index: 2, type: 'FREE' },
+      ],
+      portfolioUrl: '',
+      profileImageUrl: '',
+      savedAt: '',
+      skills: [],
+      submissionStatus: 'ONGOING',
+    },
+  })
+})
+
 test('getResumeById returns server-error when the response body is not a resume', async () => {
   globalThis.fetch = async () =>
     new Response(JSON.stringify({ id: 'resume-id' }), {
@@ -470,7 +549,7 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
     accessToken: 'access-token',
     email: 'student@example.test',
     introduce: '사용자 소개',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
     portfolioUrl: 'https://repo.example.test/hong',
     skills: ['React', 'TypeScript'],
   })
@@ -484,7 +563,7 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
     JSON.stringify({
       email: 'student@example.test',
       introduce: '사용자 소개',
-      pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
+      pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
       portfolioUrl: 'https://repo.example.test/hong',
       skills: ['React', 'TypeScript'],
     }),
@@ -496,7 +575,7 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
   })
 })
 
-test('autoSaveResume sends pages with bearer auth and returns parsed auto-save state', async () => {
+test('autoSaveResume sends the full resume draft with bearer auth and returns parsed auto-save state', async () => {
   let requestedUrl = ''
   let requestedMethod = ''
   let requestedAuthorization = ''
@@ -525,14 +604,27 @@ test('autoSaveResume sends pages with bearer auth and returns parsed auto-save s
 
   const result = await resumeApi.autoSaveResume({
     accessToken: 'access-token',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
+    email: 'student@example.test',
+    introduce: '사용자 소개',
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+    portfolioUrl: 'https://repo.example.test/hong',
+    skills: ['React', 'TypeScript'],
   })
 
   assert.equal(requestedUrl, 'https://api.example.test/resume/auto-save')
   assert.equal(requestedMethod, 'POST')
   assert.equal(requestedAuthorization, 'Bearer access-token')
   assert.equal(requestedContentType, 'application/json')
-  assert.equal(requestedBody, JSON.stringify({ pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }] }))
+  assert.equal(
+    requestedBody,
+    JSON.stringify({
+      email: 'student@example.test',
+      introduce: '사용자 소개',
+      pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+      portfolioUrl: 'https://repo.example.test/hong',
+      skills: ['React', 'TypeScript'],
+    }),
+  )
   assert.deepEqual(result, {
     autoSaved: true,
     kind: 'success',
@@ -554,7 +646,7 @@ test('saveResume returns server-error when the response body is not save state',
     accessToken: 'access-token',
     email: 'student@example.test',
     introduce: '사용자 소개',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
     portfolioUrl: 'https://repo.example.test/hong',
     skills: ['React', 'TypeScript'],
   })
@@ -576,7 +668,11 @@ test('autoSaveResume returns server-error when the response body is not auto-sav
 
   const result = await resumeApi.autoSaveResume({
     accessToken: 'access-token',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
+    email: '',
+    introduce: '',
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+    portfolioUrl: '',
+    skills: [],
   })
 
   assert.deepEqual(result, {

@@ -1,4 +1,4 @@
-export type ResumePageType = 'PROFILE' | 'PROJECT'
+export type ResumePageType = 'FREE' | 'PROFILE' | 'PROJECT'
 
 export type ResumeProject = {
   readonly endDate: string
@@ -13,6 +13,22 @@ export type ResumePage = {
   readonly id: string
   readonly index: number
   readonly project?: ResumeProject
+  readonly type: ResumePageType
+}
+
+export type ResumeSaveProject = {
+  readonly endDate?: string
+  readonly imageUrl?: string
+  readonly name?: string
+  readonly startDate?: string
+  readonly summary?: string
+}
+
+export type ResumeSavePage = {
+  readonly content: string
+  readonly id?: string
+  readonly index: number
+  readonly project?: ResumeSaveProject
   readonly type: ResumePageType
 }
 
@@ -45,15 +61,12 @@ export type ResumeSaveInput = {
   readonly accessToken: string
   readonly email: string
   readonly introduce: string
-  readonly pages: readonly ResumePage[]
+  readonly pages: readonly ResumeSavePage[]
   readonly portfolioUrl: string
   readonly skills: readonly string[]
 }
 
-export type ResumeAutoSaveInput = {
-  readonly accessToken: string
-  readonly pages: readonly ResumePage[]
-}
+export type ResumeAutoSaveInput = ResumeSaveInput
 
 export type ResumeSubmissionInput = {
   readonly accessToken: string

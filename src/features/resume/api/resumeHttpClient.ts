@@ -166,7 +166,11 @@ export async function postResumeSaveRequest(input: ResumeSaveInput): Promise<Res
 export async function postResumeAutoSaveRequest(input: ResumeAutoSaveInput): Promise<ResumeRequestResponse> {
   return sendResumeRequest('resume/auto-save', {
     body: JSON.stringify({
+      email: input.email,
+      introduce: input.introduce,
       pages: input.pages,
+      portfolioUrl: input.portfolioUrl,
+      skills: input.skills,
     }),
     headers: {
       Authorization: `Bearer ${input.accessToken}`,

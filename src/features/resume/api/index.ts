@@ -7,6 +7,7 @@ export {
   submitResume,
   updateResumeVisibility,
 } from './resumeApi'
+export { clearSavedResumeId, getSavedResumeId, saveResumeId } from './resumeIdStorage'
 export type {
   Resume,
   ResumeAutoSave,
@@ -19,6 +20,8 @@ export type {
   ResumeProject,
   ResumeSave,
   ResumeSaveInput,
+  ResumeSavePage,
+  ResumeSaveProject,
   ResumeSaveResult,
   ResumeStudentStatus,
   ResumeStudentStatusListInput,
