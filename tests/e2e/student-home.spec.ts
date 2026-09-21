@@ -33,6 +33,31 @@ test.describe('student home page', () => {
     })
   })
 
+  test('keeps the loading state from flashing a missing-profile message', async ({ page }) => {
+    let releaseUserRequest: (() => void) | undefined
+
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      await new Promise<void>((resolve) => {
+        releaseUserRequest = resolve
+      })
+      await route.fulfill({
+        body: JSON.stringify(defaultUser),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.goto('/home')
+
+    await expect(page.getByText('내 정보를 불러오는 중입니다.')).toBeVisible()
+    await expect(page.getByText('내 정보가 없습니다.')).toHaveCount(0)
+
+    expect(releaseUserRequest).toBeDefined()
+    releaseUserRequest?.()
+
+    await expect(page.getByRole('heading', { level: 1, name: /테스트 학생/ })).toBeVisible()
+  })
+
   test('renders the student dashboard content and navigation state', async ({ page }) => {
     await page.goto('/home')
 

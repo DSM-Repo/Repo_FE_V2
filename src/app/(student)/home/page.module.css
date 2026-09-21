@@ -51,11 +51,17 @@
 }
 
 .profileText p {
+  display: -webkit-box;
+  max-width: 72ch;
   margin: 0;
+  overflow: hidden;
   color: var(--repo-gray-50);
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: 1.45;
+  word-break: keep-all;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
 
 .dashboard {

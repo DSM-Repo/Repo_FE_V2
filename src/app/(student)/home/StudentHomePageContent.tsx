@@ -124,6 +124,7 @@ export function StudentHomePageContent(): ReactElement {
   }, [])
 
   const user = userState.kind === 'success' ? userState.user : undefined
+  const isUserLoading = userState.kind === 'idle' || userState.kind === 'loading'
   const progressPercent = toProgressPercent(user?.progress.totalPercent ?? 0)
   const progressSections = user?.progress.sections.length ? user.progress.sections : defaultProgressItems
   const progressRingStyle = useMemo(() => toProgressRingStyle(progressPercent), [progressPercent])
@@ -142,10 +143,15 @@ export function StudentHomePageContent(): ReactElement {
           )}
           <div className={styles.profileText}>
             <h1 id="student-home-title">
-              {user ? user.name : '내 정보가 없습니다.'}
+              {user ? user.name : isUserLoading ? '내 정보를 불러오는 중입니다.' : '내 정보를 불러오지 못했습니다.'}
               {user ? <span>{toStudentLine(user)}</span> : null}
             </h1>
-            <p>{user?.introduce || (userState.kind === 'failure' ? userState.message : '이력서를 저장하면 홈에서 내 정보를 확인할 수 있습니다.')}</p>
+            {!isUserLoading ? (
+              <p>
+                {user?.introduce ||
+                  (userState.kind === 'failure' ? userState.message : '이력서를 저장하면 홈에서 내 정보를 확인할 수 있습니다.')}
+              </p>
+            ) : null}
           </div>
         </header>
 
