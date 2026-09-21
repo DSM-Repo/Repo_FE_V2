@@ -78,16 +78,15 @@
   gap: 6px;
   margin-top: 6px;
   color: var(--repo-gray-500);
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
 }
 
 .nameInput,
 .majorInput,
 .emailInput,
 .introTitleInput,
-.introduceInput,
 .skillInput,
 .activityInput,
 .projectDateInput,
@@ -107,7 +106,6 @@
 .majorInput::placeholder,
 .emailInput::placeholder,
 .introTitleInput::placeholder,
-.introduceInput::placeholder,
 .skillInput::placeholder,
 .activityInput::placeholder,
 .projectDateInput::placeholder,
@@ -121,13 +119,10 @@
 .majorInput:focus,
 .emailInput:focus,
 .introTitleInput:focus,
-.introduceInput:focus,
 .skillInput:focus,
-.activityInput:focus,
 .projectDateInput:focus,
 .projectNameInput:focus,
 .projectIntroInput:focus,
-.projectContentInput:focus,
 .profileImageButton:focus-visible,
 .projectImageButton:focus-visible,
 .qrButton:focus-visible,
@@ -147,31 +142,36 @@
 }
 
 .majorSelect {
-  display: inline-flex;
+  display: inline-block;
   flex: 0 0 auto;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 4px;
+  max-width: min(200px, 58%);
+  padding: 2px 22px 2px 4px;
   border: 0;
   color: var(--repo-gray-500);
   background: transparent;
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+  text-overflow: ellipsis;
+}
+
+.majorSelect:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .majorInput {
   flex: 0 1 138px;
-  font-size: var(--repo-font-body-very-tiny-size);
+  font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
+  line-height: var(--repo-font-body-tiny-line-height);
 }
 
 .emailInput {
   flex: 1 1 140px;
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
 }
 
 .introBox,
@@ -186,23 +186,70 @@
 }
 
 .introTitleInput {
+  min-height: 1.4em;
+  max-height: 5.6em;
+  overflow-y: auto;
+  resize: none;
+  field-sizing: content;
   font-size: clamp(14px, 1.04vw, 20px);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: 1.4;
-}
-
-.introduceInput {
-  height: 44px;
-  resize: none;
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .skillSection {
   display: grid;
   gap: 10px;
   margin-top: clamp(18px, 1.7vw, 32px);
+}
+
+.skillList {
+  display: flex;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+}
+
+.skillTag {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px 5px 12px;
+  border-radius: var(--repo-radius-pill);
+  color: var(--repo-gray-700);
+  background: var(--repo-gray-100);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.skillTag span {
+  overflow-wrap: anywhere;
+}
+
+.skillTag button {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--repo-radius-pill);
+  color: var(--repo-gray-500);
+  background: transparent;
+  font: inherit;
+  line-height: 1;
+}
+
+.skillTag button:hover,
+.skillTag button:focus-visible {
+  color: var(--repo-text-black);
+  background: var(--repo-gray-200);
 }
 
 .sectionTitleRow,
@@ -248,8 +295,8 @@
 
 .skillInput {
   min-height: 26px;
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
   line-height: 1.4;
 }
 
@@ -263,10 +310,11 @@
   display: inline-flex;
   min-width: 0;
   align-items: center;
+  flex-wrap: wrap;
   gap: clamp(6px, 0.45vw, 8px);
   overflow: visible;
   color: var(--repo-gray-500);
-  font-size: var(--repo-font-body-very-tiny-size);
+  font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: 1;
 }
@@ -297,8 +345,8 @@
 .activityInput,
 .projectContentInput {
   min-height: 80px;
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
   line-height: 1.55;
 }
 
@@ -309,7 +357,7 @@
 }
 
 .projectDateInput {
-  width: 72px;
+  width: 86px;
   flex: 0 0 auto;
   color: var(--repo-gray-500);
   font: inherit;
@@ -334,8 +382,8 @@
 }
 
 .projectIntroInput {
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
   line-height: 1.4;
 }
 
@@ -344,121 +392,95 @@
   margin-top: 18px;
 }
 
-.markdownEditorShell {
-  position: relative;
-  display: grid;
-  align-content: start;
-  gap: 8px;
+.markdownEditor {
+  width: 100%;
   min-height: 96px;
-  padding: 8px 0 10px;
+  padding: 10px 0;
   overflow: auto;
+  border: 0;
   color: var(--repo-text-black);
-  word-break: keep-all;
-}
-
-.markdownEditorDisplay {
-  display: grid;
-  gap: 8px;
-  min-height: 80px;
-  color: var(--repo-text-black);
-  pointer-events: none;
+  background: transparent;
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: 1.55;
+  letter-spacing: 0;
   white-space: pre-wrap;
   word-break: keep-all;
 }
 
-.markdownEditorShell:focus-within .markdownEditorDisplay > :last-child::after,
-.markdownEditorShell:focus-within .markdownEditorPlaceholder::after {
-  display: inline-block;
-  width: 1px;
-  height: 1em;
-  margin-left: 2px;
-  background: #0a7cff;
-  content: '';
-  vertical-align: -0.12em;
+.markdownEditor:focus {
+  outline: 1px solid var(--repo-main);
+  outline-offset: 2px;
 }
 
-.markdownEditorDisplay h1,
-.markdownEditorDisplay h2,
-.markdownEditorDisplay h3,
-.markdownEditorDisplay h4,
-.markdownEditorDisplay p,
-.markdownEditorDisplay blockquote {
+.markdownEditor:empty::before {
+  color: var(--repo-gray-400);
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
+
+.markdownEditor h1,
+.markdownEditor h2,
+.markdownEditor h3,
+.markdownEditor h4,
+.markdownEditor p,
+.markdownEditor blockquote,
+.markdownEditorParagraph,
+.markdownEditorQuote {
   margin: 0;
 }
 
-.markdownEditorDisplay h1 {
-  margin-top: 6px;
+.markdownEditor h1,
+.markdownEditorHeading1 {
   font-size: var(--repo-font-title-small-size);
   font-weight: var(--repo-font-title-small-weight);
   line-height: var(--repo-font-title-small-line-height);
 }
 
-.markdownEditorDisplay h2 {
+.markdownEditor h2,
+.markdownEditorHeading2 {
   font-size: var(--repo-font-title-small-size);
   font-weight: var(--repo-font-title-small-weight);
   line-height: var(--repo-font-title-small-line-height);
 }
 
-.markdownEditorDisplay h3 {
+.markdownEditor h3,
+.markdownEditorHeading3 {
   font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
 }
 
-.markdownEditorDisplay h4 {
+.markdownEditor h4,
+.markdownEditorHeading4 {
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
 }
 
-.markdownEditorDisplay p {
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: 1.55;
-}
-
-.markdownEditorDisplay blockquote {
+.markdownEditor blockquote,
+.markdownEditorQuote {
   padding-left: 10px;
   border-left: 2px solid var(--repo-gray-300);
   color: var(--repo-gray-500);
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: 1.55;
 }
 
-.markdownEditorDisplay strong {
+.markdownEditor strong {
   font-weight: var(--repo-font-title-tiny-weight);
 }
 
-.markdownEditorDisplay em {
+.markdownEditor em {
   font-style: italic;
 }
 
-.markdownEditorDisplay u {
+.markdownEditor u {
   text-underline-offset: 2px;
 }
 
-.markdownEditorPlaceholder {
-  color: var(--repo-gray-400);
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: 1.55;
-}
-
-.markdownOverlayInput {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  min-height: 100%;
-  padding: 0;
-  resize: none;
-  border: 0;
-  color: transparent;
-  background: transparent;
-  caret-color: transparent;
-  font: inherit;
-  line-height: inherit;
-  outline: 0;
+.markdownEditor a {
+  color: var(--repo-main);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .srOnly {
@@ -481,6 +503,7 @@
 
   .profileHeader {
     grid-template-columns: 44px minmax(0, 1fr) 44px;
+    gap: 8px;
   }
 
   .projectHeader {
@@ -491,6 +514,38 @@
   .activityHeadingRow {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .nameRow {
+    gap: 2px;
+  }
+
+  .nameInput,
+  .majorInput,
+  .emailInput {
+    flex: none;
+  }
+
+  .nameInput {
+    width: 100%;
+  }
+
+  .majorSelect {
+    padding-left: 0;
+  }
+
+  .metaRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .metaRow > span {
+    display: none;
+  }
+
+  .projectNameInput {
+    font-size: 18px;
   }
 
   .profileImageButton,

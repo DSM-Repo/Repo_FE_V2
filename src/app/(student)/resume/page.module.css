@@ -241,17 +241,28 @@
   transform: translateX(14px);
 }
 
-.statusMessage {
+.toastLayer {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  z-index: 12;
+  display: flex;
+  width: min(calc(100% - 48px), 600px);
+  justify-content: center;
+  transform: translateX(-50%);
+}
+
+.loadingMessage {
   position: absolute;
-  right: 64px;
-  bottom: 92px;
+  top: 40px;
+  left: 64px;
   max-width: min(420px, calc(100% - 128px));
   margin: 0;
   color: var(--repo-gray-400);
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
-  text-align: right;
+  text-align: left;
 }
 
 .visibilityButton {
@@ -385,6 +396,10 @@
     right: 24px;
   }
 
+  .loadingMessage {
+    left: 24px;
+  }
+
   .documentSheet {
     --resume-book-sheet-width: clamp(360px, 43vw, 560px);
     --resume-book-sheet-height: clamp(510px, 61vw, 792px);
@@ -435,6 +450,18 @@
     right: 16px;
     left: 16px;
     justify-content: flex-end;
+  }
+
+  .toastLayer {
+    top: 72px;
+    width: calc(100% - 32px);
+  }
+
+  .loadingMessage {
+    top: 84px;
+    right: 16px;
+    left: 16px;
+    max-width: none;
   }
 
   .primaryAction,

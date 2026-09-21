@@ -1,3 +1,8 @@
+'use client'
+
+import { useState, type KeyboardEvent } from 'react'
+
+import type { Major } from '@/features/major/api'
 import { Icon } from '@/shared/ui'
 
 import { MarkdownTextarea } from './MarkdownTextarea'
@@ -14,7 +19,6 @@ export type ResumeDraft = {
   readonly email: string
   readonly headline: string
   readonly introTitle: string
-  readonly introduce: string
   readonly majorName: string
   readonly name: string
   readonly pageContents: readonly [string, string]
@@ -29,19 +33,12 @@ export type ResumeDraft = {
 export type ResumeEditorSheetProps = {
   readonly className?: string
   readonly draft: ResumeDraft
+  readonly isMajorLoading?: boolean
+  readonly isMajorPending?: boolean
+  readonly majors?: readonly Major[]
   readonly onChange: (nextDraft: ResumeDraft) => void
+  readonly onMajorChange?: (majorId: number) => void
   readonly pageIndex: 0 | 1
-}
-
-function toCommaText(values: readonly string[]) {
-  return values.join(', ')
-}
-
-function toCommaValues(value: string) {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
 }
 
 function toLineText(values: readonly string[]) {
@@ -55,8 +52,19 @@ function toLineValues(value: string) {
     .filter(Boolean)
 }
 
-export function ResumeEditorSheet({ className, draft, onChange, pageIndex }: ResumeEditorSheetProps) {
+export function ResumeEditorSheet({
+  className,
+  draft,
+  isMajorLoading = false,
+  isMajorPending = false,
+  majors = [],
+  onChange,
+  onMajorChange,
+  pageIndex,
+}: ResumeEditorSheetProps) {
+  const [skillInput, setSkillInput] = useState('')
   const sheetClassName = [styles.sheet, className].filter(Boolean).join(' ')
+  const selectedMajor = majors.find((major) => major.name === draft.headline)
 
   const updateDraft = (patch: Partial<ResumeDraft>) => {
     onChange({ ...draft, ...patch })
@@ -67,6 +75,30 @@ export function ResumeEditorSheet({ className, draft, onChange, pageIndex }: Res
       pageIndex === 0 ? [value, draft.pageContents[1]] : [draft.pageContents[0], value]
 
     updateDraft({ pageContents })
+  }
+
+  const addSkill = () => {
+    const skill = skillInput.trim()
+
+    if (!skill || draft.skills.some((existingSkill) => existingSkill.toLocaleLowerCase() === skill.toLocaleLowerCase())) {
+      return
+    }
+
+    updateDraft({ skills: [...draft.skills, skill] })
+    setSkillInput('')
+  }
+
+  const handleSkillKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') {
+      return
+    }
+
+    event.preventDefault()
+    addSkill()
+  }
+
+  const removeSkill = (skillToRemove: string) => {
+    updateDraft({ skills: draft.skills.filter((skill) => skill !== skillToRemove) })
   }
 
   if (pageIndex === 1) {
@@ -135,7 +167,6 @@ export function ResumeEditorSheet({ className, draft, onChange, pageIndex }: Res
           label="2쪽 추가 내용"
           onChange={updatePageContent}
           placeholder="프로젝트에서 수행한 역할과 기여 내용, 그리고 진행 과정에 대한 회고 등을 작성해 주세요."
-          previewLabel="프로젝트 Markdown 미리보기"
           toolbarLabel="프로젝트 작성 도구"
           value={draft.pageContents[1]}
         />
@@ -158,13 +189,33 @@ export function ResumeEditorSheet({ className, draft, onChange, pageIndex }: Res
               className={styles.nameInput}
               id="resume-name"
               onChange={(event) => updateDraft({ name: event.target.value })}
-              placeholder="홍길동"
+              placeholder="이름을 입력해주세요."
               value={draft.name}
             />
-            <button className={styles.majorSelect} type="button">
-              전공미정
-              <span aria-hidden="true">⌄</span>
-            </button>
+            <label className={styles.srOnly} htmlFor="resume-major-selection">
+              희망 전공
+            </label>
+            <select
+              aria-busy={isMajorLoading || isMajorPending}
+              className={styles.majorSelect}
+              disabled={isMajorLoading || isMajorPending || majors.length === 0}
+              id="resume-major-selection"
+              onChange={(event) => {
+                const majorId = Number(event.target.value)
+
+                if (Number.isInteger(majorId) && majorId > 0) {
+                  onMajorChange?.(majorId)
+                }
+              }}
+              value={selectedMajor ? String(selectedMajor.majorId) : ''}
+            >
+              <option value="">{isMajorLoading ? '전공 불러오는 중' : '전공미정'}</option>
+              {majors.map((major) => (
+                <option key={major.majorId} value={major.majorId}>
+                  {major.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div className={styles.metaRow}>
             <label className={styles.srOnly} htmlFor="resume-major">
@@ -174,7 +225,7 @@ export function ResumeEditorSheet({ className, draft, onChange, pageIndex }: Res
               className={styles.majorInput}
               id="resume-major"
               onChange={(event) => updateDraft({ majorName: event.target.value })}
-              placeholder="2415 인공지능소프트웨어과"
+              placeholder="학번과 전공을 입력해주세요."
               value={draft.majorName}
             />
             <span aria-hidden="true">|</span>
@@ -199,41 +250,45 @@ export function ResumeEditorSheet({ className, draft, onChange, pageIndex }: Res
         <label className={styles.srOnly} htmlFor="resume-intro-title">
           자기소개 제목
         </label>
-        <input
+        <textarea
           className={styles.introTitleInput}
           id="resume-intro-title"
           onChange={(event) => updateDraft({ introTitle: event.target.value })}
           placeholder="한줄 자기소개를 작성해주세요."
+          rows={1}
           value={draft.introTitle}
-        />
-        <label className={styles.srOnly} htmlFor="resume-introduce">
-          자기소개 내용
-        </label>
-        <textarea
-          className={styles.introduceInput}
-          id="resume-introduce"
-          onChange={(event) => updateDraft({ introduce: event.target.value })}
-          placeholder="자기소개를 작성해주세요."
-          value={draft.introduce}
         />
       </section>
 
       <section className={styles.skillSection}>
         <div className={styles.sectionTitleRow}>
           <h3>기술스택</h3>
-          <button className={styles.addInlineButton} type="button" aria-label="기술스택 추가">
+          <button className={styles.addInlineButton} onClick={addSkill} type="button" aria-label="기술스택 추가">
             <Icon name="plus" />
           </button>
         </div>
+        {draft.skills.length > 0 ? (
+          <ul aria-label="기술스택 태그" className={styles.skillList}>
+            {draft.skills.map((skill) => (
+              <li className={styles.skillTag} key={skill}>
+                <span>{skill}</span>
+                <button aria-label={`${skill} 기술스택 삭제`} onClick={() => removeSkill(skill)} type="button">
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <label className={styles.srOnly} htmlFor="resume-skills">
           기술스택
         </label>
         <input
           className={styles.skillInput}
           id="resume-skills"
-          onChange={(event) => updateDraft({ skills: toCommaValues(event.target.value) })}
-          placeholder="전공을 입력 후 Enter를 눌러 추가하세요."
-          value={toCommaText(draft.skills)}
+          onChange={(event) => setSkillInput(event.target.value)}
+          onKeyDown={handleSkillKeyDown}
+          placeholder="기술스택을 입력 후 Enter를 눌러 추가하세요."
+          value={skillInput}
         />
       </section>
 
@@ -247,7 +302,6 @@ export function ResumeEditorSheet({ className, draft, onChange, pageIndex }: Res
           label="1쪽 추가 내용"
           onChange={updatePageContent}
           placeholder="활동 내용과 날짜, 상세를 입력해주세요."
-          previewLabel="활동 Markdown 미리보기"
           toolbarLabel="활동 작성 도구"
           value={draft.pageContents[0]}
         />

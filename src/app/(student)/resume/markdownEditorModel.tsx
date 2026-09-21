@@ -163,7 +163,7 @@ export function toEditableMarkdownBlocks(value: string): readonly EditableMarkdo
 }
 
 function appendInlineNodes(parent: HTMLElement, value: string): void {
-  const pattern = /(\*\*([^*]+)\*\*|\*([^*]+)\*|<u>(.*?)<\/u>)/g
+  const pattern = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|<u>(.*?)<\/u>)/g
   let currentIndex = 0
   let match = pattern.exec(value)
 
@@ -175,11 +175,26 @@ function appendInlineNodes(parent: HTMLElement, value: string): void {
       parent.append(value.slice(currentIndex, matchStart))
     }
 
-    const boldText = match[2]
-    const italicText = match[3]
-    const underlineText = match[4]
+    const imageAlt = match[2]
+    const imageHref = match[3]
+    const linkText = match[4]
+    const linkHref = match[5]
+    const boldText = match[6]
+    const italicText = match[7]
+    const underlineText = match[8]
 
-    if (boldText !== undefined) {
+    if (imageAlt !== undefined && imageHref !== undefined) {
+      const link = document.createElement('a')
+      link.dataset.markdownImage = ''
+      link.setAttribute('href', imageHref)
+      link.textContent = imageAlt || '이미지'
+      parent.append(link)
+    } else if (linkText !== undefined && linkHref !== undefined) {
+      const link = document.createElement('a')
+      link.setAttribute('href', linkHref)
+      link.textContent = linkText
+      parent.append(link)
+    } else if (boldText !== undefined) {
       const strong = document.createElement('strong')
       strong.textContent = boldText
       parent.append(strong)
@@ -244,6 +259,11 @@ function toBlockClassName(block: EditableMarkdownBlock, styles: EditorBlockClass
 }
 
 export function renderEditorMarkdown(editor: HTMLElement, value: string, styles: EditorBlockClassNames): void {
+  if (!value) {
+    editor.replaceChildren()
+    return
+  }
+
   const blocks = toEditableMarkdownBlocks(value)
   editor.replaceChildren(...blocks.map((block) => createBlockElement(block, styles)))
 }
@@ -268,30 +288,64 @@ function serializeInlineMarkdown(node: Node): string {
       return `*${text}*`
     case 'U':
       return `<u>${text}</u>`
+    case 'A': {
+      const href = node.getAttribute('href') ?? ''
+      return node.hasAttribute('data-markdown-image') ? `![${text}](${href})` : `[${text}](${href})`
+    }
     default:
       return text
   }
 }
 
 export function serializeEditorMarkdown(editor: HTMLElement) {
-  return Array.from(editor.children)
-    .map((child) => {
-      if (!(child instanceof HTMLElement)) {
-        return ''
+  const lines: string[] = []
+  let inlineLine = ''
+
+  const flushInlineLine = () => {
+    if (!inlineLine) {
+      return
+    }
+
+    lines.push(inlineLine.replace(/\u00a0/g, ' '))
+    inlineLine = ''
+  }
+
+  for (const child of editor.childNodes) {
+    if (!(child instanceof HTMLElement)) {
+      inlineLine += serializeInlineMarkdown(child)
+      continue
+    }
+
+    const isBlock = ['BLOCKQUOTE', 'DIV', 'H1', 'H2', 'H3', 'H4', 'P'].includes(child.tagName)
+
+    if (!isBlock) {
+      if (child.tagName === 'BR') {
+        flushInlineLine()
+        lines.push('')
+      } else {
+        inlineLine += serializeInlineMarkdown(child)
       }
+      continue
+    }
 
-      const text = Array.from(child.childNodes).map(serializeInlineMarkdown).join('').replace(/\u00a0/g, ' ')
-      const level = child.dataset.headingLevel
+    flushInlineLine()
 
-      if (level === '1' || level === '2' || level === '3' || level === '4') {
-        return `${'#'.repeat(Number(level))} ${text}`
-      }
+    const text = Array.from(child.childNodes).map(serializeInlineMarkdown).join('').replace(/\u00a0/g, ' ')
+    const headingLevel = child.dataset.headingLevel ?? child.tagName.match(/^H([1-4])$/)?.[1]
 
-      if (child.dataset.markdownBlock === 'quote') {
-        return `> ${text}`
-      }
+    if (headingLevel === '1' || headingLevel === '2' || headingLevel === '3' || headingLevel === '4') {
+      lines.push(`${'#'.repeat(Number(headingLevel))} ${text}`)
+      continue
+    }
 
-      return text
-    })
-    .join('\n')
+    if (child.dataset.markdownBlock === 'quote' || child.tagName === 'BLOCKQUOTE') {
+      lines.push(`> ${text}`)
+      continue
+    }
+
+    lines.push(text)
+  }
+
+  flushInlineLine()
+  return lines.join('\n')
 }
