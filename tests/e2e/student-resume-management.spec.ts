@@ -53,10 +53,11 @@ test.describe('student resume management', () => {
     await expect(page.getByRole('button', { name: '임시저장' })).toBeVisible()
     await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeVisible()
     await expect(page.getByLabel('이름').first()).toHaveValue('')
-    await expect(page.getByLabel('학번 전공')).toHaveValue('')
+    await expect(page.getByLabel('학번 전공')).toHaveText('')
     await expect(page.getByLabel('자기소개 제목')).toHaveValue('')
     await expect(page.getByRole('button', { name: '이력서 수정하기' })).toHaveCount(0)
-    await expect(page.getByText('2 / 5')).toBeVisible()
+    await expect(page.getByText('2 / 2')).toBeVisible()
+    await expect(page.getByLabel('이력서 페이지 도구')).toBeVisible()
   })
 
   test('waits for the student response instead of flashing sample identity data', async ({ page }) => {
@@ -84,7 +85,7 @@ test.describe('student resume management', () => {
 
     await expect(page.getByText('학생 정보를 불러오는 중입니다.')).toBeVisible()
     await expect(page.getByLabel('이름').first()).toHaveAttribute('placeholder', '이름을 입력해주세요.')
-    await expect(page.getByLabel('학번 전공')).toHaveAttribute('placeholder', '학번과 전공을 입력해주세요.')
+    await expect(page.getByLabel('학번 전공')).toHaveText('')
     await expect(page.getByText('홍길동', { exact: true })).toHaveCount(0)
     await expect(page.getByText('2415 인공지능소프트웨어과', { exact: true })).toHaveCount(0)
 
@@ -92,7 +93,7 @@ test.describe('student resume management', () => {
     releaseUserRequest?.()
 
     await expect(page.getByLabel('이름').first()).toHaveValue('오혜민')
-    await expect(page.getByLabel('학번 전공')).toHaveValue('2110')
+    await expect(page.getByLabel('학번 전공')).toHaveText('2110 소프트웨어개발과')
   })
 
   test('renders edit controls and feedback drawer state', async ({ page }) => {
@@ -125,20 +126,46 @@ test.describe('student resume management', () => {
     await expect(pageContentInput).toContainText('첫 번째 페이지에 들어갈 추가 내용입니다.')
   })
 
-  test('supports a four-line self introduction that grows with line breaks', async ({ page }) => {
+  test('moves from the one-line introduction to ordinary text on Enter', async ({ page }) => {
     await page.setViewportSize({ height: 1080, width: 1920 })
     await page.goto('/resume?mode=edit')
 
-    const introInput = page.getByLabel('자기소개 제목')
-    const initialBox = await introInput.boundingBox()
+    const introTitleInput = page.getByLabel('자기소개 제목')
+    const introBodyInput = page.getByLabel('자기소개 내용')
+    const initialBox = await introBodyInput.boundingBox()
 
-    expect(await introInput.evaluate((element) => element.tagName)).toBe('TEXTAREA')
-    await introInput.fill('첫 번째 줄\n두 번째 줄\n세 번째 줄\n네 번째 줄')
+    await introTitleInput.fill('첫 번째 줄')
+    await introTitleInput.press('Enter')
+    await expect(introBodyInput).toBeFocused()
+    await introBodyInput.fill('두 번째 줄\n세 번째 줄\n네 번째 줄')
 
-    await expect(introInput).toHaveValue('첫 번째 줄\n두 번째 줄\n세 번째 줄\n네 번째 줄')
+    await expect(introTitleInput).toHaveValue('첫 번째 줄')
+    await expect(introBodyInput).toHaveValue('두 번째 줄\n세 번째 줄\n네 번째 줄')
     await expect
-      .poll(async () => (await introInput.boundingBox())?.height ?? 0)
+      .poll(async () => (await introBodyInput.boundingBox())?.height ?? 0)
       .toBeGreaterThan(initialBox?.height ?? 0)
+  })
+
+  test('saves the one-line introduction and following body as one API value', async ({ page }) => {
+    let savedIntroduction = ''
+
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as { introduce: string }
+      savedIntroduction = requestBody.introduce
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.goto('/resume?mode=edit')
+
+    await page.getByLabel('자기소개 제목').fill('한 줄 소개')
+    await page.getByLabel('자기소개 제목').press('Enter')
+    await page.getByLabel('자기소개 내용').fill('일반 텍스트 첫 줄\n일반 텍스트 둘째 줄')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+
+    await expect.poll(() => savedIntroduction).toBe('한 줄 소개\n일반 텍스트 첫 줄\n일반 텍스트 둘째 줄')
   })
 
   test('adds technology stack tags with Enter and saves them', async ({ page }) => {
@@ -161,13 +188,19 @@ test.describe('student resume management', () => {
     await skillInput.press('Enter')
     await skillInput.fill('TypeScript')
     await skillInput.press('Enter')
+    await skillInput.fill('안녕')
+    await skillInput.dispatchEvent('keydown', { code: 'Enter', isComposing: true, key: 'Enter', keyCode: 229 })
+    await expect(page.getByRole('list', { name: '기술스택 태그' }).getByText('안녕', { exact: true })).toHaveCount(0)
+    await skillInput.press('Enter')
 
     await expect(skillInput).toHaveValue('')
     await expect(page.getByRole('list', { name: '기술스택 태그' }).getByText('React', { exact: true })).toBeVisible()
     await expect(page.getByRole('list', { name: '기술스택 태그' }).getByText('TypeScript', { exact: true })).toBeVisible()
+    await expect(page.getByRole('list', { name: '기술스택 태그' }).getByText('안녕', { exact: true })).toHaveCount(1)
+    await expect(page.getByRole('list', { name: '기술스택 태그' }).getByText('녕', { exact: true })).toHaveCount(0)
 
     await page.getByRole('button', { exact: true, name: '저장' }).click()
-    await expect.poll(() => savedSkills).toEqual(['React', 'TypeScript'])
+    await expect.poll(() => savedSkills).toEqual(['React', 'TypeScript', '안녕'])
   })
 
   test('loads teacher-managed majors and updates the selected student major', async ({ page }) => {
@@ -220,6 +253,36 @@ test.describe('student resume management', () => {
     await expect(page.getByText('전공을 변경했습니다.')).toBeVisible()
   })
 
+  test('derives the department from the first two digits of the school number', async ({ page }) => {
+    let schoolNumber = '1101'
+
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          classInfo: { classNumber: 1, grade: Number(schoolNumber[0]), number: 1, schoolNumber },
+          introduce: '',
+          major: null,
+          name: '오혜민',
+          profileImageUrl: null,
+          progress: { sections: [], totalPercent: 0 },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    for (const [nextSchoolNumber, expectedDepartment] of [
+      ['1101', '공통과정'],
+      ['2210', '소프트웨어개발과'],
+      ['3310', '임베디드소프트웨어과'],
+      ['3410', '인공지능소프트웨어과'],
+    ] as const) {
+      schoolNumber = nextSchoolNumber
+      await page.goto('/resume?mode=edit')
+      await expect(page.getByLabel('학번 전공')).toHaveText(`${nextSchoolNumber} ${expectedDepartment}`)
+    }
+  })
+
   test('keeps the selected major beside the student name in view mode', async ({ page }) => {
     await page.route(`${apiBaseUrl}/user`, async (route) => {
       await route.fulfill({
@@ -263,7 +326,8 @@ test.describe('student resume management', () => {
 
     const firstSheet = page.getByRole('article', { name: '오혜민 이력서 1쪽' })
     await expect(firstSheet.getByLabel('희망 전공')).toHaveText('Frontend Developer')
-    await expect(firstSheet.getByLabel('학번 및 이메일')).toHaveText('2110 | student@example.com')
+    await expect(firstSheet.getByLabel('학번 및 이메일')).toHaveText('2110 소프트웨어개발과 | student@example.com')
+    await expect(page.getByRole('button', { name: '비공개' })).toHaveCount(0)
   })
 
   test('edits formatted content while saving markdown source', async ({ page }) => {
@@ -295,6 +359,100 @@ test.describe('student resume management', () => {
     await expect.poll(() => savedActivityContent).toBe('**안녕**')
   })
 
+  test('renders the markdown toolbar as three icon groups', async ({ page }) => {
+    await page.goto('/resume?mode=edit')
+
+    const toolbar = page.getByLabel('활동 작성 도구')
+
+    await expect(toolbar.locator('[data-markdown-tool-icon]')).toHaveCount(10)
+    await expect(toolbar.locator('[data-markdown-tool-separator]')).toHaveCount(2)
+
+    for (const label of ['제목 1', '제목 2', '제목 3', '제목 4', '굵게', '기울임', '밑줄', '인용', '링크', '이미지']) {
+      await expect(toolbar.getByRole('button', { name: label })).toBeVisible()
+    }
+  })
+
+  test('turns leading markdown shortcuts into Notion-style blocks', async ({ page }) => {
+    let savedActivityContent = ''
+
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as { pages: Array<{ content: string }> }
+      savedActivityContent = requestBody.pages[0]?.content ?? ''
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.goto('/resume?mode=edit')
+
+    const pageContentInput = page.getByRole('textbox', { name: '1쪽 추가 내용' })
+
+    for (const { fontSize, markdown, selector, shortcut, text } of [
+      { fontSize: '24px', markdown: '# 프로젝트 경험', selector: 'h1', shortcut: '#', text: '프로젝트 경험' },
+      { fontSize: '20px', markdown: '## 맡은 역할', selector: 'h2', shortcut: '##', text: '맡은 역할' },
+      { fontSize: '18px', markdown: '### 문제 해결', selector: 'h3', shortcut: '###', text: '문제 해결' },
+      { fontSize: '16px', markdown: '#### 회고', selector: 'h4', shortcut: '####', text: '회고' },
+      { fontSize: '14px', markdown: '> 사용자 피드백', selector: 'blockquote', shortcut: '>', text: '사용자 피드백' },
+    ]) {
+      await pageContentInput.fill('')
+      await pageContentInput.pressSequentially(shortcut)
+      await pageContentInput.press('Space')
+
+      await expect
+        .poll(() =>
+          pageContentInput.evaluate((editor) => {
+            const selection = window.getSelection()
+            const anchor = selection?.anchorNode
+            const element = anchor instanceof HTMLElement ? anchor : anchor?.parentElement
+
+            return {
+              html: editor.innerHTML,
+              selectionTag: element?.closest('h1, h2, h3, h4, blockquote')?.tagName.toLowerCase(),
+            }
+          }),
+        )
+        .toMatchObject({ selectionTag: selector })
+
+      await page.keyboard.insertText(text)
+
+      await expect(pageContentInput.locator(selector)).toHaveText(text)
+      await expect(pageContentInput.locator(selector)).toHaveCSS('font-size', fontSize)
+      await expect(pageContentInput).not.toContainText(markdown)
+    }
+
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect.poll(() => savedActivityContent).toBe('> 사용자 피드백')
+  })
+
+  test('shows only the cursor without a focus border on resume writing fields', async ({ page }) => {
+    await page.goto('/resume?mode=edit')
+
+    for (const field of [
+      page.getByLabel('이름').first(),
+      page.getByLabel('자기소개 제목'),
+      page.getByLabel('자기소개 내용'),
+      page.getByRole('textbox', { name: '1쪽 추가 내용' }),
+      page.getByLabel('프로젝트 이름'),
+      page.getByRole('textbox', { name: '프로젝트 소개' }),
+      page.getByRole('textbox', { name: '2쪽 추가 내용' }),
+    ]) {
+      await field.focus()
+      await expect
+        .poll(() =>
+          field.evaluate((element) => {
+            const style = getComputedStyle(element)
+
+            return {
+              backgroundColor: style.backgroundColor,
+              outlineStyle: style.outlineStyle,
+            }
+          }),
+        )
+        .toEqual({ backgroundColor: 'rgba(0, 0, 0, 0)', outlineStyle: 'none' })
+    }
+  })
+
   test('keeps the blank resume fields reachable on tablet', async ({ page }) => {
     await page.setViewportSize({ height: 1024, width: 768 })
     await page.goto('/resume')
@@ -304,6 +462,46 @@ test.describe('student resume management', () => {
     await secondPageContentInput.fill('태블릿에서도 두 번째 페이지 추가 내용을 작성합니다.')
 
     await expect(secondPageContentInput).toContainText('태블릿에서도 두 번째 페이지 추가 내용을 작성합니다.')
+  })
+
+  test('navigates to the add-page sheet and creates another project page', async ({ page }) => {
+    let savedPages: Array<{ index: number; project?: { name?: string }; type: string }> = []
+
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as {
+        pages: Array<{ index: number; project?: { name?: string }; type: string }>
+      }
+      savedPages = requestBody.pages
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.setViewportSize({ height: 1080, width: 1920 })
+    await page.goto('/resume?mode=edit')
+
+    const pageTools = page.getByLabel('이력서 페이지 도구')
+    await expect(pageTools.getByRole('button', { name: '텍스트 작성' })).toBeVisible()
+    await expect(pageTools.getByRole('button', { name: '이미지 추가 준비 중' })).toBeVisible()
+    await expect(pageTools.getByRole('button', { name: '파일 업로드 준비 중' })).toBeVisible()
+    await pageTools.getByRole('button', { name: '다음 페이지' }).click()
+
+    await expect(page.getByRole('button', { name: '프로젝트 페이지 추가' })).toBeVisible()
+    await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()
+
+    const thirdPage = page.getByRole('article', { name: '이력서 작성 3쪽' })
+    await expect(thirdPage).toBeVisible()
+    await expect(page.getByText('3 / 3')).toBeVisible()
+    await thirdPage.getByLabel('프로젝트 이름').fill('Repo Project V2')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+
+    await expect.poll(() => savedPages).toHaveLength(3)
+    expect(savedPages[2]).toMatchObject({
+      index: 2,
+      project: { name: 'Repo Project V2' },
+      type: 'PROJECT',
+    })
   })
 
   test('saves the blank resume as a new resume', async ({ page }) => {
@@ -412,10 +610,8 @@ test.describe('student resume management', () => {
     await page.goto('/resume')
 
     await expect(page.getByLabel('이름').first()).toHaveValue('오혜민')
-    await expect(page.getByLabel('학번 전공')).toHaveValue('2110')
-    await expect(page.getByLabel('자기소개 제목')).toHaveValue(
-      '새벽자습너무 졸립니다. 뭘 적지.. 한줄소개는 이런식으로 쭉쭉 들어갑니다. 줄넘김 가능합니다. 자기소개자기소개자기소개자기소개자기소개자기소개..',
-    )
+    await expect(page.getByLabel('학번 전공')).toHaveText('2110 소프트웨어개발과')
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('')
     await page.getByLabel('이메일').first().fill('student@example.com')
     await page.getByLabel('자기소개 제목').fill('사용자 경험을 개선하는 개발자입니다.')
     const skillInput = page.getByRole('textbox', { exact: true, name: '기술스택' })
@@ -432,7 +628,7 @@ test.describe('student resume management', () => {
     await page.getByRole('button', { exact: true, name: '저장' }).click()
 
     await expect(page.getByRole('status')).toContainText('이력서를 저장했습니다.')
-    await expect(page.getByRole('button', { name: '비공개' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '비공개' })).toHaveCount(0)
     await expect(page).toHaveURL('/resume?resumeId=resume-id&mode=edit')
     await expect(page.evaluate(() => window.localStorage.getItem('repo.resume.id'))).resolves.toBe('resume-id')
 
@@ -594,10 +790,10 @@ test.describe('student resume management', () => {
     await page.getByLabel('자기소개 제목').fill('3분 뒤 저장되는 한줄소개')
     await page.clock.runFor(0)
 
-    await page.clock.fastForward(179_999)
+    await page.clock.fastForward(179_000)
     expect(autoSaveRequestCount).toBe(0)
 
-    await page.clock.fastForward(1)
+    await page.clock.fastForward(1_000)
     await expect.poll(() => autoSaveRequestCount).toBe(1)
     await expect(page.getByRole('status')).toContainText('변경사항을 자동 저장했습니다.')
   })
