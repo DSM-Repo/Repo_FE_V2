@@ -87,6 +87,7 @@
 .majorInput,
 .emailInput,
 .introTitleInput,
+.introBodyInput,
 .skillInput,
 .activityInput,
 .projectDateInput,
@@ -106,6 +107,7 @@
 .majorInput::placeholder,
 .emailInput::placeholder,
 .introTitleInput::placeholder,
+.introBodyInput::placeholder,
 .skillInput::placeholder,
 .activityInput::placeholder,
 .projectDateInput::placeholder,
@@ -119,19 +121,28 @@
 .majorInput:focus,
 .emailInput:focus,
 .introTitleInput:focus,
+.introBodyInput:focus,
 .skillInput:focus,
 .projectDateInput:focus,
 .projectNameInput:focus,
 .projectIntroInput:focus,
+.projectContentInput:focus,
+.activityInput:focus,
+.majorSelect:focus-visible,
+.markdownEditor:focus {
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+
 .profileImageButton:focus-visible,
 .projectImageButton:focus-visible,
 .qrButton:focus-visible,
-.majorSelect:focus-visible,
 .addInlineButton:focus-visible,
 .inlineIconButton:focus-visible {
-  outline: 1px solid var(--repo-main);
+  outline: 1px solid var(--repo-gray-500);
   outline-offset: 2px;
-  background: rgb(56 193 31 / 8%);
+  background: transparent;
 }
 
 .nameInput {
@@ -161,7 +172,9 @@
 }
 
 .majorInput {
+  display: inline-block;
   flex: 0 1 138px;
+  margin: 0;
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
@@ -187,14 +200,25 @@
 
 .introTitleInput {
   min-height: 1.4em;
-  max-height: 5.6em;
-  overflow-y: auto;
-  resize: none;
-  field-sizing: content;
   font-size: clamp(14px, 1.04vw, 20px);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: 1.4;
-  white-space: pre-wrap;
+}
+
+.introBodyInput {
+  width: 100%;
+  min-height: 1.4em;
+  max-height: 4.2em;
+  overflow-y: auto;
+  border: 0;
+  color: var(--repo-gray-800);
+  background: transparent;
+  resize: none;
+  field-sizing: content;
+  font-size: var(--repo-font-resume-small-size);
+  font-weight: var(--repo-font-resume-small-weight);
+  line-height: var(--repo-font-resume-small-line-height);
+  letter-spacing: 0;
 }
 
 .skillSection {
@@ -217,14 +241,14 @@
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 5px;
-  padding: 5px 8px 5px 12px;
+  gap: 0;
+  padding: 5px 12px;
   border-radius: var(--repo-radius-pill);
   color: var(--repo-gray-700);
   background: var(--repo-gray-100);
-  font-size: var(--repo-font-body-tiny-size);
-  font-weight: var(--repo-font-body-tiny-weight);
-  line-height: var(--repo-font-body-tiny-line-height);
+  font-size: var(--repo-font-resume-small-size);
+  font-weight: var(--repo-font-resume-small-weight);
+  line-height: 1;
 }
 
 .skillTag span {
@@ -232,9 +256,9 @@
 }
 
 .skillTag button {
-  display: inline-flex;
-  width: 16px;
-  height: 16px;
+  display: none;
+  width: 14px;
+  height: 14px;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -250,6 +274,16 @@
 .skillTag button:focus-visible {
   color: var(--repo-text-black);
   background: var(--repo-gray-200);
+}
+
+.skillTag:hover {
+  gap: 5px;
+  padding-right: 8px;
+}
+
+.skillTag:hover button,
+.skillTag:focus-within button {
+  display: inline-flex;
 }
 
 .sectionTitleRow,
@@ -311,16 +345,16 @@
   min-width: 0;
   align-items: center;
   flex-wrap: wrap;
-  gap: clamp(6px, 0.45vw, 8px);
+  gap: var(--space-2);
   overflow: visible;
   color: var(--repo-gray-500);
-  font-size: var(--repo-font-body-tiny-size);
-  font-weight: var(--repo-font-title-tiny-weight);
   line-height: 1;
 }
 
 .richTextTool {
   display: inline-flex;
+  width: var(--space-6);
+  height: var(--space-6);
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
@@ -328,8 +362,7 @@
   border: 0;
   color: inherit;
   background: transparent;
-  font: inherit;
-  line-height: 1;
+  cursor: pointer;
 }
 
 .richTextTool:hover,
@@ -338,8 +371,60 @@
 }
 
 .richTextTool:focus-visible {
-  outline: 1px solid var(--repo-main);
+  outline: 1px solid var(--repo-gray-500);
   outline-offset: 2px;
+}
+
+.richTextToolSeparator {
+  width: 1px;
+  height: var(--space-5);
+  flex: 0 0 auto;
+  border-radius: 1px;
+  background: var(--repo-gray-300);
+}
+
+.markdownToolHeadingIcon,
+.markdownToolTextIcon,
+.markdownToolSvgIcon {
+  display: block;
+  width: var(--space-5);
+  height: var(--space-5);
+  flex: 0 0 auto;
+}
+
+.markdownToolHeadingIcon {
+  font-family: inherit;
+  font-size: var(--repo-font-body-medium-size);
+  font-weight: var(--repo-font-body-medium-2-weight);
+  line-height: var(--repo-font-body-medium-line-height);
+}
+
+.markdownToolHeadingIcon sub {
+  font-size: var(--repo-font-resume-small-size);
+  font-weight: var(--repo-font-resume-small-weight);
+  line-height: var(--repo-font-resume-small-line-height);
+}
+
+.markdownToolTextIcon {
+  font-size: var(--repo-font-body-large-size);
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: var(--repo-font-body-large-line-height);
+  text-align: center;
+}
+
+.italicToolIcon {
+  font-family: inherit;
+  font-style: italic;
+}
+
+.underlineToolIcon {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.markdownToolSvgIcon {
+  overflow: visible;
 }
 
 .activityInput,
@@ -392,6 +477,10 @@
   margin-top: 18px;
 }
 
+.freePageContentInput {
+  min-height: 100%;
+}
+
 .markdownEditor {
   width: 100%;
   min-height: 96px;
@@ -406,11 +495,6 @@
   letter-spacing: 0;
   white-space: pre-wrap;
   word-break: keep-all;
-}
-
-.markdownEditor:focus {
-  outline: 1px solid var(--repo-main);
-  outline-offset: 2px;
 }
 
 .markdownEditor:empty::before {
@@ -439,23 +523,23 @@
 
 .markdownEditor h2,
 .markdownEditorHeading2 {
-  font-size: var(--repo-font-title-small-size);
+  font-size: var(--repo-font-body-large-size);
   font-weight: var(--repo-font-title-small-weight);
-  line-height: var(--repo-font-title-small-line-height);
+  line-height: var(--repo-font-body-large-line-height);
 }
 
 .markdownEditor h3,
 .markdownEditorHeading3 {
-  font-size: var(--repo-font-title-tiny-size);
-  font-weight: var(--repo-font-title-tiny-weight);
-  line-height: var(--repo-font-title-tiny-line-height);
+  font-size: var(--repo-font-body-medium-2-size);
+  font-weight: var(--repo-font-body-medium-2-weight);
+  line-height: var(--repo-font-body-medium-2-line-height);
 }
 
 .markdownEditor h4,
 .markdownEditorHeading4 {
-  font-size: var(--repo-font-body-tiny-size);
+  font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
-  line-height: var(--repo-font-body-tiny-line-height);
+  line-height: var(--repo-font-title-tiny-line-height);
 }
 
 .markdownEditor blockquote,

@@ -22,6 +22,14 @@ type EditorBlockClassNames = {
   readonly heading1: string; readonly heading2: string; readonly heading3: string; readonly heading4: string; readonly paragraph: string; readonly quote: string
 }
 
+const blockShortcuts: Readonly<Record<string, EditableMarkdownBlock>> = {
+  '#': { kind: 'heading', level: 1, text: '' },
+  '##': { kind: 'heading', level: 2, text: '' },
+  '###': { kind: 'heading', level: 3, text: '' },
+  '####': { kind: 'heading', level: 4, text: '' },
+  '>': { kind: 'quote', text: '' },
+}
+
 function findLineRange(value: string, selectionStart: number, selectionEnd: number) {
   const lineStart = value.lastIndexOf('\n', Math.max(0, selectionStart - 1)) + 1
   const nextLineBreak = value.indexOf('\n', selectionEnd)
@@ -221,13 +229,7 @@ function createBlockElement(block: EditableMarkdownBlock, styles: EditorBlockCla
   const element =
     block.kind === 'heading' ? document.createElement(`h${block.level}`) : document.createElement(block.kind === 'quote' ? 'blockquote' : 'div')
 
-  element.className = toBlockClassName(block, styles)
-  element.dataset.editorBlock = ''
-  element.dataset.markdownBlock = block.kind
-
-  if (block.kind === 'heading') {
-    element.dataset.headingLevel = String(block.level)
-  }
+  configureBlockElement(element, block, styles)
 
   if (block.text) {
     appendInlineNodes(element, block.text)
@@ -236,6 +238,73 @@ function createBlockElement(block: EditableMarkdownBlock, styles: EditorBlockCla
   }
 
   return element
+}
+
+function configureBlockElement(element: HTMLElement, block: EditableMarkdownBlock, styles: EditorBlockClassNames) {
+  element.className = toBlockClassName(block, styles)
+  element.dataset.editorBlock = ''
+  element.dataset.markdownBlock = block.kind
+
+  if (block.kind === 'heading') {
+    element.dataset.headingLevel = String(block.level)
+  } else {
+    delete element.dataset.headingLevel
+  }
+}
+
+function findEditorBlock(editor: HTMLElement, node: Node): HTMLElement {
+  let block = node instanceof HTMLElement ? node : node.parentElement
+
+  while (block && block !== editor && block.parentElement !== editor) {
+    block = block.parentElement
+  }
+
+  return block && editor.contains(block) ? block : editor
+}
+
+export function applyMarkdownBlockShortcut(editor: HTMLElement, selection: Selection, styles: EditorBlockClassNames): boolean {
+  if (selection.rangeCount === 0 || !selection.isCollapsed) {
+    return false
+  }
+
+  const range = selection.getRangeAt(0)
+
+  if (!editor.contains(range.startContainer)) {
+    return false
+  }
+
+  const block = findEditorBlock(editor, range.startContainer)
+
+  const shortcutRange = document.createRange()
+  shortcutRange.selectNodeContents(block)
+  shortcutRange.setEnd(range.startContainer, range.startOffset)
+  const shortcutBlock = blockShortcuts[shortcutRange.toString()]
+
+  if (!shortcutBlock) {
+    return false
+  }
+
+  shortcutRange.deleteContents()
+  const replacement = createBlockElement(shortcutBlock, styles)
+  const remainingNodes = Array.from(block.childNodes)
+
+  replacement.replaceChildren(...remainingNodes)
+
+  if (!replacement.textContent) {
+    replacement.replaceChildren(document.createElement('br'))
+  }
+
+  if (block === editor) {
+    editor.replaceChildren(replacement)
+  } else {
+    block.replaceWith(replacement)
+  }
+
+  range.setStart(replacement, 0)
+  range.collapse(true)
+  selection.removeAllRanges()
+  selection.addRange(range)
+  return true
 }
 
 function toBlockClassName(block: EditableMarkdownBlock, styles: EditorBlockClassNames) {

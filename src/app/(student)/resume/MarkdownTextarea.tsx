@@ -1,7 +1,9 @@
-import { useEffect, useRef, type ClipboardEvent, type MouseEvent } from 'react'
+import { Fragment, useEffect, useRef, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react'
 
+import { MarkdownToolbarIcon } from './MarkdownToolbarIcon'
 import styles from './ResumeEditorSheet.module.css'
 import {
+  applyMarkdownBlockShortcut,
   markdownTools,
   renderEditorMarkdown,
   serializeEditorMarkdown,
@@ -21,9 +23,18 @@ type MarkdownTextareaProps = {
 export function MarkdownTextarea({ className, id, label, onChange, placeholder, toolbarLabel, value }: MarkdownTextareaProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const latestValueRef = useRef(value)
+  const pendingValueRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     const editor = editorRef.current
+
+    if (pendingValueRef.current !== undefined) {
+      if (value !== pendingValueRef.current) {
+        return
+      }
+
+      pendingValueRef.current = undefined
+    }
 
     latestValueRef.current = value
 
@@ -55,6 +66,7 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
     }
 
     latestValueRef.current = nextValue
+    pendingValueRef.current = nextValue
     onChange(nextValue)
   }
 
@@ -134,21 +146,52 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
     document.execCommand('insertText', false, event.clipboardData.getData('text/plain'))
   }
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== ' ' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.nativeEvent.isComposing) {
+      return
+    }
+
+    const editor = editorRef.current
+    const selection = window.getSelection()
+
+    if (
+      !editor ||
+      !selection ||
+      !applyMarkdownBlockShortcut(editor, selection, {
+        heading1: styles.markdownEditorHeading1,
+        heading2: styles.markdownEditorHeading2,
+        heading3: styles.markdownEditorHeading3,
+        heading4: styles.markdownEditorHeading4,
+        paragraph: styles.markdownEditorParagraph,
+        quote: styles.markdownEditorQuote,
+      })
+    ) {
+      return
+    }
+
+    event.preventDefault()
+    syncMarkdownValue()
+  }
+
   return (
     <>
       <div className={styles.richTextToolbar} aria-label={toolbarLabel}>
         {markdownTools.map((tool) => (
-          <button
-            className={styles.richTextTool}
-            aria-label={tool.title}
-            key={tool.command}
-            onMouseDown={keepEditorSelection}
-            onClick={() => applyCommand(tool.command)}
-            title={tool.title}
-            type="button"
-          >
-            {tool.label}
-          </button>
+          <Fragment key={tool.command}>
+            <button
+              className={styles.richTextTool}
+              aria-label={tool.title}
+              onMouseDown={keepEditorSelection}
+              onClick={() => applyCommand(tool.command)}
+              title={tool.title}
+              type="button"
+            >
+              <MarkdownToolbarIcon command={tool.command} />
+            </button>
+            {(tool.command === 'h4' || tool.command === 'underline') && (
+              <span aria-hidden="true" className={styles.richTextToolSeparator} data-markdown-tool-separator="" />
+            )}
+          </Fragment>
         ))}
       </div>
       <div
@@ -161,6 +204,7 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
         id={id}
         onBlur={syncMarkdownValue}
         onInput={syncMarkdownValue}
+        onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         ref={editorRef}
         role="textbox"
