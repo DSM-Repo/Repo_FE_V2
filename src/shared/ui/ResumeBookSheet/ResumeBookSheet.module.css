@@ -96,6 +96,12 @@
   letter-spacing: 0;
 }
 
+.introBox h3 {
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .introBox p {
   margin: 0;
   color: var(--repo-gray-800);

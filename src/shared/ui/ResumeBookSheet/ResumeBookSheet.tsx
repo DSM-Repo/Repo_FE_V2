@@ -213,9 +213,11 @@ export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookShe
         <div className={styles.identity}>
           <div className={styles.nameRow}>
             <h2 className={styles.name}>{content.name}</h2>
-            <span className={styles.major}>{content.majorName}</span>
+            <span aria-label="희망 전공" className={styles.major}>
+              {content.majorName}
+            </span>
           </div>
-          <p className={styles.meta}>
+          <p aria-label="학번 및 이메일" className={styles.meta}>
             {[content.headline, content.email].filter(Boolean).join(' | ')}
           </p>
         </div>
@@ -224,7 +226,7 @@ export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookShe
 
       <section className={styles.introBox}>
         <h3>{content.introTitle ?? content.headline}</h3>
-        <p>{content.introduce}</p>
+        {content.introduce ? <p>{content.introduce}</p> : null}
       </section>
 
       {content.skills.length > 0 ? (
