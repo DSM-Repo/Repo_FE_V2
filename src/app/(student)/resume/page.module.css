@@ -66,8 +66,7 @@
 }
 
 .primaryAction:disabled,
-.secondaryAction:disabled,
-.visibilityButton:disabled {
+.secondaryAction:disabled {
   cursor: not-allowed;
   opacity: 0.62;
 }
@@ -78,8 +77,7 @@
 .iconTool:focus-visible,
 .textTool:focus-visible,
 .closeButton:focus-visible,
-.feedbackItemButton:focus-visible,
-.visibilityButton:focus-visible {
+.feedbackItemButton:focus-visible {
   outline: 2px solid var(--repo-main);
   outline-offset: 2px;
 }
@@ -101,9 +99,36 @@
   justify-content: center;
 }
 
+.addPageSheet {
+  display: inline-flex;
+  width: var(--resume-book-sheet-width, 551px);
+  height: var(--resume-book-sheet-height, 780px);
+  min-height: var(--resume-book-sheet-min-height, 0);
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--repo-gray-500);
+  color: var(--repo-gray-400);
+  background: transparent;
+}
+
+.addPageSheet svg {
+  width: 40px;
+  height: 40px;
+}
+
+.addPageSheet:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 4px;
+}
+
 .documentSheet {
-  --resume-book-sheet-width: clamp(340px, 44vw, 900px);
-  --resume-book-sheet-height: clamp(481px, 62.2vw, 1273px);
+  --resume-book-sheet-height: min(
+    780px,
+    calc(100dvh - var(--repo-size-header-min-height) - 144px),
+    calc((100vw - 180px) * 390 / 551)
+  );
+  --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 551 / 780);
   --resume-book-sheet-padding: clamp(24px, 2.08vw, 40px);
   --resume-book-sheet-avatar-size: clamp(44px, 4.68vw, 96px);
   --resume-book-sheet-qr-size: clamp(44px, 4.79vw, 92px);
@@ -126,63 +151,70 @@
   height: 20px;
 }
 
+.pageArrow:disabled {
+  cursor: default;
+  opacity: 0.28;
+}
+
 .pageCount {
-  margin: 16px 0 0;
+  position: fixed;
+  bottom: 84px;
+  left: 50%;
+  z-index: 2;
+  margin: 0;
   color: var(--repo-gray-700);
   font-size: 20px;
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
+  transform: translateX(-50%);
 }
 
 .editorToolbar {
-  position: absolute;
+  position: fixed;
   bottom: 24px;
   left: 50%;
   z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 0 12px;
   transform: translateX(-50%);
+}
+
+.toolGroup {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border-radius: var(--repo-radius-pill);
+  background: var(--repo-bg-main-point);
 }
 
 .iconTool,
 .textTool {
   display: inline-flex;
-  width: 48px;
+  width: 42px;
   height: 48px;
   align-items: center;
   justify-content: center;
   border: 0;
   color: var(--repo-gray-50);
-  background: var(--repo-bg-main-point);
-}
-
-.iconTool:first-child {
-  border-radius: var(--repo-radius-pill) 0 0 var(--repo-radius-pill);
-}
-
-.iconTool:nth-child(2) {
-  border-radius: 0 var(--repo-radius-pill) var(--repo-radius-pill) 0;
+  background: transparent;
 }
 
 .textTool {
-  width: 42px;
-  font-size: 21px;
+  width: 52px;
+  font-size: var(--repo-font-title-small-size);
   font-weight: 600;
   line-height: 1;
 }
 
-.textTool:nth-of-type(3) {
-  border-radius: var(--repo-radius-pill) 0 0 var(--repo-radius-pill);
+.iconTool svg {
+  width: 24px;
+  height: 24px;
 }
 
-.textTool:last-child {
-  border-radius: 0 var(--repo-radius-pill) var(--repo-radius-pill) 0;
-}
-
-.toolDivider {
-  width: 4px;
+.iconTool:disabled {
+  cursor: default;
+  opacity: 0.66;
 }
 
 .feedbackToggle {
@@ -263,24 +295,6 @@
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
   text-align: left;
-}
-
-.visibilityButton {
-  position: absolute;
-  right: 64px;
-  bottom: 120px;
-  display: inline-flex;
-  min-height: 32px;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 14px;
-  border: 1px solid var(--repo-gray-500);
-  border-radius: var(--repo-radius-pill);
-  color: var(--repo-gray-50);
-  background: var(--repo-bg-main);
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
 }
 
 .feedbackPanel {
@@ -400,10 +414,6 @@
     left: 24px;
   }
 
-  .documentSheet {
-    --resume-book-sheet-width: clamp(360px, 43vw, 560px);
-    --resume-book-sheet-height: clamp(510px, 61vw, 792px);
-  }
 }
 
 @media (max-width: 980px) {
