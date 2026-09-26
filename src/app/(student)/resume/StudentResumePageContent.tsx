@@ -4,6 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 import { getSavedAccessToken } from '@/features/auth/api'
+import {
+  applyFeedback,
+  completeFeedback,
+  getFeedbacks,
+  pendingFeedback,
+  type FeedbackListItem,
+} from '@/features/feedback/api'
 import { getMajors, type Major } from '@/features/major/api'
 import {
   autoSaveResume,
@@ -58,57 +65,6 @@ const defaultResumeDraft = {
   skills: [],
 } satisfies ResumeDraft
 
-const feedbackItems = [
-  {
-    detail: '피드백에 대한 상세 내용',
-    id: 'feedback-1',
-    isOpen: false,
-    title: '피드백 제목',
-  },
-  {
-    detail: '피드백에 대한 상세 내용',
-    id: 'feedback-2',
-    isOpen: true,
-    title: '피드백 제목',
-  },
-  {
-    detail: '피드백에 대한 상세 내용',
-    id: 'feedback-3',
-    isOpen: false,
-    title: '피드백 제목',
-  },
-  {
-    detail: '피드백에 대한 상세 내용',
-    id: 'feedback-4',
-    isOpen: false,
-    title: '피드백 제목',
-  },
-  {
-    detail: '피드백에 대한 상세 내용',
-    id: 'feedback-5',
-    isOpen: false,
-    title: '피드백 제목',
-  },
-  {
-    detail: '피드백에 대한 상세 내용',
-    id: 'feedback-6',
-    isOpen: false,
-    title: '피드백 제목',
-  },
-  {
-    detail: '피드백에 대한 상세 내용',
-    id: 'feedback-7',
-    isOpen: false,
-    title: '피드백 제목',
-  },
-  {
-    detail: '피드백에 대한 상세 내용',
-    id: 'feedback-8',
-    isOpen: false,
-    title: '피드백 제목',
-  },
-] as const
-
 type LoadState =
   | {
       readonly kind: 'idle'
@@ -142,6 +98,15 @@ type MajorLoadState =
   | { readonly kind: 'success' }
   | { readonly kind: 'failure'; readonly message: string }
 type MajorSubmitState = 'idle' | 'pending'
+type FeedbackLoadState =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'loading' }
+  | { readonly feedbacks: readonly FeedbackListItem[]; readonly kind: 'success'; readonly numberOfData: number }
+  | { readonly kind: 'failure'; readonly message: string }
+type FeedbackSubmitState =
+  | { readonly kind: 'apply-all' }
+  | { readonly feedbackId: string; readonly kind: 'item' }
+  | { readonly kind: 'idle' }
 
 function toInitialViewMode(mode: string | null, resumeId: string): ViewMode {
   if (mode === 'edit') {
@@ -321,6 +286,37 @@ function isSubmittedResume(resume: Resume) {
   return resume.submissionStatus !== 'ONGOING'
 }
 
+function isCompletedFeedback(feedback: FeedbackListItem) {
+  return feedback.status.trim().toUpperCase() === 'COMPLETED'
+}
+
+function toFeedbackStatusLabel(feedback: FeedbackListItem) {
+  return isCompletedFeedback(feedback) ? '반영 완료' : '미반영'
+}
+
+function toFeedbackSummary(content: string) {
+  const trimmedContent = content.trim()
+
+  if (!trimmedContent) {
+    return '내용 없는 피드백'
+  }
+
+  return trimmedContent.length > 28 ? `${trimmedContent.slice(0, 28)}...` : trimmedContent
+}
+
+function formatFeedbackDate(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return '날짜 미정'
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    day: 'numeric',
+    month: 'numeric',
+  }).format(date)
+}
+
 function toUserFailureMessage(result: Exclude<UserMeResult, { readonly kind: 'success' }>) {
   return result.message
 }
@@ -350,6 +346,9 @@ export function StudentResumePageContent() {
   const [majorSubmitState, setMajorSubmitState] = useState<MajorSubmitState>('idle')
   const [majors, setMajors] = useState<readonly Major[]>([])
   const [isDraftDirty, setIsDraftDirty] = useState(false)
+  const [feedbackLoadState, setFeedbackLoadState] = useState<FeedbackLoadState>({ kind: 'idle' })
+  const [feedbackSubmitState, setFeedbackSubmitState] = useState<FeedbackSubmitState>({ kind: 'idle' })
+  const [openFeedbackId, setOpenFeedbackId] = useState<string>()
   const [spreadStartIndex, setSpreadStartIndex] = useState(0)
   const userRef = useRef<UserMe | undefined>(undefined)
   const viewedResumeIdRef = useRef<string | undefined>(undefined)
@@ -550,6 +549,179 @@ export function StudentResumePageContent() {
   const visiblePageIndexes = [spreadStartIndex, spreadStartIndex + 1].filter((index) => index < draft.pages.length)
   const canMovePrevious = spreadStartIndex > 0
   const canMoveNext = isEditing ? spreadStartIndex < draft.pages.length - 1 : spreadStartIndex + 2 < draft.pages.length
+  const feedbacks = feedbackLoadState.kind === 'success' ? feedbackLoadState.feedbacks : []
+  const pendingFeedbackCount = feedbacks.filter((feedback) => !isCompletedFeedback(feedback)).length
+  const isFeedbackSubmitting = feedbackSubmitState.kind !== 'idle'
+
+  useEffect(() => {
+    if (viewMode !== 'feedback') {
+      return
+    }
+
+    let isActive = true
+
+    const loadFeedbacks = async () => {
+      if (!resume?.id) {
+        const hasPendingResumeLookup =
+          loadState.kind === 'loading' ||
+          (loadState.kind === 'idle' && Boolean(requestedResumeId.trim() || getSavedResumeId()))
+
+        if (hasPendingResumeLookup) {
+          setFeedbackLoadState({ kind: 'loading' })
+          return
+        }
+
+        setFeedbackLoadState({
+          kind: 'failure',
+          message: '저장된 이력서가 있어야 피드백을 확인할 수 있습니다.',
+        })
+        return
+      }
+
+      const accessToken = getSavedAccessToken()
+
+      if (!accessToken) {
+        setFeedbackLoadState({ kind: 'failure', message: '로그인 후 피드백을 확인할 수 있습니다.' })
+        return
+      }
+
+      setFeedbackLoadState({ kind: 'loading' })
+      setFeedbackSubmitState({ kind: 'idle' })
+
+      const result = await getFeedbacks({
+        accessToken,
+        documentId: resume.id,
+      })
+
+      if (!isActive) {
+        return
+      }
+
+      if (result.kind !== 'success') {
+        setFeedbackLoadState({ kind: 'failure', message: result.message })
+        return
+      }
+
+      setFeedbackLoadState({
+        feedbacks: result.feedbacks,
+        kind: 'success',
+        numberOfData: result.numberOfData,
+      })
+      setOpenFeedbackId((currentFeedbackId) => currentFeedbackId ?? result.feedbacks[0]?.feedbackId)
+    }
+
+    void loadFeedbacks()
+
+    return () => {
+      isActive = false
+    }
+  }, [loadState.kind, requestedResumeId, resume?.id, viewMode])
+
+  const updateFeedbackStatus = useCallback((feedbackId: string, status: string) => {
+    setFeedbackLoadState((currentState) => {
+      if (currentState.kind !== 'success') {
+        return currentState
+      }
+
+      return {
+        ...currentState,
+        feedbacks: currentState.feedbacks.map((feedback) =>
+          feedback.feedbackId === feedbackId ? { ...feedback, status } : feedback,
+        ),
+      }
+    })
+  }, [])
+
+  const handleFeedbackStatusChange = useCallback(
+    async (feedback: FeedbackListItem) => {
+      if (feedbackSubmitState.kind !== 'idle') {
+        return
+      }
+
+      const accessToken = getSavedAccessToken()
+
+      if (!accessToken) {
+        setActionFeedback({ message: '로그인 후 피드백 상태를 변경할 수 있습니다.', tone: 'error' })
+        return
+      }
+
+      const nextStatusLabel = isCompletedFeedback(feedback) ? '미반영' : '완료'
+
+      setActionFeedback(undefined)
+      setFeedbackSubmitState({ feedbackId: feedback.feedbackId, kind: 'item' })
+
+      const result = isCompletedFeedback(feedback)
+        ? await pendingFeedback({ accessToken, feedbackId: feedback.feedbackId })
+        : await completeFeedback({ accessToken, feedbackId: feedback.feedbackId })
+
+      setFeedbackSubmitState({ kind: 'idle' })
+
+      if (result.kind !== 'success') {
+        setActionFeedback({ message: result.message, tone: 'error' })
+        return
+      }
+
+      updateFeedbackStatus(feedback.feedbackId, result.status)
+      setActionFeedback({ message: `피드백을 ${nextStatusLabel} 처리했습니다.`, tone: 'success' })
+    },
+    [feedbackSubmitState.kind, updateFeedbackStatus],
+  )
+
+  const handleCompleteAllFeedbacks = useCallback(async () => {
+    if (feedbackLoadState.kind !== 'success' || feedbackSubmitState.kind !== 'idle') {
+      return
+    }
+
+    const targetFeedbackIds = feedbackLoadState.feedbacks
+      .filter((feedback) => !isCompletedFeedback(feedback))
+      .map((feedback) => feedback.feedbackId)
+
+    if (targetFeedbackIds.length === 0) {
+      setActionFeedback({ message: '완료 처리할 피드백이 없습니다.', tone: 'success' })
+      return
+    }
+
+    const accessToken = getSavedAccessToken()
+
+    if (!accessToken) {
+      setActionFeedback({ message: '로그인 후 피드백 상태를 변경할 수 있습니다.', tone: 'error' })
+      return
+    }
+
+    setActionFeedback(undefined)
+    setFeedbackSubmitState({ kind: 'apply-all' })
+
+    const result = await applyFeedback({
+      accessToken,
+      applied: true,
+      feedbackIds: targetFeedbackIds,
+    })
+
+    setFeedbackSubmitState({ kind: 'idle' })
+
+    if (result.kind !== 'success') {
+      setActionFeedback({ message: result.message, tone: 'error' })
+      return
+    }
+
+    const failedFeedbackIds = new Set(result.failed.map((failure) => failure.feedbackId))
+
+    setFeedbackLoadState((currentState) => {
+      if (currentState.kind !== 'success') {
+        return currentState
+      }
+
+      return {
+        ...currentState,
+        feedbacks: currentState.feedbacks.map((feedback) =>
+          targetFeedbackIds.includes(feedback.feedbackId) && !failedFeedbackIds.has(feedback.feedbackId)
+            ? { ...feedback, status: 'COMPLETED' }
+            : feedback,
+        ),
+      }
+    })
+    setActionFeedback({ message: `${result.successCount}개 피드백을 완료 처리했습니다.`, tone: 'success' })
+  }, [feedbackLoadState, feedbackSubmitState.kind])
 
   const handleDraftChange = useCallback((nextDraft: ResumeDraft) => {
     draftRevisionRef.current += 1
@@ -938,21 +1110,74 @@ export function StudentResumePageContent() {
                 ×
               </button>
             </div>
-            <div className={styles.feedbackListHeader}>선택하기</div>
-            <ul className={styles.feedbackList}>
-              {feedbackItems.map((item) => (
-                <li className={`${styles.feedbackItem} ${item.isOpen ? styles.openFeedbackItem : ''}`} key={item.id}>
-                  <button className={styles.feedbackItemButton} type="button">
-                    <span className={styles.feedbackTitle}>
-                      {item.title}
-                      <span>1일 전</span>
-                    </span>
-                    <span aria-hidden="true">{item.isOpen ? '⌃' : '⌄'}</span>
-                  </button>
-                  {item.isOpen ? <p>{item.detail}</p> : null}
-                </li>
-              ))}
-            </ul>
+            <div className={styles.feedbackListHeader}>
+              <span>{feedbackLoadState.kind === 'success' ? `${feedbackLoadState.numberOfData}개` : '목록'}</span>
+              <button
+                className={styles.feedbackBulkAction}
+                disabled={feedbackLoadState.kind !== 'success' || pendingFeedbackCount === 0 || isFeedbackSubmitting}
+                onClick={() => void handleCompleteAllFeedbacks()}
+                type="button"
+              >
+                {feedbackSubmitState.kind === 'apply-all' ? '처리 중' : '전체 완료 처리'}
+              </button>
+            </div>
+            {feedbackLoadState.kind === 'loading' ? <p className={styles.feedbackPanelMessage}>피드백을 불러오는 중입니다.</p> : null}
+            {feedbackLoadState.kind === 'failure' ? (
+              <p className={styles.feedbackPanelMessage} role="alert">
+                {feedbackLoadState.message}
+              </p>
+            ) : null}
+            {feedbackLoadState.kind === 'success' && feedbackLoadState.feedbacks.length === 0 ? (
+              <p className={styles.feedbackPanelMessage}>아직 받은 피드백이 없습니다.</p>
+            ) : null}
+            {feedbackLoadState.kind === 'success' && feedbackLoadState.feedbacks.length > 0 ? (
+              <ul className={styles.feedbackList}>
+                {feedbackLoadState.feedbacks.map((item) => {
+                  const isOpen = openFeedbackId === item.feedbackId
+                  const isCompleted = isCompletedFeedback(item)
+                  const isItemSubmitting =
+                    feedbackSubmitState.kind === 'item' && feedbackSubmitState.feedbackId === item.feedbackId
+
+                  return (
+                    <li className={`${styles.feedbackItem} ${isOpen ? styles.openFeedbackItem : ''}`} key={item.feedbackId}>
+                      <button
+                        aria-expanded={isOpen}
+                        className={styles.feedbackItemButton}
+                        onClick={() => setOpenFeedbackId(isOpen ? undefined : item.feedbackId)}
+                        type="button"
+                      >
+                        <span className={styles.feedbackTitle}>
+                          <span className={styles.feedbackSummary}>{toFeedbackSummary(item.content)}</span>
+                          <span className={styles.feedbackMeta}>{item.teacherName || '선생님'} / {formatFeedbackDate(item.createdAt)}</span>
+                        </span>
+                        <span className={styles.feedbackStatus} data-status={isCompleted ? 'completed' : 'pending'}>
+                          {toFeedbackStatusLabel(item)}
+                        </span>
+                        <span aria-hidden="true">{isOpen ? '⌃' : '⌄'}</span>
+                      </button>
+                      {isOpen ? (
+                        <div className={styles.feedbackDetail}>
+                          <p>{item.content || '내용 없는 피드백입니다.'}</p>
+                          <div className={styles.feedbackActions}>
+                            <span>
+                              {item.pageDeleted ? '삭제된 페이지' : `${item.pageId} 페이지`} / 좌표 {item.x}, {item.y}
+                            </span>
+                            <button
+                              className={styles.feedbackStatusAction}
+                              disabled={isFeedbackSubmitting}
+                              onClick={() => void handleFeedbackStatusChange(item)}
+                              type="button"
+                            >
+                              {isItemSubmitting ? '처리 중' : isCompleted ? '미반영으로 변경' : '완료 처리'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : null}
           </aside>
         ) : null}
       </section>

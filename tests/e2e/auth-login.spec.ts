@@ -4,6 +4,7 @@ import { createTestAccessToken } from './auth-fixtures'
 
 const studentAccessToken = createTestAccessToken('STUDENT')
 const teacherAccessToken = createTestAccessToken('TEACHER')
+const apiBaseUrl = 'http://52.78.201.218'
 
 test.describe('auth login route', () => {
   test.beforeEach(async ({ page }) => {
@@ -29,6 +30,20 @@ test.describe('auth login route', () => {
           schoolYear: 2026,
           students: [],
         }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify([]),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/alram`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify([]),
         contentType: 'application/json',
         status: 200,
       })

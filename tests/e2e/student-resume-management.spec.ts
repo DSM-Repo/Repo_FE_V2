@@ -98,16 +98,85 @@ test.describe('student resume management', () => {
   })
 
   test('renders edit controls and feedback drawer state', async ({ page }) => {
+    let completeRequestCount = 0
+    let applyRequestBody: unknown
+
+    await page.route((url) => url.href === `${apiBaseUrl}/feedback?documentId=resume-id`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          feedbacks: [
+            {
+              completedAt: '',
+              content: '문장 근거를 한 줄 더 추가해보세요.',
+              createdAt: '2026-09-20T10:00:00.000Z',
+              feedbackId: 'feedback-1',
+              pageDeleted: false,
+              pageId: 'server-page-1',
+              status: 'PENDING',
+              teacherName: '김선생',
+              x: 120,
+              y: 160,
+            },
+            {
+              completedAt: '',
+              content: '프로젝트 성과를 숫자로 표현해보세요.',
+              createdAt: '2026-09-21T10:00:00.000Z',
+              feedbackId: 'feedback-2',
+              pageDeleted: false,
+              pageId: 'server-page-2',
+              status: 'PENDING',
+              teacherName: '이선생',
+              x: 80,
+              y: 220,
+            },
+          ],
+          numberOfData: 2,
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/feedback/feedback-1/complete`, async (route) => {
+      completeRequestCount += 1
+      await route.fulfill({
+        body: JSON.stringify({ feedbackId: 'feedback-1', status: 'COMPLETED' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/feedback/apply`, async (route) => {
+      applyRequestBody = route.request().postDataJSON()
+      await route.fulfill({
+        body: JSON.stringify({ failed: [], successCount: 1 }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
     await page.setViewportSize({ height: 1080, width: 1920 })
-    await page.goto('/resume?mode=feedback')
+    await page.goto('/resume?resumeId=resume-id&mode=feedback')
 
     await expect(page.getByRole('button', { name: '임시저장' })).toBeVisible()
     await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeVisible()
     await expect(page.getByLabel('활동 작성 도구')).toBeVisible()
     await expect(page.getByLabel('프로젝트 작성 도구')).toBeVisible()
-    await expect(page.getByRole('complementary', { name: '피드백 목록' })).toBeVisible()
+    const feedbackPanel = page.getByRole('complementary', { name: '피드백 목록' })
+
+    await expect(feedbackPanel).toBeVisible()
     await expect(page.getByRole('heading', { name: '피드백 목록' })).toBeVisible()
-    await expect(page.getByText('피드백 제목')).toHaveCount(8)
+    await expect(feedbackPanel.getByRole('button', { name: /문장 근거를 한 줄 더 추가해보세요/ })).toBeVisible()
+    await expect(feedbackPanel.getByRole('button', { name: /프로젝트 성과를 숫자로 표현해보세요/ })).toBeVisible()
+
+    await feedbackPanel.getByRole('button', { exact: true, name: '완료 처리' }).click()
+
+    await expect.poll(() => completeRequestCount).toBe(1)
+    await expect(page.getByRole('status')).toContainText('피드백을 완료 처리했습니다.')
+    await expect(page.getByText('반영 완료')).toHaveCount(1)
+
+    await feedbackPanel.getByRole('button', { exact: true, name: '전체 완료 처리' }).click()
+
+    await expect.poll(() => applyRequestBody).toEqual({ applied: true, feedbackIds: ['feedback-2'] })
+    await expect(page.getByRole('status')).toContainText('1개 피드백을 완료 처리했습니다.')
+    await expect(page.getByText('반영 완료')).toHaveCount(2)
   })
 
   test('allows writing a resume before opening an existing resume', async ({ page }) => {
