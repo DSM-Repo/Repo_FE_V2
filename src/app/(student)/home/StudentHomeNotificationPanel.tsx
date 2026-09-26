@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 
 import { getSavedAccessToken } from '@/features/auth/api'
 import {
@@ -55,6 +55,8 @@ function toNotificationItemClassName(notification: NotificationItem) {
 export function StudentHomeNotificationPanel(): ReactElement {
   const [notificationState, setNotificationState] = useState<NotificationLoadState>({ kind: 'idle' })
   const [notificationActionMessage, setNotificationActionMessage] = useState('')
+  const [pendingNotificationIds, setPendingNotificationIds] = useState<readonly string[]>([])
+  const pendingNotificationIdsRef = useRef(new Set<string>())
   const notifications = notificationState.kind === 'success' ? notificationState.notifications : []
 
   useEffect(() => {
@@ -93,6 +95,24 @@ export function StudentHomeNotificationPanel(): ReactElement {
     }
   }, [])
 
+  const startNotificationAction = (alramId: string) => {
+    if (pendingNotificationIdsRef.current.has(alramId)) {
+      return false
+    }
+
+    pendingNotificationIdsRef.current.add(alramId)
+    setPendingNotificationIds((currentIds) => (
+      currentIds.includes(alramId) ? currentIds : [...currentIds, alramId]
+    ))
+
+    return true
+  }
+
+  const finishNotificationAction = (alramId: string) => {
+    pendingNotificationIdsRef.current.delete(alramId)
+    setPendingNotificationIds((currentIds) => currentIds.filter((currentId) => currentId !== alramId))
+  }
+
   const handleNotificationRead = async (notification: NotificationItem) => {
     const accessToken = getSavedAccessToken()
 
@@ -100,31 +120,40 @@ export function StudentHomeNotificationPanel(): ReactElement {
       return
     }
 
-    setNotificationActionMessage('')
-    const result = await markNotificationRead({ accessToken, alramId: notification.alramId })
-
-    if (result.kind !== 'success') {
-      setNotificationActionMessage(result.message)
+    if (!startNotificationAction(notification.alramId)) {
       return
     }
 
-    setNotificationState((currentState) => {
-      if (currentState.kind !== 'success') {
-        return currentState
+    setNotificationActionMessage('')
+
+    try {
+      const result = await markNotificationRead({ accessToken, alramId: notification.alramId })
+
+      if (result.kind !== 'success') {
+        setNotificationActionMessage(result.message)
+        return
       }
 
-      return {
-        kind: 'success',
-        notifications: currentState.notifications.map((currentNotification) =>
-          currentNotification.alramId === notification.alramId
-            ? {
-                ...currentNotification,
-                isRead: result.isRead,
-              }
-            : currentNotification,
-        ),
-      }
-    })
+      setNotificationState((currentState) => {
+        if (currentState.kind !== 'success') {
+          return currentState
+        }
+
+        return {
+          kind: 'success',
+          notifications: currentState.notifications.map((currentNotification) =>
+            currentNotification.alramId === notification.alramId
+              ? {
+                  ...currentNotification,
+                  isRead: result.isRead,
+                }
+              : currentNotification,
+          ),
+        }
+      })
+    } finally {
+      finishNotificationAction(notification.alramId)
+    }
   }
 
   const handleNotificationDelete = async (notification: NotificationItem) => {
@@ -134,26 +163,35 @@ export function StudentHomeNotificationPanel(): ReactElement {
       return
     }
 
-    setNotificationActionMessage('')
-    const result = await removeNotification({ accessToken, alramId: notification.alramId })
-
-    if (result.kind !== 'success') {
-      setNotificationActionMessage(result.message)
+    if (!startNotificationAction(notification.alramId)) {
       return
     }
 
-    setNotificationState((currentState) => {
-      if (currentState.kind !== 'success') {
-        return currentState
+    setNotificationActionMessage('')
+
+    try {
+      const result = await removeNotification({ accessToken, alramId: notification.alramId })
+
+      if (result.kind !== 'success') {
+        setNotificationActionMessage(result.message)
+        return
       }
 
-      return {
-        kind: 'success',
-        notifications: currentState.notifications.filter(
-          (currentNotification) => currentNotification.alramId !== notification.alramId,
-        ),
-      }
-    })
+      setNotificationState((currentState) => {
+        if (currentState.kind !== 'success') {
+          return currentState
+        }
+
+        return {
+          kind: 'success',
+          notifications: currentState.notifications.filter(
+            (currentNotification) => currentNotification.alramId !== notification.alramId,
+          ),
+        }
+      })
+    } finally {
+      finishNotificationAction(notification.alramId)
+    }
   }
 
   return (
@@ -168,31 +206,36 @@ export function StudentHomeNotificationPanel(): ReactElement {
       ) : null}
       {notificationState.kind === 'success' && notifications.length > 0 ? (
         <ul className={styles.notificationList}>
-          {notifications.map((notification) => (
-            <li className={toNotificationItemClassName(notification)} key={notification.alramId}>
-              <span className={styles.notificationContent}>{notification.content}</span>
-              <time dateTime={notification.createdAt}>{formatNotificationTime(notification.createdAt)}</time>
-              <div className={styles.notificationActions}>
-                <button
-                  type="button"
-                  disabled={notification.isRead}
-                  onClick={() => {
-                    void handleNotificationRead(notification)
-                  }}
-                >
-                  읽음
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleNotificationDelete(notification)
-                  }}
-                >
-                  삭제
-                </button>
-              </div>
-            </li>
-          ))}
+          {notifications.map((notification) => {
+            const isNotificationPending = pendingNotificationIds.includes(notification.alramId)
+
+            return (
+              <li className={toNotificationItemClassName(notification)} key={notification.alramId}>
+                <span className={styles.notificationContent}>{notification.content}</span>
+                <time dateTime={notification.createdAt}>{formatNotificationTime(notification.createdAt)}</time>
+                <div className={styles.notificationActions}>
+                  <button
+                    type="button"
+                    disabled={notification.isRead || isNotificationPending}
+                    onClick={() => {
+                      void handleNotificationRead(notification)
+                    }}
+                  >
+                    읽음
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isNotificationPending}
+                    onClick={() => {
+                      void handleNotificationDelete(notification)
+                    }}
+                  >
+                    삭제
+                  </button>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       ) : null}
       {notificationActionMessage ? <p className={styles.notificationActionMessage}>{notificationActionMessage}</p> : null}

@@ -208,6 +208,11 @@ test.describe('student home page', () => {
   })
 
   test('renders notifications and lets a student mark one as read and delete it', async ({ page }) => {
+    let readRequestCount = 0
+    let deleteRequestCount = 0
+    let releaseReadRequest: (() => void) | undefined
+    let releaseDeleteRequest: (() => void) | undefined
+
     await page.route(`${apiBaseUrl}/alram`, async (route) => {
       await route.fulfill({
         body: JSON.stringify([
@@ -227,6 +232,10 @@ test.describe('student home page', () => {
     })
     await page.route(`${apiBaseUrl}/alram/alram-1`, async (route) => {
       if (route.request().method() === 'PATCH') {
+        readRequestCount += 1
+        await new Promise<void>((resolve) => {
+          releaseReadRequest = resolve
+        })
         await route.fulfill({
           body: JSON.stringify({ isRead: true }),
           contentType: 'application/json',
@@ -235,6 +244,10 @@ test.describe('student home page', () => {
         return
       }
 
+      deleteRequestCount += 1
+      await new Promise<void>((resolve) => {
+        releaseDeleteRequest = resolve
+      })
       await route.fulfill({
         status: 204,
       })
@@ -248,8 +261,15 @@ test.describe('student home page', () => {
 
     await item.getByRole('button', { name: '읽음' }).click()
     await expect(item.getByRole('button', { name: '읽음' })).toBeDisabled()
+    await expect(item.getByRole('button', { name: '삭제' })).toBeDisabled()
+    await expect.poll(() => readRequestCount).toBe(1)
+    releaseReadRequest?.()
+    await expect(item.getByRole('button', { name: '읽음' })).toBeDisabled()
 
     await item.getByRole('button', { name: '삭제' }).click()
+    await expect(item.getByRole('button', { name: '삭제' })).toBeDisabled()
+    await expect.poll(() => deleteRequestCount).toBe(1)
+    releaseDeleteRequest?.()
     await expect(notifications.getByRole('listitem')).toHaveCount(0)
     await expect(notifications.getByText('새 알림이 없습니다.')).toBeVisible()
   })
