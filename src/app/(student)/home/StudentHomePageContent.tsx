@@ -8,6 +8,7 @@ import { getUserMe, type UserMe, type UserMeResult } from '@/features/user/api'
 import type { AppHeaderItem } from '@/shared/ui'
 import { AppHeader } from '@/shared/ui'
 
+import { StudentHomeNotificationPanel } from './StudentHomeNotificationPanel'
 import styles from './page.module.css'
 
 const navigationItems = [
@@ -190,10 +191,7 @@ export function StudentHomePageContent(): ReactElement {
             ))}
           </section>
 
-          <section className={styles.notificationPanel} aria-labelledby="notifications-title">
-            <h2 id="notifications-title">알림 목록</h2>
-            <p className={styles.emptyMessage}>새 알림이 없습니다.</p>
-          </section>
+          <StudentHomeNotificationPanel />
         </div>
       </section>
     </main>

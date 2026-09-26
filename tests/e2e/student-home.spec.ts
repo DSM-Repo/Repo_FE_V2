@@ -31,6 +31,13 @@ test.describe('student home page', () => {
         status: 200,
       })
     })
+    await page.route(`${apiBaseUrl}/alram`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify([]),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
   })
 
   test('keeps the loading state from flashing a missing-profile message', async ({ page }) => {
@@ -198,6 +205,53 @@ test.describe('student home page', () => {
     await expect(notifications.getByRole('heading', { name: '알림 목록' })).toBeVisible()
     await expect(notifications.getByText('새 알림이 없습니다.')).toBeVisible()
     await expect(notifications.getByRole('listitem')).toHaveCount(0)
+  })
+
+  test('renders notifications and lets a student mark one as read and delete it', async ({ page }) => {
+    await page.route(`${apiBaseUrl}/alram`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify([
+          {
+            alramId: 'alram-1',
+            content: '새 피드백이 도착했습니다.',
+            createdAt: '2026-09-26T09:30:00.000Z',
+            feedbackId: 'feedback-1',
+            isRead: false,
+            resumeId: 'resume-1',
+            type: 'FEEDBACK_CREATED',
+          },
+        ]),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/alram/alram-1`, async (route) => {
+      if (route.request().method() === 'PATCH') {
+        await route.fulfill({
+          body: JSON.stringify({ isRead: true }),
+          contentType: 'application/json',
+          status: 200,
+        })
+        return
+      }
+
+      await route.fulfill({
+        status: 204,
+      })
+    })
+
+    await page.goto('/home')
+
+    const notifications = page.getByRole('region', { name: '알림 목록' })
+    const item = notifications.getByRole('listitem').filter({ hasText: '새 피드백이 도착했습니다.' })
+    await expect(item).toBeVisible()
+
+    await item.getByRole('button', { name: '읽음' }).click()
+    await expect(item.getByRole('button', { name: '읽음' })).toBeDisabled()
+
+    await item.getByRole('button', { name: '삭제' }).click()
+    await expect(notifications.getByRole('listitem')).toHaveCount(0)
+    await expect(notifications.getByText('새 알림이 없습니다.')).toBeVisible()
   })
 
   test('keeps dashboard columns from overlapping on desktop', async ({ page }) => {
