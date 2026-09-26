@@ -85,6 +85,19 @@
   line-height: var(--repo-font-body-small-line-height);
   pointer-events: none;
   text-align: center;
+  align-content: center;
+  gap: var(--space-4);
+}
+
+.documentEmpty strong {
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-body-large-size);
+  font-weight: var(--repo-font-body-large-weight);
+}
+
+.documentEmpty span {
+  max-width: 520px;
+  word-break: keep-all;
 }
 
 .pageArrow {
@@ -375,6 +388,21 @@
 
   .bottomControls {
     position: relative;
+  }
+
+  .viewer {
+    margin-block: 0;
+  }
+
+  .documentEmpty {
+    min-height: 288px;
+    padding: var(--space-8) var(--space-5);
+  }
+
+  .reviewSettings {
+    right: 24px;
+    bottom: 28px;
+    transform: none;
   }
 
   .page[data-feedback-panel-open='true'] .saveActions {

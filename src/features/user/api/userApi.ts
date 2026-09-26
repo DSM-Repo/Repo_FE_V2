@@ -1,7 +1,16 @@
 'use client'
 
-import type { UserClassInfo, UserMe, UserMeInput, UserMeResult, UserProgress, UserProgressSection } from './userApi.types'
-import { getUserMeRequest, type UserRequestFailure, type UserRequestResponse } from './userHttpClient'
+import type {
+  UserClassInfo,
+  UserMajorUpdateInput,
+  UserMajorUpdateResult,
+  UserMe,
+  UserMeInput,
+  UserMeResult,
+  UserProgress,
+  UserProgressSection,
+} from './userApi.types'
+import { getUserMeRequest, patchUserMajorRequest, type UserRequestFailure, type UserRequestResponse } from './userHttpClient'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -174,5 +183,33 @@ export async function getUserMe(input: UserMeInput): Promise<UserMeResult> {
   return {
     kind: 'server-error',
     message: '내 정보 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function updateUserMajor(input: UserMajorUpdateInput): Promise<UserMajorUpdateResult> {
+  const response = await patchUserMajorRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  response.complete()
+
+  if (response.value.status === 204) {
+    return {
+      kind: 'success',
+    }
+  }
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '전공을 변경할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '전공 변경 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }

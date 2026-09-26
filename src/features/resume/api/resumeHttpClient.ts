@@ -4,6 +4,7 @@ import type {
   ResumeAutoSaveInput,
   ResumeDetailInput,
   ResumeSaveInput,
+  ResumeStudentStatusListInput,
   ResumeSubmissionInput,
   ResumeVisibilityInput,
 } from './resumeApi.types'
@@ -93,6 +94,29 @@ export async function getResumeRequest(input: ResumeDetailInput): Promise<Resume
   })
 }
 
+export async function getResumeStudentStatusesRequest(
+  input: ResumeStudentStatusListInput,
+): Promise<ResumeRequestResponse> {
+  const searchParams = new URLSearchParams()
+
+  if (input.grade !== undefined) {
+    searchParams.set('grade', String(input.grade))
+  }
+
+  if (input.classNumber !== undefined) {
+    searchParams.set('classNumber', String(input.classNumber))
+  }
+
+  const query = searchParams.size > 0 ? `?${searchParams.toString()}` : ''
+
+  return sendResumeRequest(`resume/students${query}`, {
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'GET',
+  })
+}
+
 export async function patchResumeVisibilityRequest(input: ResumeVisibilityInput): Promise<ResumeRequestResponse> {
   return sendResumeRequest('resume/visibility', {
     body: JSON.stringify({ isPublic: input.isPublic }),
@@ -142,7 +166,11 @@ export async function postResumeSaveRequest(input: ResumeSaveInput): Promise<Res
 export async function postResumeAutoSaveRequest(input: ResumeAutoSaveInput): Promise<ResumeRequestResponse> {
   return sendResumeRequest('resume/auto-save', {
     body: JSON.stringify({
+      email: input.email,
+      introduce: input.introduce,
       pages: input.pages,
+      portfolioUrl: input.portfolioUrl,
+      skills: input.skills,
     }),
     headers: {
       Authorization: `Bearer ${input.accessToken}`,

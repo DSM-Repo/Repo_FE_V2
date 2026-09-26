@@ -1,4 +1,4 @@
-export type ResumePageType = 'PROFILE' | 'PROJECT'
+export type ResumePageType = 'FREE' | 'PROFILE' | 'PROJECT'
 
 export type ResumeProject = {
   readonly endDate: string
@@ -13,6 +13,22 @@ export type ResumePage = {
   readonly id: string
   readonly index: number
   readonly project?: ResumeProject
+  readonly type: ResumePageType
+}
+
+export type ResumeSaveProject = {
+  readonly endDate?: string
+  readonly imageUrl?: string
+  readonly name?: string
+  readonly startDate?: string
+  readonly summary?: string
+}
+
+export type ResumeSavePage = {
+  readonly content: string
+  readonly id?: string
+  readonly index: number
+  readonly project?: ResumeSaveProject
   readonly type: ResumePageType
 }
 
@@ -45,18 +61,21 @@ export type ResumeSaveInput = {
   readonly accessToken: string
   readonly email: string
   readonly introduce: string
-  readonly pages: readonly ResumePage[]
+  readonly pages: readonly ResumeSavePage[]
   readonly portfolioUrl: string
   readonly skills: readonly string[]
 }
 
-export type ResumeAutoSaveInput = {
-  readonly accessToken: string
-  readonly pages: readonly ResumePage[]
-}
+export type ResumeAutoSaveInput = ResumeSaveInput
 
 export type ResumeSubmissionInput = {
   readonly accessToken: string
+}
+
+export type ResumeStudentStatusListInput = {
+  readonly accessToken: string
+  readonly classNumber?: number
+  readonly grade?: number
 }
 
 export type ResumeVisibility = {
@@ -76,6 +95,37 @@ export type ResumeSave = {
 export type ResumeAutoSave = ResumeSave & {
   readonly autoSaved: boolean
 }
+
+export type ResumeSubmissionStatus = 'DELETED' | 'ONGOING' | 'RELEASED' | 'SUBMITTED'
+
+export type ResumeStudentStatus = {
+  readonly classNumber: number
+  readonly grade: number
+  readonly majorName: string
+  readonly name: string
+  readonly number: number
+  readonly resumeId?: string
+  readonly schoolNumber: string
+  readonly studentId: number
+  readonly submissionStatus: ResumeSubmissionStatus
+  readonly submitted: boolean
+  readonly submittedAt?: string
+}
+
+export type ResumeStudentStatusListResult =
+  | {
+      readonly classNumber: number | undefined
+      readonly grade: number | undefined
+      readonly kind: 'success'
+      readonly lastUpdatedAt: string
+      readonly numberOfData: number
+      readonly schoolYear: number | undefined
+      readonly students: readonly ResumeStudentStatus[]
+    }
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
 
 export type ResumeDetailResult =
   | {

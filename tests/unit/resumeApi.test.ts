@@ -4,6 +4,7 @@ import test from 'node:test'
 process.env.NEXT_PUBLIC_API_BASE_URL = 'https://api.example.test'
 
 const resumeApi = await import('../../src/features/resume/api/resumeApi.js')
+const userApi = await import('../../src/features/user/api/userApi.js')
 
 const originalFetch = globalThis.fetch
 const originalClearTimeout = globalThis.clearTimeout
@@ -12,6 +13,139 @@ const originalSetTimeout = globalThis.setTimeout
 test.afterEach(() => {
   globalThis.fetch = originalFetch
   globalThis.clearTimeout = originalClearTimeout
+})
+
+test('updateUserMajor sends the selected major id with bearer auth', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+  let requestedContentType = ''
+  let requestedBody = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+    requestedContentType = new Headers(init?.headers).get('Content-Type') ?? ''
+    requestedBody = String(init?.body ?? '')
+
+    return new Response(null, { status: 204 })
+  }
+
+  const result = await userApi.updateUserMajor({
+    accessToken: 'student-access-token',
+    majorId: 2,
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/user')
+  assert.equal(requestedMethod, 'PATCH')
+  assert.equal(requestedAuthorization, 'Bearer student-access-token')
+  assert.equal(requestedContentType, 'application/json')
+  assert.equal(requestedBody, JSON.stringify({ majorId: 2 }))
+  assert.deepEqual(result, { kind: 'success' })
+})
+
+test('getStudentResumeStatuses sends class filters and returns parsed submission statuses', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+
+  // Given: the teacher status endpoint returns submitted and unsubmitted students.
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+
+    return new Response(
+      JSON.stringify({
+        classNumber: 2,
+        grade: 1,
+        lastUpdatedAt: '2026-09-20T09:00:00Z',
+        numberOfData: 2,
+        schoolYear: 2026,
+        students: [
+          {
+            classNumber: 2,
+            grade: 1,
+            majorName: 'Frontend',
+            name: '김학생',
+            number: 1,
+            resumeId: 'resume-1',
+            schoolNumber: '1201',
+            studentId: 11,
+            submissionStatus: 'SUBMITTED',
+            submitted: true,
+            submittedAt: '2026-09-19T12:00:00Z',
+          },
+          {
+            classNumber: 2,
+            grade: 1,
+            majorName: '',
+            name: '이학생',
+            number: 2,
+            resumeId: null,
+            schoolNumber: '1202',
+            studentId: 12,
+            submissionStatus: 'ONGOING',
+            submitted: false,
+            submittedAt: null,
+          },
+        ],
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+  }
+
+  // When: a teacher requests one class.
+  const result = await resumeApi.getStudentResumeStatuses({
+    accessToken: 'teacher-access-token',
+    classNumber: 2,
+    grade: 1,
+  })
+
+  // Then: the API contract is preserved for the teacher UI.
+  assert.equal(requestedUrl, 'https://api.example.test/resume/students?grade=1&classNumber=2')
+  assert.equal(requestedMethod, 'GET')
+  assert.equal(requestedAuthorization, 'Bearer teacher-access-token')
+  assert.deepEqual(result, {
+    classNumber: 2,
+    grade: 1,
+    kind: 'success',
+    lastUpdatedAt: '2026-09-20T09:00:00Z',
+    numberOfData: 2,
+    schoolYear: 2026,
+    students: [
+      {
+        classNumber: 2,
+        grade: 1,
+        majorName: 'Frontend',
+        name: '김학생',
+        number: 1,
+        resumeId: 'resume-1',
+        schoolNumber: '1201',
+        studentId: 11,
+        submissionStatus: 'SUBMITTED',
+        submitted: true,
+        submittedAt: '2026-09-19T12:00:00Z',
+      },
+      {
+        classNumber: 2,
+        grade: 1,
+        majorName: '',
+        name: '이학생',
+        number: 2,
+        schoolNumber: '1202',
+        studentId: 12,
+        submissionStatus: 'ONGOING',
+        submitted: false,
+      },
+    ],
+  })
 })
 
 test('getResumeById sends the resume id with bearer auth and returns parsed resume data', async () => {
@@ -67,6 +201,85 @@ test('getResumeById sends the resume id with bearer auth and returns parsed resu
       portfolioUrl: 'https://repo.example.test/hong',
       profileImageUrl: 'https://repo.example.test/profile.png',
       savedAt: '2026-09-07T14:35:06.220Z',
+      skills: [],
+      submissionStatus: 'ONGOING',
+    },
+  })
+})
+
+test('getResumeById accepts nullable optional resume fields from the server contract', async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        email: null,
+        id: 'resume-id',
+        introduce: null,
+        isPublic: null,
+        majorName: null,
+        name: '오혜민',
+        pages: [
+          {
+            content: '프로젝트 내용',
+            id: 'project-page',
+            index: 1,
+            project: {
+              endDate: null,
+              imageUrl: null,
+              name: 'Repo',
+              startDate: null,
+              summary: null,
+            },
+            type: 'PROJECT',
+          },
+          { content: '자유 페이지', id: 'free-page', index: 2, project: null, type: 'FREE' },
+        ],
+        portfolioUrl: null,
+        profileImageUrl: null,
+        savedAt: null,
+        skills: null,
+        submissionStatus: null,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+
+  const result = await resumeApi.getResumeById({
+    accessToken: 'access-token',
+    resumeId: 'resume-id',
+  })
+
+  assert.deepEqual(result, {
+    kind: 'success',
+    resume: {
+      email: '',
+      id: 'resume-id',
+      introduce: '',
+      isPublic: false,
+      majorName: '',
+      name: '오혜민',
+      pages: [
+        {
+          content: '프로젝트 내용',
+          id: 'project-page',
+          index: 1,
+          project: {
+            endDate: '',
+            imageUrl: '',
+            name: 'Repo',
+            startDate: '',
+            summary: '',
+          },
+          type: 'PROJECT',
+        },
+        { content: '자유 페이지', id: 'free-page', index: 2, type: 'FREE' },
+      ],
+      portfolioUrl: '',
+      profileImageUrl: '',
+      savedAt: '',
       skills: [],
       submissionStatus: 'ONGOING',
     },
@@ -336,7 +549,7 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
     accessToken: 'access-token',
     email: 'student@example.test',
     introduce: '사용자 소개',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
     portfolioUrl: 'https://repo.example.test/hong',
     skills: ['React', 'TypeScript'],
   })
@@ -350,7 +563,7 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
     JSON.stringify({
       email: 'student@example.test',
       introduce: '사용자 소개',
-      pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
+      pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
       portfolioUrl: 'https://repo.example.test/hong',
       skills: ['React', 'TypeScript'],
     }),
@@ -362,7 +575,7 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
   })
 })
 
-test('autoSaveResume sends pages with bearer auth and returns parsed auto-save state', async () => {
+test('autoSaveResume sends the full resume draft with bearer auth and returns parsed auto-save state', async () => {
   let requestedUrl = ''
   let requestedMethod = ''
   let requestedAuthorization = ''
@@ -391,14 +604,27 @@ test('autoSaveResume sends pages with bearer auth and returns parsed auto-save s
 
   const result = await resumeApi.autoSaveResume({
     accessToken: 'access-token',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
+    email: 'student@example.test',
+    introduce: '사용자 소개',
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+    portfolioUrl: 'https://repo.example.test/hong',
+    skills: ['React', 'TypeScript'],
   })
 
   assert.equal(requestedUrl, 'https://api.example.test/resume/auto-save')
   assert.equal(requestedMethod, 'POST')
   assert.equal(requestedAuthorization, 'Bearer access-token')
   assert.equal(requestedContentType, 'application/json')
-  assert.equal(requestedBody, JSON.stringify({ pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }] }))
+  assert.equal(
+    requestedBody,
+    JSON.stringify({
+      email: 'student@example.test',
+      introduce: '사용자 소개',
+      pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+      portfolioUrl: 'https://repo.example.test/hong',
+      skills: ['React', 'TypeScript'],
+    }),
+  )
   assert.deepEqual(result, {
     autoSaved: true,
     kind: 'success',
@@ -420,7 +646,7 @@ test('saveResume returns server-error when the response body is not save state',
     accessToken: 'access-token',
     email: 'student@example.test',
     introduce: '사용자 소개',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
     portfolioUrl: 'https://repo.example.test/hong',
     skills: ['React', 'TypeScript'],
   })
@@ -442,7 +668,11 @@ test('autoSaveResume returns server-error when the response body is not auto-sav
 
   const result = await resumeApi.autoSaveResume({
     accessToken: 'access-token',
-    pages: [{ content: '첫 페이지 내용', id: 'page-1', index: 0, type: 'PROFILE' }],
+    email: '',
+    introduce: '',
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+    portfolioUrl: '',
+    skills: [],
   })
 
   assert.deepEqual(result, {

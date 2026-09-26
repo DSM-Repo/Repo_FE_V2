@@ -22,6 +22,14 @@ type EditorBlockClassNames = {
   readonly heading1: string; readonly heading2: string; readonly heading3: string; readonly heading4: string; readonly paragraph: string; readonly quote: string
 }
 
+const blockShortcuts: Readonly<Record<string, EditableMarkdownBlock>> = {
+  '#': { kind: 'heading', level: 1, text: '' },
+  '##': { kind: 'heading', level: 2, text: '' },
+  '###': { kind: 'heading', level: 3, text: '' },
+  '####': { kind: 'heading', level: 4, text: '' },
+  '>': { kind: 'quote', text: '' },
+}
+
 function findLineRange(value: string, selectionStart: number, selectionEnd: number) {
   const lineStart = value.lastIndexOf('\n', Math.max(0, selectionStart - 1)) + 1
   const nextLineBreak = value.indexOf('\n', selectionEnd)
@@ -163,7 +171,7 @@ export function toEditableMarkdownBlocks(value: string): readonly EditableMarkdo
 }
 
 function appendInlineNodes(parent: HTMLElement, value: string): void {
-  const pattern = /(\*\*([^*]+)\*\*|\*([^*]+)\*|<u>(.*?)<\/u>)/g
+  const pattern = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|<u>(.*?)<\/u>)/g
   let currentIndex = 0
   let match = pattern.exec(value)
 
@@ -175,11 +183,26 @@ function appendInlineNodes(parent: HTMLElement, value: string): void {
       parent.append(value.slice(currentIndex, matchStart))
     }
 
-    const boldText = match[2]
-    const italicText = match[3]
-    const underlineText = match[4]
+    const imageAlt = match[2]
+    const imageHref = match[3]
+    const linkText = match[4]
+    const linkHref = match[5]
+    const boldText = match[6]
+    const italicText = match[7]
+    const underlineText = match[8]
 
-    if (boldText !== undefined) {
+    if (imageAlt !== undefined && imageHref !== undefined) {
+      const link = document.createElement('a')
+      link.dataset.markdownImage = ''
+      link.setAttribute('href', imageHref)
+      link.textContent = imageAlt || '이미지'
+      parent.append(link)
+    } else if (linkText !== undefined && linkHref !== undefined) {
+      const link = document.createElement('a')
+      link.setAttribute('href', linkHref)
+      link.textContent = linkText
+      parent.append(link)
+    } else if (boldText !== undefined) {
       const strong = document.createElement('strong')
       strong.textContent = boldText
       parent.append(strong)
@@ -206,13 +229,7 @@ function createBlockElement(block: EditableMarkdownBlock, styles: EditorBlockCla
   const element =
     block.kind === 'heading' ? document.createElement(`h${block.level}`) : document.createElement(block.kind === 'quote' ? 'blockquote' : 'div')
 
-  element.className = toBlockClassName(block, styles)
-  element.dataset.editorBlock = ''
-  element.dataset.markdownBlock = block.kind
-
-  if (block.kind === 'heading') {
-    element.dataset.headingLevel = String(block.level)
-  }
+  configureBlockElement(element, block, styles)
 
   if (block.text) {
     appendInlineNodes(element, block.text)
@@ -221,6 +238,73 @@ function createBlockElement(block: EditableMarkdownBlock, styles: EditorBlockCla
   }
 
   return element
+}
+
+function configureBlockElement(element: HTMLElement, block: EditableMarkdownBlock, styles: EditorBlockClassNames) {
+  element.className = toBlockClassName(block, styles)
+  element.dataset.editorBlock = ''
+  element.dataset.markdownBlock = block.kind
+
+  if (block.kind === 'heading') {
+    element.dataset.headingLevel = String(block.level)
+  } else {
+    delete element.dataset.headingLevel
+  }
+}
+
+function findEditorBlock(editor: HTMLElement, node: Node): HTMLElement {
+  let block = node instanceof HTMLElement ? node : node.parentElement
+
+  while (block && block !== editor && block.parentElement !== editor) {
+    block = block.parentElement
+  }
+
+  return block && editor.contains(block) ? block : editor
+}
+
+export function applyMarkdownBlockShortcut(editor: HTMLElement, selection: Selection, styles: EditorBlockClassNames): boolean {
+  if (selection.rangeCount === 0 || !selection.isCollapsed) {
+    return false
+  }
+
+  const range = selection.getRangeAt(0)
+
+  if (!editor.contains(range.startContainer)) {
+    return false
+  }
+
+  const block = findEditorBlock(editor, range.startContainer)
+
+  const shortcutRange = document.createRange()
+  shortcutRange.selectNodeContents(block)
+  shortcutRange.setEnd(range.startContainer, range.startOffset)
+  const shortcutBlock = blockShortcuts[shortcutRange.toString()]
+
+  if (!shortcutBlock) {
+    return false
+  }
+
+  shortcutRange.deleteContents()
+  const replacement = createBlockElement(shortcutBlock, styles)
+  const remainingNodes = Array.from(block.childNodes)
+
+  replacement.replaceChildren(...remainingNodes)
+
+  if (!replacement.textContent) {
+    replacement.replaceChildren(document.createElement('br'))
+  }
+
+  if (block === editor) {
+    editor.replaceChildren(replacement)
+  } else {
+    block.replaceWith(replacement)
+  }
+
+  range.setStart(replacement, 0)
+  range.collapse(true)
+  selection.removeAllRanges()
+  selection.addRange(range)
+  return true
 }
 
 function toBlockClassName(block: EditableMarkdownBlock, styles: EditorBlockClassNames) {
@@ -244,6 +328,11 @@ function toBlockClassName(block: EditableMarkdownBlock, styles: EditorBlockClass
 }
 
 export function renderEditorMarkdown(editor: HTMLElement, value: string, styles: EditorBlockClassNames): void {
+  if (!value) {
+    editor.replaceChildren()
+    return
+  }
+
   const blocks = toEditableMarkdownBlocks(value)
   editor.replaceChildren(...blocks.map((block) => createBlockElement(block, styles)))
 }
@@ -257,6 +346,10 @@ function serializeInlineMarkdown(node: Node): string {
     return ''
   }
 
+  if (node.tagName === 'BR') {
+    return node.nextSibling ? '\n' : ''
+  }
+
   const text = Array.from(node.childNodes).map(serializeInlineMarkdown).join('')
 
   switch (node.tagName) {
@@ -268,30 +361,64 @@ function serializeInlineMarkdown(node: Node): string {
       return `*${text}*`
     case 'U':
       return `<u>${text}</u>`
+    case 'A': {
+      const href = node.getAttribute('href') ?? ''
+      return node.hasAttribute('data-markdown-image') ? `![${text}](${href})` : `[${text}](${href})`
+    }
     default:
       return text
   }
 }
 
 export function serializeEditorMarkdown(editor: HTMLElement) {
-  return Array.from(editor.children)
-    .map((child) => {
-      if (!(child instanceof HTMLElement)) {
-        return ''
+  const lines: string[] = []
+  let inlineLine = ''
+
+  const flushInlineLine = () => {
+    if (!inlineLine) {
+      return
+    }
+
+    lines.push(inlineLine.replace(/\u00a0/g, ' '))
+    inlineLine = ''
+  }
+
+  for (const child of editor.childNodes) {
+    if (!(child instanceof HTMLElement)) {
+      inlineLine += serializeInlineMarkdown(child)
+      continue
+    }
+
+    const isBlock = ['BLOCKQUOTE', 'DIV', 'H1', 'H2', 'H3', 'H4', 'P'].includes(child.tagName)
+
+    if (!isBlock) {
+      if (child.tagName === 'BR') {
+        flushInlineLine()
+        lines.push('')
+      } else {
+        inlineLine += serializeInlineMarkdown(child)
       }
+      continue
+    }
 
-      const text = Array.from(child.childNodes).map(serializeInlineMarkdown).join('').replace(/\u00a0/g, ' ')
-      const level = child.dataset.headingLevel
+    flushInlineLine()
 
-      if (level === '1' || level === '2' || level === '3' || level === '4') {
-        return `${'#'.repeat(Number(level))} ${text}`
-      }
+    const text = Array.from(child.childNodes).map(serializeInlineMarkdown).join('').replace(/\u00a0/g, ' ')
+    const headingLevel = child.dataset.headingLevel ?? child.tagName.match(/^H([1-4])$/)?.[1]
 
-      if (child.dataset.markdownBlock === 'quote') {
-        return `> ${text}`
-      }
+    if (headingLevel === '1' || headingLevel === '2' || headingLevel === '3' || headingLevel === '4') {
+      lines.push(`${'#'.repeat(Number(headingLevel))} ${text}`)
+      continue
+    }
 
-      return text
-    })
-    .join('\n')
+    if (child.dataset.markdownBlock === 'quote' || child.tagName === 'BLOCKQUOTE') {
+      lines.push(text.split('\n').map((line) => `> ${line}`).join('\n'))
+      continue
+    }
+
+    lines.push(text)
+  }
+
+  flushInlineLine()
+  return lines.join('\n')
 }

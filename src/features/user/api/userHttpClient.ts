@@ -1,6 +1,6 @@
 'use client'
 
-import type { UserMeInput } from './userApi.types'
+import type { UserMajorUpdateInput, UserMeInput } from './userApi.types'
 import { sendAuthenticatedRequest } from '../../auth/api/authenticatedRequest'
 
 type UserApiConfig =
@@ -82,5 +82,16 @@ export async function getUserMeRequest(input: UserMeInput): Promise<UserRequestR
       Authorization: `Bearer ${input.accessToken}`,
     },
     method: 'GET',
+  })
+}
+
+export async function patchUserMajorRequest(input: UserMajorUpdateInput): Promise<UserRequestResponse> {
+  return sendUserRequest('user', {
+    body: JSON.stringify({ majorId: input.majorId }),
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    method: 'PATCH',
   })
 }

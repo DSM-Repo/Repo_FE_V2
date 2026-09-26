@@ -51,11 +51,17 @@
 }
 
 .profileText p {
+  display: -webkit-box;
+  max-width: 72ch;
   margin: 0;
+  overflow: hidden;
   color: var(--repo-gray-50);
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: 1.45;
+  word-break: keep-all;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
 
 .dashboard {
@@ -187,16 +193,27 @@
 
 .notificationItem {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  min-height: 33px;
-  padding: 7px 0;
+  min-height: 48px;
+  padding: 8px 0;
   border-radius: 6px;
   color: var(--repo-gray-50);
 }
 
-.notificationItem > span {
+.unreadNotificationItem .notificationContent::before {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 999px;
+  background: var(--repo-main);
+  content: "";
+  vertical-align: middle;
+}
+
+.notificationContent {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -210,10 +227,41 @@
   line-height: var(--repo-font-body-very-tiny-line-height);
 }
 
-.notificationList svg {
-  width: 16px;
-  height: 16px;
+.notificationActions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.notificationActions button {
+  min-width: 44px;
+  height: 28px;
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--repo-gray-200);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--repo-font-body-very-tiny-size);
+}
+
+.notificationActions button:disabled {
   color: var(--repo-gray-600);
+  cursor: default;
+}
+
+.notificationActions button:not(:disabled):hover {
+  border-color: var(--repo-main);
+  color: var(--repo-main);
+}
+
+.notificationActionMessage {
+  margin: 14px 24px 0;
+  color: var(--repo-state-error);
+  font-size: var(--repo-font-body-very-tiny-size);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+  text-align: center;
 }
 
 .emptyMessage {

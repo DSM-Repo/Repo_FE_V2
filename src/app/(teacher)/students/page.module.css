@@ -218,15 +218,22 @@
   margin-top: var(--space-8);
 }
 
-.studentRows > a {
+.studentRows > a,
+.studentRows > button {
   min-height: 42px;
   padding: var(--space-2) 0;
   background: transparent;
 }
 
-.studentRows > a:hover {
+.studentRows > a:hover,
+.studentRows > button:hover {
   transform: none;
   background: var(--repo-bg-main);
+}
+
+.studentRows > button:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
 }
 
 .studentRow > span:first-child > span:first-child {
@@ -303,5 +310,19 @@
   .dialog {
     min-height: auto;
     padding: var(--space-8) var(--space-5);
+  }
+
+  .studentRow {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .studentRow > span:first-child,
+  .studentRow > span:nth-child(2) {
+    width: 100%;
+  }
+
+  .studentRow > span:nth-child(2) {
+    justify-content: flex-end;
   }
 }
