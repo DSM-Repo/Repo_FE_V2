@@ -5,10 +5,15 @@
   min-height: var(--resume-book-sheet-min-height, var(--resume-book-sheet-height, 780px));
   flex-direction: column;
   padding: var(--resume-book-sheet-padding, 24px);
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
   color: var(--repo-text-black);
   background: var(--repo-gray-50);
   box-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+}
+
+.sheet > * {
+  flex-shrink: 0;
 }
 
 .profileHeader,
@@ -147,7 +152,7 @@
 
 .nameInput {
   flex: 0 1 76px;
-  font-size: clamp(20px, 1.66vw, 32px);
+  font-size: clamp(20px, 1.35vw, 28px);
   font-weight: var(--repo-font-title-small-weight);
   line-height: 1.12;
 }
@@ -173,11 +178,12 @@
 
 .majorInput {
   display: inline-block;
-  flex: 0 1 138px;
+  flex: 0 0 auto;
   margin: 0;
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
+  white-space: nowrap;
 }
 
 .emailInput {
@@ -200,7 +206,7 @@
 
 .introTitleInput {
   min-height: 1.4em;
-  font-size: clamp(14px, 1.04vw, 20px);
+  font-size: clamp(14px, 0.94vw, 18px);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: 1.4;
 }
@@ -306,7 +312,7 @@
 .sectionTitleRow h3,
 .activityHeadingRow h3 {
   margin: 0;
-  font-size: clamp(15px, 1.14vw, 22px);
+  font-size: clamp(15px, 1.04vw, 20px);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
 }
@@ -436,7 +442,7 @@
 }
 
 .projectNameInput {
-  font-size: clamp(22px, 1.98vw, 38px);
+  font-size: clamp(22px, 1.58vw, 32px);
   font-weight: var(--repo-font-title-small-weight);
   line-height: 1.15;
 }

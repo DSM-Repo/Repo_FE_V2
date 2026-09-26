@@ -19,24 +19,26 @@
 
 .stage {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   min-width: 0;
+  height: calc(100dvh - var(--repo-size-header-min-height));
   min-height: calc(100dvh - var(--repo-size-header-min-height));
-  flex-direction: column;
-  align-items: center;
-  padding: 96px 48px 24px;
-  overflow: hidden;
+  row-gap: 8px;
+  justify-items: center;
+  padding: 24px 40px 18px;
+  overflow: auto;
   background: var(--repo-bg-main);
 }
 
 .topActions {
-  position: absolute;
-  top: 32px;
-  right: 64px;
+  position: relative;
   z-index: 2;
   display: flex;
+  width: min(100%, 1480px);
   gap: 12px;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .primaryAction,
@@ -84,9 +86,10 @@
 
 .sheetViewport {
   display: grid;
-  width: min(100%, 1320px);
+  width: min(100%, 1480px);
+  min-height: 0;
   grid-template-columns: 24px minmax(0, auto) 24px;
-  gap: 24px;
+  gap: 20px;
   align-items: center;
   justify-content: center;
 }
@@ -94,7 +97,8 @@
 .spread {
   display: flex;
   min-width: 0;
-  gap: 24px;
+  min-height: 0;
+  gap: 20px;
   align-items: center;
   justify-content: center;
 }
@@ -124,12 +128,12 @@
 
 .documentSheet {
   --resume-book-sheet-height: min(
-    780px,
-    calc(100dvh - var(--repo-size-header-min-height) - 144px),
-    calc((100vw - 180px) * 390 / 551)
+    860px,
+    calc(100dvh - var(--repo-size-header-min-height) - 172px),
+    calc((100vw - 116px) * 390 / 551)
   );
   --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 551 / 780);
-  --resume-book-sheet-padding: clamp(24px, 2.08vw, 40px);
+  --resume-book-sheet-padding: clamp(24px, 1.92vw, 36px);
   --resume-book-sheet-avatar-size: clamp(44px, 4.68vw, 96px);
   --resume-book-sheet-qr-size: clamp(44px, 4.79vw, 92px);
   --resume-book-sheet-header-gap: clamp(14px, 1.46vw, 28px);
@@ -157,27 +161,21 @@
 }
 
 .pageCount {
-  position: fixed;
-  bottom: 84px;
-  left: 50%;
+  position: relative;
   z-index: 2;
   margin: 0;
   color: var(--repo-gray-700);
-  font-size: 20px;
+  font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
-  transform: translateX(-50%);
 }
 
 .editorToolbar {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
+  position: relative;
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  transform: translateX(-50%);
+  gap: 8px;
 }
 
 .toolGroup {
@@ -191,8 +189,8 @@
 .iconTool,
 .textTool {
   display: inline-flex;
-  width: 42px;
-  height: 48px;
+  width: 34px;
+  height: 38px;
   align-items: center;
   justify-content: center;
   border: 0;
@@ -201,15 +199,15 @@
 }
 
 .textTool {
-  width: 52px;
-  font-size: var(--repo-font-title-small-size);
+  width: 42px;
+  font-size: var(--repo-font-title-tiny-size);
   font-weight: 600;
   line-height: 1;
 }
 
 .iconTool svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .iconTool:disabled {
@@ -495,10 +493,6 @@
     padding-left: 24px;
   }
 
-  .topActions {
-    right: 24px;
-  }
-
   .loadingMessage {
     left: 24px;
   }
@@ -511,11 +505,13 @@
   }
 
   .stage {
+    height: auto;
     overflow: auto;
   }
 
   .sheetViewport {
     grid-template-columns: 1fr;
+    align-items: start;
   }
 
   .pageArrow {
@@ -523,14 +519,15 @@
   }
 
   .spread {
+    align-content: flex-start;
     align-items: flex-start;
     flex-wrap: wrap;
   }
 
   .documentSheet {
     --resume-book-sheet-width: min(551px, calc(100vw - 48px));
-    --resume-book-sheet-height: auto;
-    --resume-book-sheet-min-height: 780px;
+    --resume-book-sheet-height: min(780px, calc(100dvh - var(--repo-size-header-min-height) - 172px));
+    --resume-book-sheet-min-height: 0;
   }
 
   .feedbackPanel {
@@ -542,13 +539,7 @@
 
 @media (max-width: 720px) {
   .stage {
-    padding: 96px 16px 112px;
-  }
-
-  .topActions {
-    right: 16px;
-    left: 16px;
-    justify-content: flex-end;
+    padding: 18px 16px 24px;
   }
 
   .toastLayer {
@@ -571,12 +562,8 @@
 
   .documentSheet {
     --resume-book-sheet-width: min(551px, calc(100vw - 32px));
-    --resume-book-sheet-height: auto;
-    --resume-book-sheet-min-height: 640px;
-  }
-
-  .editorToolbar {
-    bottom: 24px;
+    --resume-book-sheet-height: min(640px, calc(100dvh - var(--repo-size-header-min-height) - 156px));
+    --resume-book-sheet-min-height: 0;
   }
 
   .feedbackToggle {
