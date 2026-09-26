@@ -346,6 +346,10 @@ function serializeInlineMarkdown(node: Node): string {
     return ''
   }
 
+  if (node.tagName === 'BR') {
+    return node.nextSibling ? '\n' : ''
+  }
+
   const text = Array.from(node.childNodes).map(serializeInlineMarkdown).join('')
 
   switch (node.tagName) {
@@ -408,7 +412,7 @@ export function serializeEditorMarkdown(editor: HTMLElement) {
     }
 
     if (child.dataset.markdownBlock === 'quote' || child.tagName === 'BLOCKQUOTE') {
-      lines.push(`> ${text}`)
+      lines.push(text.split('\n').map((line) => `> ${line}`).join('\n'))
       continue
     }
 

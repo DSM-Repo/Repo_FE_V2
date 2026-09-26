@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 import { authenticateAs } from './auth-fixtures'
 
 const apiBaseUrl = 'http://52.78.201.218'
+const studentResumeIdStorageKey = 'repo.resume.id.student%40dsm.hs.kr'
 
 test.describe('student resume management', () => {
   test.beforeEach(async ({ page }) => {
@@ -89,7 +90,7 @@ test.describe('student resume management', () => {
     await expect(page.getByText('홍길동', { exact: true })).toHaveCount(0)
     await expect(page.getByText('2415 인공지능소프트웨어과', { exact: true })).toHaveCount(0)
 
-    expect(releaseUserRequest).toBeDefined()
+    await expect.poll(() => typeof releaseUserRequest).toBe('function')
     releaseUserRequest?.()
 
     await expect(page.getByLabel('이름').first()).toHaveValue('오혜민')
@@ -425,6 +426,49 @@ test.describe('student resume management', () => {
     await expect.poll(() => savedActivityContent).toBe('> 사용자 피드백')
   })
 
+  test('preserves Shift Enter line breaks when saving markdown blocks', async ({ page }) => {
+    let savedActivityContent = ''
+
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as { pages: Array<{ content: string }> }
+      savedActivityContent = requestBody.pages[0]?.content ?? ''
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.goto('/resume?mode=edit')
+
+    const pageContentInput = page.getByRole('textbox', { name: '1쪽 추가 내용' })
+
+    await pageContentInput.fill('활동 첫 줄')
+    await pageContentInput.press('Shift+Enter')
+    await page.keyboard.insertText('활동 둘째 줄')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect.poll(() => savedActivityContent).toBe('활동 첫 줄\n활동 둘째 줄')
+
+    savedActivityContent = ''
+    await pageContentInput.fill('')
+    await pageContentInput.pressSequentially('#')
+    await pageContentInput.press('Space')
+    await page.keyboard.insertText('제목 첫 줄')
+    await pageContentInput.press('Shift+Enter')
+    await page.keyboard.insertText('제목 둘째 줄')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect.poll(() => savedActivityContent).toBe('# 제목 첫 줄\n제목 둘째 줄')
+
+    savedActivityContent = ''
+    await pageContentInput.fill('')
+    await pageContentInput.pressSequentially('>')
+    await pageContentInput.press('Space')
+    await page.keyboard.insertText('인용 첫 줄')
+    await pageContentInput.press('Shift+Enter')
+    await page.keyboard.insertText('인용 둘째 줄')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect.poll(() => savedActivityContent).toBe('> 인용 첫 줄\n> 인용 둘째 줄')
+  })
+
   test('shows only the cursor without a focus border on resume writing fields', async ({ page }) => {
     await page.goto('/resume?mode=edit')
 
@@ -630,7 +674,9 @@ test.describe('student resume management', () => {
     await expect(page.getByRole('status')).toContainText('이력서를 저장했습니다.')
     await expect(page.getByRole('button', { name: '비공개' })).toHaveCount(0)
     await expect(page).toHaveURL('/resume?resumeId=resume-id&mode=edit')
-    await expect(page.evaluate(() => window.localStorage.getItem('repo.resume.id'))).resolves.toBe('resume-id')
+    await expect(page.evaluate((storageKey) => window.localStorage.getItem(storageKey), studentResumeIdStorageKey)).resolves.toBe(
+      'resume-id',
+    )
 
     await page.getByLabel('1쪽 추가 내용').fill('첫 저장 뒤 수정한 내용')
     await page.getByRole('button', { exact: true, name: '저장' }).click()
@@ -718,7 +764,7 @@ test.describe('student resume management', () => {
 
   test('restores the last saved resume when reopening resume management', async ({ page }) => {
     await page.addInitScript(() => {
-      window.localStorage.setItem('repo.resume.id', 'resume-id')
+      window.localStorage.setItem('repo.resume.id.student%40dsm.hs.kr', 'resume-id')
     })
     await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
       await route.fulfill({

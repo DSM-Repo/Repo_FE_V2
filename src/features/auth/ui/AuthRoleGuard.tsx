@@ -4,7 +4,14 @@ import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-import { clearAuthTokens, getSavedAuthRole, type AuthLoginRole } from '@/features/auth/api'
+import {
+  clearAuthTokens,
+  getSavedAuthRole,
+  getSavedRefreshToken,
+  refreshAuthToken,
+  saveAuthAccessToken,
+  type AuthLoginRole,
+} from '@/features/auth/api'
 
 type AuthRoleGuardProps = {
   readonly children: ReactNode
@@ -15,6 +22,30 @@ const roleHomePath = {
   student: '/home',
   teacher: '/students',
 } as const satisfies Record<AuthLoginRole, string>
+
+async function getAuthorizedRole() {
+  const savedRole = getSavedAuthRole()
+
+  if (savedRole) {
+    return savedRole
+  }
+
+  const refreshToken = getSavedRefreshToken()
+
+  if (!refreshToken) {
+    return undefined
+  }
+
+  const refreshResult = await refreshAuthToken({ refreshToken })
+
+  if (refreshResult.kind !== 'success') {
+    return undefined
+  }
+
+  saveAuthAccessToken(refreshResult.token.accessToken)
+
+  return getSavedAuthRole()
+}
 
 export function AuthRoleGuard({ children, requiredRole }: AuthRoleGuardProps) {
   const router = useRouter()
@@ -30,7 +61,11 @@ export function AuthRoleGuard({ children, requiredRole }: AuthRoleGuardProps) {
         return
       }
 
-      const role = getSavedAuthRole()
+      const role = await getAuthorizedRole()
+
+      if (!isActive) {
+        return
+      }
 
       if (!role) {
         clearAuthTokens()

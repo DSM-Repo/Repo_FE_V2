@@ -17,7 +17,7 @@ function decodeBase64Url(value: string) {
   return new TextDecoder().decode(bytes)
 }
 
-export function getAuthRoleFromAccessToken(accessToken: string): AuthLoginRole | undefined {
+function parseAuthAccessTokenPayload(accessToken: string): JsonRecord | undefined {
   const tokenParts = accessToken.split('.')
 
   if (tokenParts.length !== 3 || tokenParts.some((part) => !part)) {
@@ -43,6 +43,23 @@ export function getAuthRoleFromAccessToken(accessToken: string): AuthLoginRole |
   const expiresAt = payload['exp']
 
   if (expiresAt !== undefined && (typeof expiresAt !== 'number' || expiresAt <= Date.now() / 1_000)) {
+    return undefined
+  }
+
+  return payload
+}
+
+export function getAuthSubjectFromAccessToken(accessToken: string): string | undefined {
+  const payload = parseAuthAccessTokenPayload(accessToken)
+  const subject = payload?.['sub']
+
+  return typeof subject === 'string' && subject.trim() ? subject : undefined
+}
+
+export function getAuthRoleFromAccessToken(accessToken: string): AuthLoginRole | undefined {
+  const payload = parseAuthAccessTokenPayload(accessToken)
+
+  if (!payload) {
     return undefined
   }
 
