@@ -14,19 +14,16 @@ import {
 import { getMajors, type Major } from '@/features/major/api'
 import {
   autoSaveResume,
-  cancelResumeSubmission,
   clearSavedResumeId,
   getResumeById,
   getSavedResumeId,
   saveResume,
   saveResumeId,
-  submitResume,
   type Resume,
   type ResumeDetailResult,
   type ResumePage,
   type ResumeSavePage,
   type ResumeSaveProject,
-  type ResumeSubmissionResult,
 } from '@/features/resume/api'
 import { getUserMe, updateUserMajor, type UserMe, type UserMeResult } from '@/features/user/api'
 import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
@@ -82,7 +79,6 @@ type LoadState =
     }
 
 type ViewMode = 'view' | 'edit' | 'feedback'
-type SubmissionSubmitState = 'idle' | 'submit' | 'cancel'
 type SaveSubmitState = 'auto-save' | 'idle' | 'save' | 'temporary-save'
 type SaveMode = 'auto' | 'manual' | 'temporary'
 type ActionFeedback = {
@@ -108,17 +104,13 @@ type FeedbackSubmitState =
   | { readonly feedbackId: string; readonly kind: 'item' }
   | { readonly kind: 'idle' }
 
-function toInitialViewMode(mode: string | null, resumeId: string): ViewMode {
+function toInitialViewMode(mode: string | null): ViewMode {
   if (mode === 'edit') {
     return 'edit'
   }
 
   if (mode === 'feedback') {
     return 'feedback'
-  }
-
-  if (!resumeId.trim()) {
-    return 'edit'
   }
 
   return 'view'
@@ -278,14 +270,6 @@ function toFailureMessage(result: Exclude<ResumeDetailResult, { readonly kind: '
   return result.message
 }
 
-function toSubmissionFailureMessage(result: Exclude<ResumeSubmissionResult, { readonly kind: 'success' }>) {
-  return result.message
-}
-
-function isSubmittedResume(resume: Resume) {
-  return resume.submissionStatus !== 'ONGOING'
-}
-
 function isCompletedFeedback(feedback: FeedbackListItem) {
   return feedback.status.trim().toUpperCase() === 'COMPLETED'
 }
@@ -336,9 +320,8 @@ export function StudentResumePageContent() {
   const requestedResumeId = searchParams.get('resumeId') ?? ''
   const requestedMode = searchParams.get('mode')
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' })
-  const [viewMode, setViewMode] = useState<ViewMode>(() => toInitialViewMode(requestedMode, requestedResumeId))
+  const [viewMode, setViewMode] = useState<ViewMode>(() => toInitialViewMode(requestedMode))
   const [draft, setDraft] = useState<ResumeDraft>(defaultResumeDraft)
-  const [submissionSubmitState, setSubmissionSubmitState] = useState<SubmissionSubmitState>('idle')
   const [saveSubmitState, setSaveSubmitState] = useState<SaveSubmitState>('idle')
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback>()
   const [userLoadState, setUserLoadState] = useState<UserLoadState>({ kind: 'loading' })
@@ -462,7 +445,7 @@ export function StudentResumePageContent() {
       setLoadState({ kind: 'success', resume: result.resume })
 
       if (syncUrl) {
-        router.replace(`/resume?resumeId=${encodeURIComponent(result.resume.id)}&mode=edit`, { scroll: false })
+        router.replace(`/resume?resumeId=${encodeURIComponent(result.resume.id)}`, { scroll: false })
       }
 
       return
@@ -486,65 +469,8 @@ export function StudentResumePageContent() {
     void loadResume(resumeIdToLoad, !requestedResumeId)
   }, [loadResume, requestedResumeId])
 
-  const changeSubmissionStatus = async () => {
-    if (
-      loadState.kind !== 'success' ||
-      submissionSubmitState !== 'idle' ||
-      saveSubmitState !== 'idle'
-    ) {
-      setActionFeedback({ message: '조회된 이력서가 없어 제출할 수 없습니다.', tone: 'error' })
-      return
-    }
-
-    const accessToken = getSavedAccessToken()
-
-    if (!accessToken) {
-      setActionFeedback({ message: '로그인 후 이력서를 제출하거나 취소할 수 있습니다.', tone: 'error' })
-      return
-    }
-
-    const nextAction: Exclude<SubmissionSubmitState, 'idle'> = isSubmittedResume(loadState.resume) ? 'cancel' : 'submit'
-    const activeResumeId = loadState.resume.id
-
-    setSubmissionSubmitState(nextAction)
-    setActionFeedback(undefined)
-
-    const result =
-      nextAction === 'submit'
-        ? await submitResume({
-            accessToken,
-          })
-        : await cancelResumeSubmission({
-            accessToken,
-          })
-
-    setSubmissionSubmitState('idle')
-
-    if (viewedResumeIdRef.current !== activeResumeId) {
-      return
-    }
-
-    if (result.kind !== 'success') {
-      setActionFeedback({ message: toSubmissionFailureMessage(result), tone: 'error' })
-      return
-    }
-
-    setLoadState({
-      kind: 'success',
-      resume: {
-        ...loadState.resume,
-        submissionStatus: result.submissionStatus,
-      },
-    })
-    setActionFeedback({
-      message: result.submissionStatus === 'ONGOING' ? '이력서 제출을 취소했습니다.' : '이력서를 제출했습니다.',
-      tone: 'success',
-    })
-  }
-
   const resume = loadState.kind === 'success' ? loadState.resume : undefined
-  const isResumeActionPending =
-    submissionSubmitState !== 'idle' || saveSubmitState !== 'idle' || majorSubmitState === 'pending'
+  const isResumeActionPending = saveSubmitState !== 'idle' || majorSubmitState === 'pending'
   const isEditing = viewMode === 'edit' || viewMode === 'feedback'
   const visiblePageIndexes = [spreadStartIndex, spreadStartIndex + 1].filter((index) => index < draft.pages.length)
   const canMovePrevious = spreadStartIndex > 0
@@ -731,6 +657,21 @@ export function StudentResumePageContent() {
     setActionFeedback(undefined)
   }, [])
 
+  const handleCancelEditing = useCallback(() => {
+    if (loadState.kind === 'success') {
+      const resumeDraft = toResumeDraft(loadState.resume)
+      setDraft(userRef.current ? applyUserToDraft(resumeDraft, userRef.current) : resumeDraft)
+    } else {
+      setDraft(userRef.current ? applyUserToDraft(defaultResumeDraft, userRef.current) : defaultResumeDraft)
+    }
+
+    setActionFeedback(undefined)
+    setFeedbackLoadState({ kind: 'idle' })
+    setIsDraftDirty(false)
+    setOpenFeedbackId(undefined)
+    setViewMode('view')
+  }, [loadState])
+
   const addProjectPage = useCallback(() => {
     const nextPageIndex = draft.pages.reduce((highestIndex, page) => Math.max(highestIndex, page.index), -1) + 1
     const nextPage: ResumeDraftPage = {
@@ -799,7 +740,7 @@ export function StudentResumePageContent() {
 
   const handleSave = useCallback(
     async (mode: SaveMode) => {
-      if (saveSubmitState !== 'idle' || submissionSubmitState !== 'idle') {
+      if (saveSubmitState !== 'idle') {
         return
       }
 
@@ -854,8 +795,14 @@ export function StudentResumePageContent() {
       requestedResumeIdRef.current = result.resumeId
       saveResumeId(result.resumeId)
 
-      if (requestedResumeId !== result.resumeId || requestedMode !== 'edit') {
-        router.replace(`/resume?resumeId=${encodeURIComponent(result.resumeId)}&mode=edit`, { scroll: false })
+      const nextMode = mode === 'manual' || viewMode === 'view' ? null : 'edit'
+      const nextUrl =
+        nextMode === 'edit'
+          ? `/resume?resumeId=${encodeURIComponent(result.resumeId)}&mode=edit`
+          : `/resume?resumeId=${encodeURIComponent(result.resumeId)}`
+
+      if (requestedResumeId !== result.resumeId || requestedMode !== nextMode) {
+        router.replace(nextUrl, { scroll: false })
       }
 
       if (syncedResume) {
@@ -889,6 +836,12 @@ export function StudentResumePageContent() {
         setIsDraftDirty(false)
       }
 
+      if (mode === 'manual') {
+        setFeedbackLoadState({ kind: 'idle' })
+        setOpenFeedbackId(undefined)
+        setViewMode('view')
+      }
+
       setActionFeedback({
         message:
           mode === 'auto'
@@ -899,7 +852,7 @@ export function StudentResumePageContent() {
         tone: 'success',
       })
     },
-    [draft, loadState, requestedMode, requestedResumeId, router, saveSubmitState, submissionSubmitState],
+    [draft, loadState, requestedMode, requestedResumeId, router, saveSubmitState, viewMode],
   )
 
   useEffect(() => {
@@ -937,35 +890,17 @@ export function StudentResumePageContent() {
         {actionFeedback ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}
         <div className={styles.stage} aria-live="polite">
           <div className={styles.topActions}>
-            {isEditing ? (
-              <>
-                <button className={styles.secondaryAction} disabled={isResumeActionPending} onClick={() => void handleSave('temporary')} type="button">
-                  {saveSubmitState === 'temporary-save'
-                    ? '임시저장 중'
-                    : saveSubmitState === 'auto-save'
-                      ? '자동 저장 중'
-                      : '임시저장'}
-                </button>
-                <button className={styles.primaryAction} disabled={isResumeActionPending} onClick={() => void handleSave('manual')} type="button">
-                  {saveSubmitState === 'save' ? '저장 중' : '저장'}
-                </button>
-              </>
-            ) : (
-              <>
-                <button className={styles.secondaryAction} onClick={() => setViewMode('edit')} type="button">
-                  이력서 수정하기
-                </button>
-                <button className={styles.primaryAction} disabled={isResumeActionPending} onClick={changeSubmissionStatus} type="button">
-                  {submissionSubmitState === 'submit'
-                    ? '제출 중'
-                    : submissionSubmitState === 'cancel'
-                      ? '취소 중'
-                      : resume && isSubmittedResume(resume)
-                        ? '제출 취소'
-                        : '제출'}
-                </button>
-              </>
-            )}
+            <button
+              className={styles.secondaryAction}
+              disabled={isEditing && isResumeActionPending}
+              onClick={isEditing ? handleCancelEditing : () => setViewMode('edit')}
+              type="button"
+            >
+              {isEditing ? '작성 취소' : '이력서 수정하기'}
+            </button>
+            <button className={styles.primaryAction} disabled={isResumeActionPending} onClick={() => void handleSave('manual')} type="button">
+              {saveSubmitState === 'save' ? '저장 중' : '저장'}
+            </button>
           </div>
 
           <div className={styles.sheetViewport}>
