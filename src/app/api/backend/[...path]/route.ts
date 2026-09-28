@@ -33,16 +33,20 @@ function getForwardHeaders(request: Request) {
 async function proxyBackendRequest(request: Request, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params
   const method = request.method.toUpperCase()
-  const body = method === 'GET' || method === 'HEAD' ? undefined : request.body
-  const response = await fetch(getBackendApiUrl(path, request.url), {
-    body,
-    duplex: body ? 'half' : undefined,
-    headers: getForwardHeaders(request),
-    method,
-    redirect: 'manual',
-  } as RequestInit & { duplex?: 'half' })
+  const body = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer()
 
-  return response
+  try {
+    return await fetch(getBackendApiUrl(path, request.url), {
+      body,
+      headers: getForwardHeaders(request),
+      method,
+      redirect: 'manual',
+    })
+  } catch (error) {
+    console.error('Backend API proxy request failed.', error)
+
+    return new Response('Backend API proxy request failed.', { status: 502 })
+  }
 }
 
 export function GET(request: Request, context: { params: Promise<{ path: string[] }> }) {
