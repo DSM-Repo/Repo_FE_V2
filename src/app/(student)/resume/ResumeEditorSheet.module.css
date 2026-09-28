@@ -9,7 +9,7 @@
   overscroll-behavior: contain;
   color: var(--repo-text-black);
   background: var(--repo-gray-50);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
 }
 
 .sheet > * {
@@ -25,12 +25,12 @@
 
 .profileHeader {
   grid-template-columns: var(--resume-book-sheet-avatar-size, 56px) minmax(0, 1fr) var(--resume-book-sheet-qr-size, 56px);
-  gap: clamp(10px, 1.1vw, 20px);
+  gap: var(--resume-book-sheet-header-gap, var(--space-4));
 }
 
 .projectHeader {
-  grid-template-columns: var(--resume-book-sheet-avatar-size, 56px) minmax(0, 1fr);
-  gap: clamp(14px, 1.3vw, 28px);
+  grid-template-columns: var(--resume-book-sheet-qr-size, 56px) minmax(0, 1fr);
+  gap: var(--resume-book-sheet-header-gap, var(--space-5));
 }
 
 .profileImageButton,
@@ -40,7 +40,7 @@
   align-items: center;
   justify-content: center;
   border: 1px dashed var(--repo-gray-300);
-  color: var(--repo-gray-300);
+  color: var(--repo-gray-400);
   background: var(--repo-gray-50);
 }
 
@@ -59,8 +59,8 @@
 .profileImageButton svg,
 .projectImageButton svg,
 .qrButton svg {
-  width: 18px;
-  height: 18px;
+  width: var(--space-4);
+  height: var(--space-4);
 }
 
 .identity,
@@ -72,7 +72,7 @@
   display: flex;
   min-width: 0;
   align-items: baseline;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .metaRow,
@@ -80,8 +80,8 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 6px;
-  margin-top: 6px;
+  gap: var(--space-2);
+  margin-top: 2px;
   color: var(--repo-gray-500);
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
@@ -133,11 +133,15 @@
 .projectIntroInput:focus,
 .projectContentInput:focus,
 .activityInput:focus,
-.majorSelect:focus-visible,
 .markdownEditor:focus {
   outline: none;
   box-shadow: none;
   background: transparent;
+}
+
+.majorSelect:focus-visible {
+  outline: 1px solid var(--repo-gray-500);
+  outline-offset: 2px;
 }
 
 .profileImageButton:focus-visible,
@@ -151,17 +155,17 @@
 }
 
 .nameInput {
-  flex: 0 1 76px;
-  font-size: clamp(20px, 1.35vw, 28px);
+  flex: 0 1 68px;
+  font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-small-weight);
-  line-height: 1.12;
+  line-height: var(--repo-font-title-tiny-line-height);
 }
 
 .majorSelect {
   display: inline-block;
   flex: 0 0 auto;
-  max-width: min(200px, 58%);
-  padding: 2px 22px 2px 4px;
+  max-width: min(180px, 56%);
+  padding: 0 22px 0 0;
   border: 0;
   color: var(--repo-gray-500);
   background: transparent;
@@ -196,25 +200,25 @@
 .introBox,
 .projectIntroBox {
   display: grid;
-  gap: 8px;
-  min-height: clamp(64px, 7.2vw, 96px);
-  padding: clamp(12px, 1.14vw, 22px);
-  margin-top: clamp(18px, 1.66vw, 32px);
-  border-radius: 8px;
+  gap: var(--space-2);
+  min-height: clamp(64px, 4.6vw, 88px);
+  padding: clamp(var(--space-3), 1vw, var(--space-4));
+  margin-top: clamp(var(--space-4), 1.35vw, var(--space-6));
+  border-radius: 6px;
   background: var(--repo-gray-100);
 }
 
 .introTitleInput {
   min-height: 1.4em;
-  font-size: clamp(14px, 0.94vw, 18px);
+  font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
-  line-height: 1.4;
+  line-height: var(--repo-font-body-tiny-line-height);
 }
 
 .introBodyInput {
   width: 100%;
   min-height: 1.4em;
-  max-height: 4.2em;
+  max-height: 6em;
   overflow-y: auto;
   border: 0;
   color: var(--repo-gray-800);
@@ -229,8 +233,8 @@
 
 .skillSection {
   display: grid;
-  gap: 10px;
-  margin-top: clamp(18px, 1.7vw, 32px);
+  gap: var(--space-2);
+  margin-top: clamp(var(--space-4), 1.3vw, var(--space-6));
 }
 
 .skillList {
@@ -239,7 +243,7 @@
   padding: 0;
   margin: 0;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-2);
   list-style: none;
 }
 
@@ -248,7 +252,7 @@
   min-width: 0;
   align-items: center;
   gap: 0;
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: var(--repo-radius-pill);
   color: var(--repo-gray-700);
   background: var(--repo-gray-100);
@@ -304,15 +308,15 @@
 }
 
 .activityHeadingRow {
-  gap: 16px;
-  padding-top: clamp(12px, 1vw, 20px);
+  gap: var(--space-4);
+  padding-top: clamp(var(--space-3), 1vw, var(--space-5));
   border-top: 1px solid var(--repo-gray-300);
 }
 
 .sectionTitleRow h3,
 .activityHeadingRow h3 {
   margin: 0;
-  font-size: clamp(15px, 1.04vw, 20px);
+  font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
 }
@@ -342,8 +346,8 @@
 
 .activitySection {
   display: grid;
-  gap: 18px;
-  margin-top: clamp(18px, 1.56vw, 30px);
+  gap: var(--space-2);
+  margin-top: clamp(var(--space-3), 1.15vw, var(--space-5));
 }
 
 .richTextToolbar {
@@ -351,7 +355,7 @@
   min-width: 0;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: 6px;
   overflow: visible;
   color: var(--repo-gray-500);
   line-height: 1;
@@ -359,8 +363,8 @@
 
 .richTextTool {
   display: inline-flex;
-  width: var(--space-6);
-  height: var(--space-6);
+  width: var(--space-5);
+  height: var(--space-5);
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
@@ -383,7 +387,7 @@
 
 .richTextToolSeparator {
   width: 1px;
-  height: var(--space-5);
+  height: var(--space-4);
   flex: 0 0 auto;
   border-radius: 1px;
   background: var(--repo-gray-300);
@@ -393,28 +397,28 @@
 .markdownToolTextIcon,
 .markdownToolSvgIcon {
   display: block;
-  width: var(--space-5);
-  height: var(--space-5);
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
 }
 
 .markdownToolHeadingIcon {
   font-family: inherit;
-  font-size: var(--repo-font-body-medium-size);
+  font-size: 16px;
   font-weight: var(--repo-font-body-medium-2-weight);
-  line-height: var(--repo-font-body-medium-line-height);
+  line-height: 16px;
 }
 
 .markdownToolHeadingIcon sub {
-  font-size: var(--repo-font-resume-small-size);
+  font-size: 9px;
   font-weight: var(--repo-font-resume-small-weight);
-  line-height: var(--repo-font-resume-small-line-height);
+  line-height: 1;
 }
 
 .markdownToolTextIcon {
-  font-size: var(--repo-font-body-large-size);
+  font-size: 16px;
   font-weight: var(--repo-font-title-tiny-weight);
-  line-height: var(--repo-font-body-large-line-height);
+  line-height: 16px;
   text-align: center;
 }
 
@@ -435,16 +439,17 @@
 
 .activityInput,
 .projectContentInput {
-  min-height: 80px;
-  font-size: var(--repo-font-body-tiny-size);
-  font-weight: var(--repo-font-body-tiny-weight);
-  line-height: 1.55;
+  min-height: 96px;
+  padding-top: var(--space-2);
+  font-size: var(--repo-font-body-very-tiny-size);
+  font-weight: var(--repo-font-body-very-tiny-weight);
+  line-height: var(--repo-font-body-very-tiny-line-height);
 }
 
 .projectNameInput {
-  font-size: clamp(22px, 1.58vw, 32px);
+  font-size: var(--repo-font-body-large-size);
   font-weight: var(--repo-font-title-small-weight);
-  line-height: 1.15;
+  line-height: var(--repo-font-body-large-line-height);
 }
 
 .projectDateInput {
@@ -469,7 +474,7 @@
 }
 
 .projectIntroBox {
-  min-height: 58px;
+  min-height: clamp(52px, 3.8vw, 68px);
 }
 
 .projectIntroInput {
@@ -480,7 +485,7 @@
 
 .projectContentInput {
   flex: 1 1 auto;
-  margin-top: 18px;
+  margin-top: var(--space-5);
 }
 
 .freePageContentInput {
@@ -490,14 +495,14 @@
 .markdownEditor {
   width: 100%;
   min-height: 96px;
-  padding: 10px 0;
+  padding: 0;
   overflow: auto;
   border: 0;
   color: var(--repo-text-black);
   background: transparent;
-  font-size: var(--repo-font-body-tiny-size);
-  font-weight: var(--repo-font-body-tiny-weight);
-  line-height: 1.55;
+  font-size: var(--repo-font-body-very-tiny-size);
+  font-weight: var(--repo-font-body-very-tiny-weight);
+  line-height: var(--repo-font-body-very-tiny-line-height);
   letter-spacing: 0;
   white-space: pre-wrap;
   word-break: keep-all;
@@ -515,8 +520,12 @@
 .markdownEditor h4,
 .markdownEditor p,
 .markdownEditor blockquote,
+.markdownEditor ul,
+.markdownEditor hr,
 .markdownEditorParagraph,
-.markdownEditorQuote {
+.markdownEditorQuote,
+.markdownEditorBulletList,
+.markdownEditorDivider {
   margin: 0;
 }
 
@@ -553,6 +562,29 @@
   padding-left: 10px;
   border-left: 2px solid var(--repo-gray-300);
   color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-very-tiny-size);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+}
+
+.markdownEditor ul,
+.markdownEditorBulletList {
+  padding-left: var(--space-4);
+  color: var(--repo-text-black);
+  font-size: var(--repo-font-body-very-tiny-size);
+  font-weight: var(--repo-font-body-very-tiny-weight);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+}
+
+.markdownEditor li {
+  padding-left: 2px;
+}
+
+.markdownEditor hr,
+.markdownEditorDivider {
+  width: 100%;
+  height: 1px;
+  border: 0;
+  background: var(--repo-gray-300);
 }
 
 .markdownEditor strong {

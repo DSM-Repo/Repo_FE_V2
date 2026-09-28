@@ -20,13 +20,14 @@
 .stage {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto auto auto;
   min-width: 0;
-  height: calc(100dvh - var(--repo-size-header-min-height));
+  height: auto;
   min-height: calc(100dvh - var(--repo-size-header-min-height));
-  row-gap: 8px;
+  align-content: start;
+  row-gap: var(--space-5);
   justify-items: center;
-  padding: 24px 40px 18px;
+  padding: var(--space-10);
   overflow: auto;
   background: var(--repo-bg-main);
 }
@@ -87,10 +88,11 @@
 .sheetViewport {
   display: grid;
   width: min(100%, 1480px);
-  min-height: 0;
+  min-height: auto;
   grid-template-columns: 24px minmax(0, auto) 24px;
   gap: 20px;
   align-items: center;
+  align-self: start;
   justify-content: center;
 }
 
@@ -128,15 +130,15 @@
 
 .documentSheet {
   --resume-book-sheet-height: min(
-    860px,
-    calc(100dvh - var(--repo-size-header-min-height) - 172px),
+    864px,
+    calc(100dvh - var(--repo-size-header-min-height) - 140px),
     calc((100vw - 116px) * 390 / 551)
   );
   --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 551 / 780);
-  --resume-book-sheet-padding: clamp(24px, 1.92vw, 36px);
-  --resume-book-sheet-avatar-size: clamp(44px, 4.68vw, 96px);
-  --resume-book-sheet-qr-size: clamp(44px, 4.79vw, 92px);
-  --resume-book-sheet-header-gap: clamp(14px, 1.46vw, 28px);
+  --resume-book-sheet-padding: clamp(var(--space-4), 1.35vw, var(--space-6));
+  --resume-book-sheet-avatar-size: clamp(36px, 2.1vw, 44px);
+  --resume-book-sheet-qr-size: clamp(42px, 2.8vw, 56px);
+  --resume-book-sheet-header-gap: clamp(var(--space-2), 1.15vw, var(--space-5));
 }
 
 .pageArrow {
@@ -206,8 +208,8 @@
 }
 
 .iconTool svg {
-  width: 20px;
-  height: 20px;
+  width: var(--space-4);
+  height: var(--space-4);
 }
 
 .iconTool:disabled {
