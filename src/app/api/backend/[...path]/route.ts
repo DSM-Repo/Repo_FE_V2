@@ -190,7 +190,7 @@ async function fetchBackendViaTcp(targetUrl: URL, method: string, headers: Heade
       await writer.write(new Uint8Array(body))
     }
 
-    await writer.close()
+    writer.releaseLock()
 
     return createHttpResponseFromBytes(await readAllBytes(socket.readable))
   } finally {
