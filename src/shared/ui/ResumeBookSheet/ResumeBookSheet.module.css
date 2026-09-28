@@ -196,7 +196,9 @@
 .pageContent h3,
 .pageContent h4,
 .pageContent p,
-.pageContent blockquote {
+.pageContent blockquote,
+.pageContent ul,
+.pageContent hr {
   margin: 0;
 }
 
@@ -226,6 +228,22 @@
   padding-left: 8px;
   border-left: 2px solid var(--repo-gray-300);
   color: var(--repo-gray-500);
+}
+
+.markdownBulletList {
+  padding-left: 14px;
+  color: var(--repo-gray-800);
+}
+
+.markdownBulletList li {
+  padding-left: 2px;
+}
+
+.markdownDivider {
+  width: 100%;
+  height: 1px;
+  border: 0;
+  background: var(--repo-gray-300);
 }
 
 .pageContent a {

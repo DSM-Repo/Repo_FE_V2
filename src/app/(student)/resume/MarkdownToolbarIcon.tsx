@@ -43,6 +43,37 @@ export function MarkdownToolbarIcon({ command }: MarkdownToolbarIconProps) {
     )
   }
 
+  if (command === 'bulletList') {
+    return (
+      <svg
+        aria-hidden="true"
+        className={styles.markdownToolSvgIcon}
+        data-markdown-tool-icon="bullet-list"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <circle cx="6" cy="7" fill="currentColor" r="1.6" />
+        <circle cx="6" cy="12" fill="currentColor" r="1.6" />
+        <circle cx="6" cy="17" fill="currentColor" r="1.6" />
+        <path d="M10 7H20M10 12H20M10 17H20" stroke="currentColor" strokeLinecap="round" strokeWidth="2.5" />
+      </svg>
+    )
+  }
+
+  if (command === 'divider') {
+    return (
+      <svg
+        aria-hidden="true"
+        className={styles.markdownToolSvgIcon}
+        data-markdown-tool-icon="divider"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <path d="M4 12H20" stroke="currentColor" strokeLinecap="round" strokeWidth="3" />
+      </svg>
+    )
+  }
+
   if (command === 'link') {
     return (
       <svg

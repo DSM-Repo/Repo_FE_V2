@@ -4,6 +4,7 @@ import { MarkdownToolbarIcon } from './MarkdownToolbarIcon'
 import styles from './ResumeEditorSheet.module.css'
 import {
   applyMarkdownBlockShortcut,
+  applyMarkdownBlockCommand,
   markdownTools,
   renderEditorMarkdown,
   serializeEditorMarkdown,
@@ -43,6 +44,8 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
     }
 
     renderEditorMarkdown(editor, value, {
+      bulletList: styles.markdownEditorBulletList,
+      divider: styles.markdownEditorDivider,
       heading1: styles.markdownEditorHeading1,
       heading2: styles.markdownEditorHeading2,
       heading3: styles.markdownEditorHeading3,
@@ -126,6 +129,30 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
       case 'quote':
         document.execCommand('formatBlock', false, 'blockquote')
         break
+      case 'bulletList':
+        applyMarkdownBlockCommand(editor, window.getSelection(), { kind: 'bulletList', text: '' }, {
+          bulletList: styles.markdownEditorBulletList,
+          divider: styles.markdownEditorDivider,
+          heading1: styles.markdownEditorHeading1,
+          heading2: styles.markdownEditorHeading2,
+          heading3: styles.markdownEditorHeading3,
+          heading4: styles.markdownEditorHeading4,
+          paragraph: styles.markdownEditorParagraph,
+          quote: styles.markdownEditorQuote,
+        })
+        break
+      case 'divider':
+        applyMarkdownBlockCommand(editor, window.getSelection(), { kind: 'divider' }, {
+          bulletList: styles.markdownEditorBulletList,
+          divider: styles.markdownEditorDivider,
+          heading1: styles.markdownEditorHeading1,
+          heading2: styles.markdownEditorHeading2,
+          heading3: styles.markdownEditorHeading3,
+          heading4: styles.markdownEditorHeading4,
+          paragraph: styles.markdownEditorParagraph,
+          quote: styles.markdownEditorQuote,
+        })
+        break
       case 'link':
         insertMarkdownLink(false)
         break
@@ -158,6 +185,8 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
       !editor ||
       !selection ||
       !applyMarkdownBlockShortcut(editor, selection, {
+        bulletList: styles.markdownEditorBulletList,
+        divider: styles.markdownEditorDivider,
         heading1: styles.markdownEditorHeading1,
         heading2: styles.markdownEditorHeading2,
         heading3: styles.markdownEditorHeading3,

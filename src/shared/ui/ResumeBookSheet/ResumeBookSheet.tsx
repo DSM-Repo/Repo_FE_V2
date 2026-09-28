@@ -35,11 +35,18 @@ type MarkdownBlock =
       readonly text: string
     }
   | {
+      readonly kind: 'divider'
+    }
+  | {
       readonly kind: 'paragraph'
       readonly text: string
     }
   | {
       readonly kind: 'quote'
+      readonly text: string
+    }
+  | {
+      readonly kind: 'bulletList'
       readonly text: string
     }
 
@@ -68,6 +75,14 @@ function toMarkdownBlock(line: string): MarkdownBlock | undefined {
 
   if (trimmedLine.startsWith('> ')) {
     return { kind: 'quote', text: trimmedLine.slice(2) }
+  }
+
+  if (trimmedLine === '---') {
+    return { kind: 'divider' }
+  }
+
+  if (trimmedLine.startsWith('- ')) {
+    return { kind: 'bulletList', text: trimmedLine.slice(2) }
   }
 
   return { kind: 'paragraph', text: trimmedLine }
@@ -156,40 +171,49 @@ function renderMarkdownInline(value: string): readonly ReactNode[] {
 }
 
 function renderMarkdownBlock(block: MarkdownBlock, index: number) {
-  const children = renderMarkdownInline(block.text)
-
   switch (block.kind) {
-    case 'heading':
+    case 'heading': {
+      const headingChildren = renderMarkdownInline(block.text)
+
       switch (block.level) {
         case 1:
           return (
             <h1 className={styles.markdownHeading1} key={index}>
-              {children}
+              {headingChildren}
             </h1>
           )
         case 2:
           return (
             <h2 className={styles.markdownHeading2} key={index}>
-              {children}
+              {headingChildren}
             </h2>
           )
         case 3:
           return (
             <h3 className={styles.markdownHeading3} key={index}>
-              {children}
+              {headingChildren}
             </h3>
           )
         case 4:
           return (
             <h4 className={styles.markdownHeading4} key={index}>
-              {children}
+              {headingChildren}
             </h4>
           )
       }
+    }
     case 'paragraph':
-      return <p key={index}>{children}</p>
+      return <p key={index}>{renderMarkdownInline(block.text)}</p>
     case 'quote':
-      return <blockquote key={index}>{children}</blockquote>
+      return <blockquote key={index}>{renderMarkdownInline(block.text)}</blockquote>
+    case 'bulletList':
+      return (
+        <ul className={styles.markdownBulletList} key={index}>
+          <li>{renderMarkdownInline(block.text)}</li>
+        </ul>
+      )
+    case 'divider':
+      return <hr className={styles.markdownDivider} key={index} />
   }
 }
 

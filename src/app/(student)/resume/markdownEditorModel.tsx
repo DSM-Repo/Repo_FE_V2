@@ -7,6 +7,8 @@ export const markdownTools = [
   { command: 'italic', label: 'I', title: '기울임' },
   { command: 'underline', label: 'U', title: '밑줄' },
   { command: 'quote', label: '"', title: '인용' },
+  { command: 'bulletList', label: 'bullet', title: '글머리 기호' },
+  { command: 'divider', label: 'divider', title: '구분선' },
   { command: 'link', label: 'link', title: '링크' },
   { command: 'image', label: 'img', title: '이미지' },
 ] as const
@@ -15,11 +17,13 @@ export type MarkdownCommand = (typeof markdownTools)[number]['command']
 
 export type EditableMarkdownBlock =
   | { readonly kind: 'heading'; readonly level: 1 | 2 | 3 | 4; readonly text: string }
+  | { readonly kind: 'divider' }
   | { readonly kind: 'paragraph'; readonly text: string }
   | { readonly kind: 'quote'; readonly text: string }
+  | { readonly kind: 'bulletList'; readonly text: string }
 
 type EditorBlockClassNames = {
-  readonly heading1: string; readonly heading2: string; readonly heading3: string; readonly heading4: string; readonly paragraph: string; readonly quote: string
+  readonly bulletList: string; readonly divider: string; readonly heading1: string; readonly heading2: string; readonly heading3: string; readonly heading4: string; readonly paragraph: string; readonly quote: string
 }
 
 const blockShortcuts: Readonly<Record<string, EditableMarkdownBlock>> = {
@@ -28,6 +32,8 @@ const blockShortcuts: Readonly<Record<string, EditableMarkdownBlock>> = {
   '###': { kind: 'heading', level: 3, text: '' },
   '####': { kind: 'heading', level: 4, text: '' },
   '>': { kind: 'quote', text: '' },
+  '-': { kind: 'bulletList', text: '' },
+  '---': { kind: 'divider' },
 }
 
 function findLineRange(value: string, selectionStart: number, selectionEnd: number) {
@@ -52,7 +58,9 @@ function toHeadingPrefix(command: MarkdownCommand) {
       return '### '
     case 'h4':
       return '#### '
+    case 'bulletList':
     case 'bold':
+    case 'divider':
     case 'image':
     case 'italic':
     case 'link':
@@ -76,6 +84,8 @@ function withInlineMarkdown(command: MarkdownCommand, selectedText: string) {
       return `[${text}](https://)`
     case 'image':
       return `![${text}](https://)`
+    case 'bulletList':
+    case 'divider':
     case 'quote':
     case 'h1':
     case 'h2':
@@ -161,6 +171,14 @@ function toEditableMarkdownBlock(line: string): EditableMarkdownBlock {
     return { kind: 'quote', text: line.slice(2) }
   }
 
+  if (line === '---') {
+    return { kind: 'divider' }
+  }
+
+  if (line.startsWith('- ')) {
+    return { kind: 'bulletList', text: line.slice(2) }
+  }
+
   return { kind: 'paragraph', text: line }
 }
 
@@ -227,9 +245,28 @@ function appendInlineNodes(parent: HTMLElement, value: string): void {
 
 function createBlockElement(block: EditableMarkdownBlock, styles: EditorBlockClassNames) {
   const element =
-    block.kind === 'heading' ? document.createElement(`h${block.level}`) : document.createElement(block.kind === 'quote' ? 'blockquote' : 'div')
+    block.kind === 'heading'
+      ? document.createElement(`h${block.level}`)
+      : document.createElement(block.kind === 'quote' ? 'blockquote' : block.kind === 'divider' ? 'hr' : block.kind === 'bulletList' ? 'ul' : 'div')
 
   configureBlockElement(element, block, styles)
+
+  if (block.kind === 'divider') {
+    return element
+  }
+
+  if (block.kind === 'bulletList') {
+    const listItem = document.createElement('li')
+
+    if (block.text) {
+      appendInlineNodes(listItem, block.text)
+    } else {
+      listItem.append(document.createElement('br'))
+    }
+
+    element.append(listItem)
+    return element
+  }
 
   if (block.text) {
     appendInlineNodes(element, block.text)
@@ -288,10 +325,22 @@ export function applyMarkdownBlockShortcut(editor: HTMLElement, selection: Selec
   const replacement = createBlockElement(shortcutBlock, styles)
   const remainingNodes = Array.from(block.childNodes)
 
-  replacement.replaceChildren(...remainingNodes)
+  if (shortcutBlock.kind === 'bulletList') {
+    const listItem = replacement.querySelector('li')
 
-  if (!replacement.textContent) {
-    replacement.replaceChildren(document.createElement('br'))
+    if (listItem) {
+      listItem.replaceChildren(...remainingNodes)
+
+      if (!listItem.textContent) {
+        listItem.replaceChildren(document.createElement('br'))
+      }
+    }
+  } else if (shortcutBlock.kind !== 'divider') {
+    replacement.replaceChildren(...remainingNodes)
+
+    if (!replacement.textContent) {
+      replacement.replaceChildren(document.createElement('br'))
+    }
   }
 
   if (block === editor) {
@@ -300,10 +349,52 @@ export function applyMarkdownBlockShortcut(editor: HTMLElement, selection: Selec
     block.replaceWith(replacement)
   }
 
-  range.setStart(replacement, 0)
+  const focusTarget = replacement.tagName === 'UL' ? (replacement.querySelector('li') ?? replacement) : replacement
+  range.setStart(focusTarget, 0)
   range.collapse(true)
   selection.removeAllRanges()
   selection.addRange(range)
+  return true
+}
+
+export function applyMarkdownBlockCommand(editor: HTMLElement, selection: Selection | null, block: EditableMarkdownBlock, styles: EditorBlockClassNames): boolean {
+  let range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : document.createRange()
+
+  if (!editor.contains(range.startContainer)) {
+    range.selectNodeContents(editor)
+    range.collapse(false)
+  }
+
+  const currentBlock = findEditorBlock(editor, range.startContainer)
+  const replacement = createBlockElement(block, styles)
+
+  if (block.kind === 'bulletList') {
+    const listItem = replacement.querySelector('li')
+    const currentNodes = currentBlock === editor ? [] : Array.from(currentBlock.childNodes)
+
+    if (listItem && currentNodes.length > 0) {
+      listItem.replaceChildren(...currentNodes)
+    }
+
+    if (listItem && !listItem.textContent) {
+      listItem.replaceChildren(document.createElement('br'))
+    }
+  }
+
+  if (currentBlock === editor) {
+    editor.replaceChildren(replacement)
+  } else if (block.kind === 'divider' && currentBlock.textContent?.trim()) {
+    currentBlock.after(replacement)
+  } else {
+    currentBlock.replaceWith(replacement)
+  }
+
+  const focusTarget = replacement.tagName === 'UL' ? (replacement.querySelector('li') ?? replacement) : replacement
+  range = document.createRange()
+  range.setStart(focusTarget, 0)
+  range.collapse(true)
+  selection?.removeAllRanges()
+  selection?.addRange(range)
   return true
 }
 
@@ -324,6 +415,10 @@ function toBlockClassName(block: EditableMarkdownBlock, styles: EditorBlockClass
       return styles.paragraph
     case 'quote':
       return styles.quote
+    case 'bulletList':
+      return styles.bulletList
+    case 'divider':
+      return styles.divider
   }
 }
 
@@ -389,7 +484,7 @@ export function serializeEditorMarkdown(editor: HTMLElement) {
       continue
     }
 
-    const isBlock = ['BLOCKQUOTE', 'DIV', 'H1', 'H2', 'H3', 'H4', 'P'].includes(child.tagName)
+    const isBlock = ['BLOCKQUOTE', 'DIV', 'H1', 'H2', 'H3', 'H4', 'HR', 'P', 'UL'].includes(child.tagName)
 
     if (!isBlock) {
       if (child.tagName === 'BR') {
@@ -413,6 +508,21 @@ export function serializeEditorMarkdown(editor: HTMLElement) {
 
     if (child.dataset.markdownBlock === 'quote' || child.tagName === 'BLOCKQUOTE') {
       lines.push(text.split('\n').map((line) => `> ${line}`).join('\n'))
+      continue
+    }
+
+    if (child.dataset.markdownBlock === 'divider' || child.tagName === 'HR') {
+      lines.push('---')
+      continue
+    }
+
+    if (child.dataset.markdownBlock === 'bulletList' || child.tagName === 'UL') {
+      const listItems = Array.from(child.querySelectorAll(':scope > li'))
+      const listLines = listItems.length > 0
+        ? listItems.map((listItem) => `- ${Array.from(listItem.childNodes).map(serializeInlineMarkdown).join('').replace(/\u00a0/g, ' ')}`)
+        : [`- ${text}`]
+
+      lines.push(listLines.join('\n'))
       continue
     }
 

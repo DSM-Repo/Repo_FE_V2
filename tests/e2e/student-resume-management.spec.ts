@@ -434,10 +434,15 @@ test.describe('student resume management', () => {
 
     const toolbar = page.getByLabel('활동 작성 도구')
 
-    await expect(toolbar.locator('[data-markdown-tool-icon]')).toHaveCount(10)
+    await expect(toolbar.locator('[data-markdown-tool-icon]')).toHaveCount(12)
     await expect(toolbar.locator('[data-markdown-tool-separator]')).toHaveCount(2)
+    await expect(toolbar.locator('[data-markdown-tool-icon]').first()).toHaveCSS('width', '16px')
+    await expect(toolbar.locator('[data-markdown-tool-icon]').first()).toHaveCSS('height', '16px')
+    await expect
+      .poll(() => toolbar.locator('[data-markdown-tool-icon]').evaluateAll((icons) => icons.map((icon) => icon.getAttribute('data-markdown-tool-icon'))))
+      .toEqual(['heading', 'heading', 'heading', 'heading', 'bold', 'italic', 'underline', 'quote', 'bullet-list', 'divider', 'link', 'image'])
 
-    for (const label of ['제목 1', '제목 2', '제목 3', '제목 4', '굵게', '기울임', '밑줄', '인용', '링크', '이미지']) {
+    for (const label of ['제목 1', '제목 2', '제목 3', '제목 4', '굵게', '기울임', '밑줄', '인용', '글머리 기호', '구분선', '링크', '이미지']) {
       await expect(toolbar.getByRole('button', { name: label })).toBeVisible()
     }
   })
@@ -458,12 +463,16 @@ test.describe('student resume management', () => {
 
     const pageContentInput = page.getByRole('textbox', { name: '1쪽 추가 내용' })
 
+    await pageContentInput.fill('기본 본문')
+    await expect(pageContentInput).toHaveCSS('font-size', '12px')
+    await pageContentInput.fill('')
+
     for (const { fontSize, markdown, selector, shortcut, text } of [
       { fontSize: '24px', markdown: '# 프로젝트 경험', selector: 'h1', shortcut: '#', text: '프로젝트 경험' },
       { fontSize: '20px', markdown: '## 맡은 역할', selector: 'h2', shortcut: '##', text: '맡은 역할' },
       { fontSize: '18px', markdown: '### 문제 해결', selector: 'h3', shortcut: '###', text: '문제 해결' },
       { fontSize: '16px', markdown: '#### 회고', selector: 'h4', shortcut: '####', text: '회고' },
-      { fontSize: '14px', markdown: '> 사용자 피드백', selector: 'blockquote', shortcut: '>', text: '사용자 피드백' },
+      { fontSize: '12px', markdown: '> 사용자 피드백', selector: 'blockquote', shortcut: '>', text: '사용자 피드백' },
     ]) {
       await pageContentInput.fill('')
       await pageContentInput.pressSequentially(shortcut)
@@ -491,8 +500,26 @@ test.describe('student resume management', () => {
       await expect(pageContentInput).not.toContainText(markdown)
     }
 
+    await pageContentInput.fill('')
+    await pageContentInput.pressSequentially('-')
+    await pageContentInput.press('Space')
+    await page.keyboard.insertText('목록 내용')
+
+    await expect(pageContentInput.locator('ul')).toBeVisible()
+    await expect(pageContentInput.locator('li')).toHaveText('목록 내용')
+    await expect(pageContentInput.locator('li')).toHaveCSS('font-size', '12px')
+
     await page.getByRole('button', { exact: true, name: '저장' }).click()
-    await expect.poll(() => savedActivityContent).toBe('> 사용자 피드백')
+    await expect.poll(() => savedActivityContent).toBe('- 목록 내용')
+
+    savedActivityContent = ''
+    await pageContentInput.fill('')
+    await pageContentInput.pressSequentially('---')
+    await pageContentInput.press('Space')
+
+    await expect(pageContentInput.locator('hr')).toBeVisible()
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect.poll(() => savedActivityContent).toBe('---')
   })
 
   test('preserves Shift Enter line breaks when saving markdown blocks', async ({ page }) => {
