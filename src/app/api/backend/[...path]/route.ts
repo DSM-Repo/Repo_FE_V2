@@ -36,11 +36,17 @@ async function proxyBackendRequest(request: Request, context: { params: Promise<
   const body = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer()
 
   try {
-    return await fetch(getBackendApiUrl(path, request.url), {
+    const upstreamResponse = await fetch(getBackendApiUrl(path, request.url), {
       body,
       headers: getForwardHeaders(request),
       method,
       redirect: 'manual',
+    })
+
+    return new Response(upstreamResponse.body, {
+      headers: new Headers(upstreamResponse.headers),
+      status: upstreamResponse.status,
+      statusText: upstreamResponse.statusText,
     })
   } catch (error) {
     console.error('Backend API proxy request failed.', error)
