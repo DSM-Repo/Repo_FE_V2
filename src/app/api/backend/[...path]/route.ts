@@ -20,12 +20,15 @@ function getNormalizedBackendOrigin() {
 }
 
 function getForwardHeaders(request: Request) {
-  const headers = new Headers(request.headers)
+  const headers = new Headers()
 
-  headers.delete('host')
-  headers.delete('content-length')
-  headers.delete('origin')
-  headers.delete('referer')
+  for (const headerName of ['accept', 'authorization', 'content-type', 'refresh-token']) {
+    const value = request.headers.get(headerName)
+
+    if (value) {
+      headers.set(headerName, value)
+    }
+  }
 
   return headers
 }
