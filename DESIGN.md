@@ -152,6 +152,13 @@ All spacing derives from 4px.
 - **Layout**: positioned outside the form flow so adding it does not resize the authentication card
 - **Accessibility**: visible link text names the destination action
 
+### ResumeEditorSheet
+- **Structure**: document-sized editable sheet with compact identity header, muted intro panel, skill chips, markdown activity/project body, and optional QR/project image placeholder
+- **Variants**: profile page, project page, free page
+- **States**: editable text, placeholder, focus, empty skill list, hover-revealed skill delete
+- **Layout**: mirrors the resume preview density rather than form density; controls keep transparent document styling and use existing typography tokens
+- **Accessibility**: editable fields keep labels through visually hidden text, toolbar buttons expose action labels, and focus remains visible without changing sheet geometry
+
 ## 6. Motion & Interaction
 
 | Type | Duration | Easing | Usage |
