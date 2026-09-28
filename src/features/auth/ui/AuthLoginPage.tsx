@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 
-import { loginWithAuthApi, saveAuthRole, saveAuthTokens, type AuthLoginResult, type AuthLoginRole } from '@/features/auth/api'
+import { loginWithAuthApi, saveAuthTokens, type AuthLoginResult, type AuthLoginRole } from '@/features/auth/api'
 import { Button, Icon, Input, Logo } from '@/shared/ui'
 
 import { AuthAccountPrompt } from './AuthAccountPrompt'
@@ -140,8 +140,7 @@ export function AuthLoginPage() {
 
     if (result.kind === 'success') {
       saveAuthTokens(result.token)
-      saveAuthRole(role)
-      router.push(loginRedirectPath[role])
+      router.push(loginRedirectPath[result.token.role])
       return
     }
 

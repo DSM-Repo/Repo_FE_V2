@@ -6,10 +6,12 @@ export type IconName =
   | 'chevron-right'
   | 'eye'
   | 'eye-off'
+  | 'image'
   | 'login'
   | 'plus'
   | 'right-arrow'
   | 'search'
+  | 'upload'
 
 type IconProps = Omit<SVGProps<SVGSVGElement>, 'children'> & {
   name: IconName
@@ -36,6 +38,10 @@ export function Icon({ name, 'aria-hidden': ariaHidden = true, focusable = false
     return <EyeOffIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
   }
 
+  if (name === 'image') {
+    return <ImageIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
+  }
+
   if (name === 'login') {
     return <LoginIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
   }
@@ -52,7 +58,30 @@ export function Icon({ name, 'aria-hidden': ariaHidden = true, focusable = false
     return <SearchIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
   }
 
+  if (name === 'upload') {
+    return <UploadIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
+  }
+
   return null
+}
+
+function ImageIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
+  return (
+    <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <rect height="17" rx="1.5" stroke="currentColor" strokeWidth="1.8" width="17" x="3.5" y="3.5" />
+      <circle cx="8.5" cy="8.5" fill="currentColor" r="1.5" />
+      <path d="M5.5 18L10.5 12.5L13.5 15.5L16 13L19 16.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+    </svg>
+  )
+}
+
+function UploadIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
+  return (
+    <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M12 15V4M12 4L8 8M12 4L16 8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+      <path d="M5 14V19H19V14" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+    </svg>
+  )
 }
 
 function BellIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {

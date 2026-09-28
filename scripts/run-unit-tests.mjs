@@ -23,8 +23,10 @@ const tscArgs = [
   'tests/unit/internalHref.test.ts',
   'tests/unit/libraryApi.test.ts',
   'tests/unit/majorApi.test.ts',
+  'tests/unit/notificationApi.test.ts',
   'tests/unit/resumeApi.test.ts',
   'tests/unit/userApi.test.ts',
+  'src/features/auth/api/authAccessToken.ts',
   'src/features/auth/api/authApi.ts',
   'src/features/auth/api/authApi.types.ts',
   'src/features/auth/api/authenticatedRequest.ts',
@@ -39,6 +41,9 @@ const tscArgs = [
   'src/features/major/api/majorApi.ts',
   'src/features/major/api/majorApi.types.ts',
   'src/features/major/api/majorHttpClient.ts',
+  'src/features/notification/api/notificationApi.ts',
+  'src/features/notification/api/notificationApi.types.ts',
+  'src/features/notification/api/notificationHttpClient.ts',
   'src/features/resume/api/resumeApi.ts',
   'src/features/resume/api/resumeApi.types.ts',
   'src/features/resume/api/resumeHttpClient.ts',
@@ -67,7 +72,19 @@ run('tsc', tscArgs)
 
 const emittedAuthApiPath = join(outDir, 'src/features/auth/api/authApi.js')
 const emittedAuthApi = readFileSync(emittedAuthApiPath, 'utf8')
-writeFileSync(emittedAuthApiPath, emittedAuthApi.replace("from './authHttpClient'", "from './authHttpClient.js'"))
+writeFileSync(
+  emittedAuthApiPath,
+  emittedAuthApi
+    .replace("from './authAccessToken'", "from './authAccessToken.js'")
+    .replace("from './authHttpClient'", "from './authHttpClient.js'"),
+)
+
+const emittedAuthTokenStoragePath = join(outDir, 'src/features/auth/api/authTokenStorage.js')
+const emittedAuthTokenStorage = readFileSync(emittedAuthTokenStoragePath, 'utf8')
+writeFileSync(
+  emittedAuthTokenStoragePath,
+  emittedAuthTokenStorage.replace("from './authAccessToken'", "from './authAccessToken.js'"),
+)
 
 const emittedAuthenticatedRequestPath = join(outDir, 'src/features/auth/api/authenticatedRequest.js')
 const emittedAuthenticatedRequest = readFileSync(emittedAuthenticatedRequestPath, 'utf8')
@@ -119,6 +136,22 @@ const emittedMajorHttpClient = readFileSync(emittedMajorHttpClientPath, 'utf8')
 writeFileSync(
   emittedMajorHttpClientPath,
   emittedMajorHttpClient.replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'"),
+)
+
+const emittedNotificationApiPath = join(outDir, 'src/features/notification/api/notificationApi.js')
+const emittedNotificationApi = readFileSync(emittedNotificationApiPath, 'utf8')
+writeFileSync(
+  emittedNotificationApiPath,
+  emittedNotificationApi.replace("from './notificationHttpClient'", "from './notificationHttpClient.js'"),
+)
+const emittedNotificationHttpClientPath = join(outDir, 'src/features/notification/api/notificationHttpClient.js')
+const emittedNotificationHttpClient = readFileSync(emittedNotificationHttpClientPath, 'utf8')
+writeFileSync(
+  emittedNotificationHttpClientPath,
+  emittedNotificationHttpClient.replace(
+    "from '../../auth/api/authenticatedRequest'",
+    "from '../../auth/api/authenticatedRequest.js'",
+  ),
 )
 
 const emittedUserApiPath = join(outDir, 'src/features/user/api/userApi.js')

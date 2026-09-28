@@ -5,7 +5,7 @@
 }
 
 .workspace {
-  --resume-feedback-panel-width: 341px;
+  --resume-feedback-panel-width: 376px;
 
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -19,24 +19,27 @@
 
 .stage {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-rows: auto auto auto auto;
   min-width: 0;
+  height: auto;
   min-height: calc(100dvh - var(--repo-size-header-min-height));
-  flex-direction: column;
-  align-items: center;
-  padding: 96px 48px 24px;
-  overflow: hidden;
+  align-content: start;
+  row-gap: var(--space-5);
+  justify-items: center;
+  padding: var(--space-10);
+  overflow: auto;
   background: var(--repo-bg-main);
 }
 
 .topActions {
-  position: absolute;
-  top: 32px;
-  right: 64px;
+  position: relative;
   z-index: 2;
   display: flex;
+  width: min(100%, 1480px);
   gap: 12px;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .primaryAction,
@@ -66,8 +69,7 @@
 }
 
 .primaryAction:disabled,
-.secondaryAction:disabled,
-.visibilityButton:disabled {
+.secondaryAction:disabled {
   cursor: not-allowed;
   opacity: 0.62;
 }
@@ -78,36 +80,65 @@
 .iconTool:focus-visible,
 .textTool:focus-visible,
 .closeButton:focus-visible,
-.feedbackItemButton:focus-visible,
-.visibilityButton:focus-visible {
+.feedbackItemButton:focus-visible {
   outline: 2px solid var(--repo-main);
   outline-offset: 2px;
 }
 
 .sheetViewport {
   display: grid;
-  width: min(100%, 1320px);
+  width: min(100%, 1480px);
+  min-height: auto;
   grid-template-columns: 24px minmax(0, auto) 24px;
-  gap: 24px;
+  gap: 20px;
   align-items: center;
+  align-self: start;
   justify-content: center;
 }
 
 .spread {
   display: flex;
   min-width: 0;
-  gap: 24px;
+  min-height: 0;
+  gap: 20px;
   align-items: center;
   justify-content: center;
 }
 
+.addPageSheet {
+  display: inline-flex;
+  width: var(--resume-book-sheet-width, 551px);
+  height: var(--resume-book-sheet-height, 780px);
+  min-height: var(--resume-book-sheet-min-height, 0);
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--repo-gray-500);
+  color: var(--repo-gray-400);
+  background: transparent;
+}
+
+.addPageSheet svg {
+  width: 40px;
+  height: 40px;
+}
+
+.addPageSheet:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 4px;
+}
+
 .documentSheet {
-  --resume-book-sheet-width: clamp(340px, 44vw, 900px);
-  --resume-book-sheet-height: clamp(481px, 62.2vw, 1273px);
-  --resume-book-sheet-padding: clamp(24px, 2.08vw, 40px);
-  --resume-book-sheet-avatar-size: clamp(44px, 4.68vw, 96px);
-  --resume-book-sheet-qr-size: clamp(44px, 4.79vw, 92px);
-  --resume-book-sheet-header-gap: clamp(14px, 1.46vw, 28px);
+  --resume-book-sheet-height: min(
+    864px,
+    calc(100dvh - var(--repo-size-header-min-height) - 140px),
+    calc((100vw - 116px) * 390 / 551)
+  );
+  --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 551 / 780);
+  --resume-book-sheet-padding: clamp(var(--space-4), 1.35vw, var(--space-6));
+  --resume-book-sheet-avatar-size: clamp(36px, 2.1vw, 44px);
+  --resume-book-sheet-qr-size: clamp(42px, 2.8vw, 56px);
+  --resume-book-sheet-header-gap: clamp(var(--space-2), 1.15vw, var(--space-5));
 }
 
 .pageArrow {
@@ -126,63 +157,64 @@
   height: 20px;
 }
 
+.pageArrow:disabled {
+  cursor: default;
+  opacity: 0.28;
+}
+
 .pageCount {
-  margin: 16px 0 0;
+  position: relative;
+  z-index: 2;
+  margin: 0;
   color: var(--repo-gray-700);
-  font-size: 20px;
+  font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
 }
 
 .editorToolbar {
-  position: absolute;
-  bottom: 24px;
-  left: 50%;
+  position: relative;
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
-  transform: translateX(-50%);
+  gap: 8px;
+}
+
+.toolGroup {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border-radius: var(--repo-radius-pill);
+  background: var(--repo-bg-main-point);
 }
 
 .iconTool,
 .textTool {
   display: inline-flex;
-  width: 48px;
-  height: 48px;
+  width: 34px;
+  height: 38px;
   align-items: center;
   justify-content: center;
   border: 0;
   color: var(--repo-gray-50);
-  background: var(--repo-bg-main-point);
-}
-
-.iconTool:first-child {
-  border-radius: var(--repo-radius-pill) 0 0 var(--repo-radius-pill);
-}
-
-.iconTool:nth-child(2) {
-  border-radius: 0 var(--repo-radius-pill) var(--repo-radius-pill) 0;
+  background: transparent;
 }
 
 .textTool {
   width: 42px;
-  font-size: 21px;
+  font-size: var(--repo-font-title-tiny-size);
   font-weight: 600;
   line-height: 1;
 }
 
-.textTool:nth-of-type(3) {
-  border-radius: var(--repo-radius-pill) 0 0 var(--repo-radius-pill);
+.iconTool svg {
+  width: var(--space-4);
+  height: var(--space-4);
 }
 
-.textTool:last-child {
-  border-radius: 0 var(--repo-radius-pill) var(--repo-radius-pill) 0;
-}
-
-.toolDivider {
-  width: 4px;
+.iconTool:disabled {
+  cursor: default;
+  opacity: 0.66;
 }
 
 .feedbackToggle {
@@ -241,35 +273,28 @@
   transform: translateX(14px);
 }
 
-.statusMessage {
+.toastLayer {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  z-index: 12;
+  display: flex;
+  width: min(calc(100% - 48px), 600px);
+  justify-content: center;
+  transform: translateX(-50%);
+}
+
+.loadingMessage {
   position: absolute;
-  right: 64px;
-  bottom: 92px;
+  top: 40px;
+  left: 64px;
   max-width: min(420px, calc(100% - 128px));
   margin: 0;
   color: var(--repo-gray-400);
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
-  text-align: right;
-}
-
-.visibilityButton {
-  position: absolute;
-  right: 64px;
-  bottom: 120px;
-  display: inline-flex;
-  min-height: 32px;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 14px;
-  border: 1px solid var(--repo-gray-500);
-  border-radius: var(--repo-radius-pill);
-  color: var(--repo-gray-50);
-  background: var(--repo-bg-main);
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
+  text-align: left;
 }
 
 .feedbackPanel {
@@ -309,9 +334,45 @@
 
 .feedbackListHeader {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 12px 24px 0;
   color: var(--repo-gray-50);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.feedbackBulkAction,
+.feedbackStatusAction {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: 6px;
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main);
+  font-size: var(--repo-font-body-very-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+}
+
+.feedbackBulkAction {
+  padding: 0 12px;
+}
+
+.feedbackBulkAction:disabled,
+.feedbackStatusAction:disabled {
+  color: var(--repo-gray-500);
+  cursor: not-allowed;
+}
+
+.feedbackPanelMessage {
+  padding: 24px;
+  margin: 0;
+  color: var(--repo-gray-400);
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
@@ -326,38 +387,66 @@
 }
 
 .feedbackItem {
+  border: 1px solid var(--repo-bg-main-point);
   border-radius: 6px;
-  background: var(--repo-bg-main-lighter);
+  background: var(--repo-bg-main);
 }
 
 .feedbackItemButton {
-  display: flex;
+  display: grid;
   width: 100%;
   min-height: 44px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 10px;
   border: 0;
   border-radius: 6px;
   color: var(--repo-gray-50);
-  background: var(--repo-bg-main-lighter);
+  background: transparent;
   text-align: left;
 }
 
 .feedbackTitle {
   display: flex;
-  align-items: center;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
   font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
+  overflow-wrap: anywhere;
 }
 
-.feedbackTitle span {
+.feedbackSummary {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.feedbackMeta {
   color: var(--repo-gray-400);
   font-size: var(--repo-font-body-very-tiny-size);
   line-height: var(--repo-font-body-very-tiny-line-height);
+}
+
+.feedbackStatus {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: var(--repo-gray-400);
+  font-size: var(--repo-font-body-very-tiny-size);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+  white-space: nowrap;
+}
+
+.feedbackStatus[data-status='completed'] {
+  color: var(--repo-gray-50);
 }
 
 .openFeedbackItem {
@@ -366,13 +455,38 @@
   padding-bottom: 10px;
 }
 
-.openFeedbackItem p {
+.feedbackDetail {
+  display: grid;
+  gap: 12px;
+  padding: 0 10px 10px;
+}
+
+.feedbackDetail p {
   margin: 0;
-  padding: 0 10px;
   color: var(--repo-gray-400);
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
+  overflow-wrap: anywhere;
+}
+
+.feedbackActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.feedbackActions span {
+  color: var(--repo-gray-400);
+  font-size: var(--repo-font-body-very-tiny-size);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+}
+
+.feedbackStatusAction {
+  padding: 0 10px;
+  white-space: nowrap;
 }
 
 @media (max-width: 1280px) {
@@ -381,14 +495,10 @@
     padding-left: 24px;
   }
 
-  .topActions {
-    right: 24px;
+  .loadingMessage {
+    left: 24px;
   }
 
-  .documentSheet {
-    --resume-book-sheet-width: clamp(360px, 43vw, 560px);
-    --resume-book-sheet-height: clamp(510px, 61vw, 792px);
-  }
 }
 
 @media (max-width: 980px) {
@@ -397,11 +507,13 @@
   }
 
   .stage {
+    height: auto;
     overflow: auto;
   }
 
   .sheetViewport {
     grid-template-columns: 1fr;
+    align-items: start;
   }
 
   .pageArrow {
@@ -409,14 +521,15 @@
   }
 
   .spread {
+    align-content: flex-start;
     align-items: flex-start;
     flex-wrap: wrap;
   }
 
   .documentSheet {
     --resume-book-sheet-width: min(551px, calc(100vw - 48px));
-    --resume-book-sheet-height: auto;
-    --resume-book-sheet-min-height: 780px;
+    --resume-book-sheet-height: min(780px, calc(100dvh - var(--repo-size-header-min-height) - 172px));
+    --resume-book-sheet-min-height: 0;
   }
 
   .feedbackPanel {
@@ -428,13 +541,19 @@
 
 @media (max-width: 720px) {
   .stage {
-    padding: 96px 16px 112px;
+    padding: 18px 16px 24px;
   }
 
-  .topActions {
+  .toastLayer {
+    top: 72px;
+    width: calc(100% - 32px);
+  }
+
+  .loadingMessage {
+    top: 84px;
     right: 16px;
     left: 16px;
-    justify-content: flex-end;
+    max-width: none;
   }
 
   .primaryAction,
@@ -445,12 +564,8 @@
 
   .documentSheet {
     --resume-book-sheet-width: min(551px, calc(100vw - 32px));
-    --resume-book-sheet-height: auto;
-    --resume-book-sheet-min-height: 640px;
-  }
-
-  .editorToolbar {
-    bottom: 24px;
+    --resume-book-sheet-height: min(640px, calc(100dvh - var(--repo-size-header-min-height) - 156px));
+    --resume-book-sheet-min-height: 0;
   }
 
   .feedbackToggle {

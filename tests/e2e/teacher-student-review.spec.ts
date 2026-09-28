@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test'
 
-test.describe('teacher student portfolio review', () => {
-  test('keeps the teacher-only review route available without seeded student rows', async ({ page }) => {
-    await page.goto('/students')
-    await page.getByRole('button', { name: /1반/ }).first().click()
-    await expect(page.getByRole('dialog').getByRole('link', { name: /레주메 보러가기/ })).toHaveCount(0)
+import { authenticateAs } from './auth-fixtures'
 
+test.describe('teacher student portfolio review', () => {
+  test.beforeEach(async ({ page }) => {
+    await authenticateAs(page, 'TEACHER')
+  })
+
+  test('keeps the teacher-only review route available', async ({ page }) => {
     await page.goto('/students/1')
     await expect(page).toHaveURL(/\/students\/1$/)
     await expect(page.getByRole('navigation', { name: '주요 메뉴' }).getByText('학생 관리')).toHaveAttribute(
@@ -14,67 +16,18 @@ test.describe('teacher student portfolio review', () => {
     )
   })
 
-  test('provides feedback, visibility, and save controls instead of library tools without a document', async ({ page }) => {
+  test('does not report success for teacher actions that have no backend contract', async ({ page }) => {
     await page.setViewportSize({ height: 854, width: 1528 })
     await page.goto('/students/1')
 
     await expect(page.getByLabel('학생 포트폴리오 검토')).toBeVisible()
-    await expect(page.getByText('조회된 포트폴리오 문서가 없습니다.')).toBeVisible()
+    await expect(page.getByText('학생 이력서를 불러올 수 없습니다.')).toBeVisible()
+    await expect(page.getByText('교사가 학생의 이력서 본문을 조회하는 API가 아직 제공되지 않았습니다.')).toBeVisible()
     await expect(page.getByRole('button', { name: '필터 열기' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '전체 PDF 다운로드' })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: '이전 페이지' })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: '다음 페이지' })).toHaveCount(0)
-    await expect(page.getByLabel('현재 페이지')).toHaveCount(0)
-
-    const feedbackSwitch = page.getByRole('switch', { name: '피드백 보기' })
-    await expect(feedbackSwitch).toHaveAttribute('aria-checked', 'false')
-    await expect(page.getByRole('button', { name: '피드백 내용 보기' })).toHaveCount(0)
-
-    await page.getByRole('button', { name: /피드백 추가/ }).click()
-    await expect(page.getByRole('button', { name: '임시저장' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '저장', exact: true })).toBeVisible()
-    await expect(feedbackSwitch).toHaveAttribute('aria-checked', 'true')
-    await expect(page.getByRole('button', { name: '피드백 내용 보기' })).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: '피드백 목록' })).toBeVisible()
-    await expect(page.getByText('등록된 피드백이 없습니다.')).toBeVisible()
-
-    await expect
-      .poll(async () => {
-        const [documentPages, feedbackPanel, saveActions, reviewSettings] = await Promise.all([
-          page.getByLabel('학생 포트폴리오 문서 페이지').boundingBox(),
-          page.getByRole('complementary').boundingBox(),
-          page.getByLabel('피드백 저장').boundingBox(),
-          page.getByLabel('학생 이력서 검토 설정').boundingBox(),
-        ])
-
-        if (!documentPages || !feedbackPanel || !saveActions || !reviewSettings) {
-          return false
-        }
-
-        return [documentPages, saveActions, reviewSettings].every(
-          (element) => element.x + element.width <= feedbackPanel.x,
-        )
-      })
-      .toBe(true)
-
-    await page.getByRole('button', { name: '피드백 목록 닫기' }).click()
-    await expect(page.getByRole('heading', { name: '피드백 목록' })).toHaveCount(0)
-    await expect(feedbackSwitch).toHaveAttribute('aria-checked', 'false')
-    await expect(page.getByRole('button', { name: '피드백 내용 보기' })).toHaveCount(0)
-
-    await page.getByRole('button', { name: '임시저장' }).click()
-    await expect(page.getByRole('status')).toContainText('피드백을 임시저장했습니다.')
-  })
-
-  test('reports a visibility update failure without changing the switch', async ({ page }) => {
-    await page.goto('/students/1?error=visibility')
-
-    const visibilitySwitch = page.getByRole('switch', { name: '이력서 공개' })
-    await visibilitySwitch.click()
-
-    await expect(page.getByLabel('학생 포트폴리오 검토').getByRole('alert')).toContainText(
-      '이력서 공개 상태 변경에 실패하였습니다.',
-    )
-    await expect(visibilitySwitch).toHaveAttribute('aria-checked', 'false')
+    await expect(page.getByRole('button', { name: /피드백 추가/ })).toBeDisabled()
+    await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeDisabled()
+    await expect(page.getByRole('switch', { name: '피드백 보기' })).toBeDisabled()
+    await expect(page.getByRole('status')).toHaveCount(0)
   })
 })

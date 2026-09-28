@@ -2,10 +2,12 @@ export {
   autoSaveResume,
   cancelResumeSubmission,
   getResumeById,
+  getStudentResumeStatuses,
   saveResume,
   submitResume,
   updateResumeVisibility,
 } from './resumeApi'
+export { clearSavedResumeId, getSavedResumeId, saveResumeId } from './resumeIdStorage'
 export type {
   Resume,
   ResumeAutoSave,
@@ -18,7 +20,13 @@ export type {
   ResumeProject,
   ResumeSave,
   ResumeSaveInput,
+  ResumeSavePage,
+  ResumeSaveProject,
   ResumeSaveResult,
+  ResumeStudentStatus,
+  ResumeStudentStatusListInput,
+  ResumeStudentStatusListResult,
+  ResumeSubmissionStatus,
   ResumeSubmission,
   ResumeSubmissionInput,
   ResumeSubmissionResult,

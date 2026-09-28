@@ -14,6 +14,7 @@ import type {
   AuthSignupInput,
   AuthSignupResult,
 } from './authApi.types'
+import { getAuthRoleFromAccessToken } from './authAccessToken'
 import { postAuthJsonRequest, postAuthRefreshRequest } from './authHttpClient'
 
 type JsonRecord = {
@@ -43,9 +44,16 @@ function parseAuthLoginToken(value: unknown): AuthLoginToken | undefined {
     return undefined
   }
 
+  const role = getAuthRoleFromAccessToken(value['accessToken'])
+
+  if (!role) {
+    return undefined
+  }
+
   return {
     accessToken: value['accessToken'],
     refreshToken: value['refreshToken'],
+    role,
     tokenType: value['tokenType'],
   }
 }

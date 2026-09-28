@@ -38,6 +38,7 @@ export type AuthLoginInput = {
 export type AuthLoginToken = {
   readonly accessToken: string
   readonly refreshToken: string
+  readonly role: AuthLoginRole
   readonly tokenType: string
 }
 

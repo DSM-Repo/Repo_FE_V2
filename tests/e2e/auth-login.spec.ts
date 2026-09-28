@@ -1,11 +1,60 @@
 import { expect, test } from '@playwright/test'
 
+import { createTestAccessToken } from './auth-fixtures'
+
+const studentAccessToken = createTestAccessToken('STUDENT')
+const teacherAccessToken = createTestAccessToken('TEACHER')
+const apiBaseUrl = 'http://52.78.201.218'
+
 test.describe('auth login route', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/user', async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          classInfo: { classNumber: 1, grade: 1, number: 1, schoolNumber: '1101' },
+          introduce: '',
+          major: null,
+          name: '테스트 학생',
+          profileImageUrl: null,
+          progress: { sections: [], totalPercent: 0 },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route('**/resume/students', async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          lastUpdatedAt: '2026-09-20T00:00:00.000Z',
+          numberOfData: 0,
+          schoolYear: 2026,
+          students: [],
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify([]),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/alram`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify([]),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+  })
+
   test('routes a successful student login to the student home view', async ({ page }) => {
     await page.route('**/user/login', async (route) => {
       await route.fulfill({
         body: JSON.stringify({
-          accessToken: 'student-access-token',
+          accessToken: studentAccessToken,
           refreshToken: 'student-refresh-token',
           tokenType: 'Bearer',
         }),
@@ -32,7 +81,7 @@ test.describe('auth login route', () => {
     await page.route('**/user/login', async (route) => {
       await route.fulfill({
         body: JSON.stringify({
-          accessToken: 'student-access-token',
+          accessToken: studentAccessToken,
           refreshToken: 'student-refresh-token',
           tokenType: 'Bearer',
         }),
@@ -61,7 +110,7 @@ test.describe('auth login route', () => {
     await page.route('**/user/login', async (route) => {
       await route.fulfill({
         body: JSON.stringify({
-          accessToken: 'teacher-access-token',
+          accessToken: teacherAccessToken,
           refreshToken: 'teacher-refresh-token',
           tokenType: 'Bearer',
         }),
@@ -89,7 +138,7 @@ test.describe('auth login route', () => {
     await page.route('**/user/login', async (route) => {
       await route.fulfill({
         body: JSON.stringify({
-          accessToken: 'teacher-access-token',
+          accessToken: teacherAccessToken,
           refreshToken: 'teacher-refresh-token',
           tokenType: 'Bearer',
         }),
@@ -113,6 +162,33 @@ test.describe('auth login route', () => {
     await expect(mainNavigation.getByRole('link', { name: '도서관' })).toHaveAttribute('aria-current', 'page')
     await expect(mainNavigation.getByRole('link', { name: '학생 관리' })).toHaveAttribute('href', '/students')
     await expect(mainNavigation.getByRole('link', { name: '홈' })).toHaveCount(0)
+  })
+
+  test('uses the server role when the selected login mode does not match the account role', async ({ page }) => {
+    await page.route('**/user/login', async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          accessToken: studentAccessToken,
+          refreshToken: 'student-refresh-token',
+          tokenType: 'Bearer',
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    // Given: teacher mode is selected for an account whose server token role is STUDENT.
+    await page.goto('/login')
+    await page.getByRole('button', { name: '선생님으로 전환하기' }).click()
+    await page.getByLabel('이메일').fill('student@dsm.hs.kr')
+    await page.getByLabel('비밀번호', { exact: true }).fill('repo-password')
+
+    // When: login succeeds.
+    await page.getByRole('button', { name: '로그인' }).click()
+
+    // Then: the server role wins and the account stays in the student area.
+    await expect(page).toHaveURL(/\/home$/)
+    await expect(page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link', { name: '학생 관리' })).toHaveCount(0)
   })
 
   test('renders the student login view and switches to teacher login', async ({ page }) => {

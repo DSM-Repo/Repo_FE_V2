@@ -1,10 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
-
-import type { AppHeaderItem, ToastVariant } from '@/shared/ui'
-import { AppHeader, Button, Switch, Toast } from '@/shared/ui'
+import type { AppHeaderItem } from '@/shared/ui'
+import { AppHeader, Button, Switch } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -14,146 +11,27 @@ const navigationItems = [
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
 
-type Notice = {
-  readonly message: string
-  readonly variant: ToastVariant
-}
-
-const totalPages = 5
-const hasDocument = false
-
 export default function TeacherStudentReviewPage() {
-  const searchParams = useSearchParams()
-  const [currentPage, setCurrentPage] = useState(2)
-  const [isFeedbackMode, setIsFeedbackMode] = useState(false)
-  const [isFeedbackVisible, setIsFeedbackVisible] = useState(false)
-  const [isResumePublic, setIsResumePublic] = useState(false)
-  const [notice, setNotice] = useState<Notice | null>(null)
-  const noticeTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (noticeTimerId.current) {
-        clearTimeout(noticeTimerId.current)
-      }
-    }
-  }, [])
-
-  const showNotice = (nextNotice: Notice) => {
-    if (noticeTimerId.current) {
-      clearTimeout(noticeTimerId.current)
-    }
-
-    setNotice(nextNotice)
-    noticeTimerId.current = setTimeout(() => {
-      setNotice(null)
-      noticeTimerId.current = null
-    }, 2500)
-  }
-
-  const movePage = (offset: number) => {
-    setCurrentPage((page) => Math.min(totalPages, Math.max(1, page + offset)))
-  }
-
-  const startFeedbackMode = () => {
-    setIsFeedbackMode(true)
-    setIsFeedbackVisible(true)
-  }
-
-  const saveFeedback = (temporary: boolean) => {
-    showNotice({
-      message: temporary ? '피드백을 임시저장했습니다.' : '피드백을 저장했습니다.',
-      variant: 'success',
-    })
-
-    if (!temporary) {
-      setIsFeedbackMode(false)
-    }
-  }
-
-  const changeResumeVisibility = (checked: boolean) => {
-    if (searchParams.get('error') === 'visibility') {
-      showNotice({ message: '이력서 공개 상태 변경에 실패하였습니다.', variant: 'error' })
-      return
-    }
-
-    setIsResumePublic(checked)
-    showNotice({ message: '이력서 공개 상태를 변경했습니다.', variant: 'success' })
-  }
-
   return (
-    <main className={styles.page} data-feedback-panel-open={isFeedbackVisible ? 'true' : 'false'}>
+    <main className={styles.page} data-feedback-panel-open="false">
       <AppHeader activeItem="students" items={navigationItems} />
 
       <section className={styles.workspace} aria-label="학생 포트폴리오 검토">
-        {notice ? (
-          <div className={styles.toastLayer}>
-            <Toast variant={notice.variant}>{notice.message}</Toast>
+        <div className={styles.viewer} data-document-empty="true">
+          <div
+            aria-describedby="teacher-resume-api-notice"
+            aria-label="학생 포트폴리오 문서 페이지"
+            className={styles.documentEmpty}
+          >
+            <strong>학생 이력서를 불러올 수 없습니다.</strong>
+            <span id="teacher-resume-api-notice">
+              교사가 학생의 이력서 본문을 조회하는 API가 아직 제공되지 않았습니다.
+            </span>
           </div>
-        ) : null}
-
-        {isFeedbackMode ? (
-          <div className={styles.saveActions} aria-label="피드백 저장">
-            <Button variant="bordered-dark" onClick={() => saveFeedback(true)}>
-              임시저장
-            </Button>
-            <Button onClick={() => saveFeedback(false)}>저장</Button>
-          </div>
-        ) : null}
-
-        <div className={styles.viewer} data-document-empty={hasDocument ? 'false' : 'true'}>
-          {hasDocument ? (
-            <button
-              aria-label="이전 페이지"
-              className={`${styles.pageArrow} ${styles.previousArrow}`}
-              disabled={currentPage === 1}
-              type="button"
-              onClick={() => movePage(-1)}
-            >
-              ‹
-            </button>
-          ) : null}
-
-          <div className={styles.documentEmpty} aria-label="학생 포트폴리오 문서 페이지">
-            조회된 포트폴리오 문서가 없습니다.
-          </div>
-
-          {hasDocument ? (
-            <button
-              aria-label="다음 페이지"
-              className={`${styles.pageArrow} ${styles.nextArrow}`}
-              disabled={currentPage === totalPages}
-              type="button"
-              onClick={() => movePage(1)}
-            >
-              ›
-            </button>
-          ) : null}
         </div>
 
-        {hasDocument ? (
-          <p className={styles.pageIndicator} aria-label="현재 페이지">
-            <strong>{currentPage}</strong> / {totalPages}
-          </p>
-        ) : null}
-
         <div className={styles.bottomControls}>
-          {hasDocument ? (
-            <div className={styles.compactPager} aria-label="페이지 이동">
-              <button aria-label="이전 페이지" disabled={currentPage === 1} type="button" onClick={() => movePage(-1)}>
-                ‹
-              </button>
-              <button
-                aria-label="다음 페이지"
-                disabled={currentPage === totalPages}
-                type="button"
-                onClick={() => movePage(1)}
-              >
-                ›
-              </button>
-            </div>
-          ) : null}
-          <Button className={styles.feedbackButton} onClick={startFeedbackMode}>
+          <Button aria-describedby="teacher-resume-api-notice" className={styles.feedbackButton} disabled>
             피드백 추가 <span aria-hidden="true">＋</span>
           </Button>
         </div>
@@ -162,40 +40,28 @@ export default function TeacherStudentReviewPage() {
           <label className={styles.settingRow}>
             <span>이력서 공개</span>
             <span className={styles.switchFrame}>
-              <Switch aria-label="이력서 공개" checked={isResumePublic} onCheckedChange={changeResumeVisibility} />
+              <Switch
+                aria-describedby="teacher-resume-api-notice"
+                aria-label="이력서 공개"
+                checked={false}
+                disabled
+                onCheckedChange={() => undefined}
+              />
             </span>
           </label>
           <label className={styles.settingRow}>
             <span>피드백 보기</span>
             <span className={styles.switchFrame}>
-              <Switch aria-label="피드백 보기" checked={isFeedbackVisible} onCheckedChange={setIsFeedbackVisible} />
+              <Switch
+                aria-describedby="teacher-resume-api-notice"
+                aria-label="피드백 보기"
+                checked={false}
+                disabled
+                onCheckedChange={() => undefined}
+              />
             </span>
           </label>
         </div>
-
-        {isFeedbackVisible ? (
-          <aside className={styles.feedbackPanel} aria-labelledby="feedback-panel-title">
-            <header className={styles.feedbackPanelHeader}>
-              <h2 id="feedback-panel-title">피드백 목록</h2>
-              <button
-                aria-label="피드백 목록 닫기"
-                className={styles.feedbackPanelClose}
-                type="button"
-                onClick={() => setIsFeedbackVisible(false)}
-              >
-                ×
-              </button>
-            </header>
-
-            <div className={styles.feedbackPanelToolbar}>
-              <button type="button">선택하기</button>
-            </div>
-
-            <div className={styles.feedbackList}>
-              <p className={styles.feedbackEmpty}>등록된 피드백이 없습니다.</p>
-            </div>
-          </aside>
-        ) : null}
       </section>
     </main>
   )

@@ -29,10 +29,23 @@ export type UserMeInput = {
   readonly accessToken: string
 }
 
+export type UserMajorUpdateInput = UserMeInput & {
+  readonly majorId: number
+}
+
 export type UserMeResult =
   | {
       readonly kind: 'success'
       readonly user: UserMe
+    }
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type UserMajorUpdateResult =
+  | {
+      readonly kind: 'success'
     }
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
