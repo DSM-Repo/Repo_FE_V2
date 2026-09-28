@@ -166,7 +166,10 @@ function createHttpResponseFromBytes(bytes: Uint8Array) {
 
 async function fetchBackendViaTcp(targetUrl: URL, method: string, headers: Headers, body: ArrayBuffer | undefined) {
   const { connect } = await import('cloudflare:sockets')
-  const socket = connect({ hostname: targetUrl.hostname, port: Number(targetUrl.port || 80) }, { secureTransport: 'off' })
+  const socket = connect(
+    { hostname: targetUrl.hostname, port: Number(targetUrl.port || 80) },
+    { allowHalfOpen: true, secureTransport: 'off' },
+  )
   const writer = socket.writable.getWriter()
   const requestHeaders = new Headers(headers)
 
