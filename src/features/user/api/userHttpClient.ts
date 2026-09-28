@@ -2,6 +2,7 @@
 
 import type { UserMajorUpdateInput, UserMeInput } from './userApi.types'
 import { sendAuthenticatedRequest } from '../../auth/api/authenticatedRequest'
+import { buildClientApiUrl, getClientApiConfig } from '../../../shared/api/clientApiBaseUrl'
 
 type UserApiConfig =
   | {
@@ -30,32 +31,11 @@ const USER_REQUEST_TIMEOUT_MS = 8_000
 const USER_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 function getUserApiConfig(): UserApiConfig {
-  if (!USER_API_BASE_URL) {
-    return {
-      kind: 'invalid',
-      message: 'API 주소가 설정되지 않았습니다.',
-    }
-  }
-
-  try {
-    return {
-      baseUrl: new URL(USER_API_BASE_URL).href,
-      kind: 'ready',
-    }
-  } catch (error) {
-    if (error instanceof TypeError) {
-      return {
-        kind: 'invalid',
-        message: 'API 주소 형식이 올바르지 않습니다.',
-      }
-    }
-
-    throw error
-  }
+  return getClientApiConfig(USER_API_BASE_URL, 'API 주소가 설정되지 않았습니다.')
 }
 
 function buildUserUrl(baseUrl: string, path: string) {
-  return new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).href
+  return buildClientApiUrl(baseUrl, path).href
 }
 
 async function sendUserRequest(path: string, init: RequestInit): Promise<UserRequestResponse> {

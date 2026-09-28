@@ -9,6 +9,7 @@ import type {
   ResumeVisibilityInput,
 } from './resumeApi.types'
 import { sendAuthenticatedRequest } from '../../auth/api/authenticatedRequest'
+import { buildClientApiUrl, getClientApiConfig } from '../../../shared/api/clientApiBaseUrl'
 
 type ResumeApiConfig =
   | {
@@ -37,32 +38,11 @@ const RESUME_REQUEST_TIMEOUT_MS = 8_000
 const RESUME_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 function getResumeApiConfig(): ResumeApiConfig {
-  if (!RESUME_API_BASE_URL) {
-    return {
-      kind: 'invalid',
-      message: 'API 주소가 설정되지 않았습니다.',
-    }
-  }
-
-  try {
-    return {
-      baseUrl: new URL(RESUME_API_BASE_URL).href,
-      kind: 'ready',
-    }
-  } catch (error) {
-    if (error instanceof TypeError) {
-      return {
-        kind: 'invalid',
-        message: 'API 주소 형식이 올바르지 않습니다.',
-      }
-    }
-
-    throw error
-  }
+  return getClientApiConfig(RESUME_API_BASE_URL, 'API 주소가 설정되지 않았습니다.')
 }
 
 function buildResumeUrl(baseUrl: string, path: string) {
-  return new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).href
+  return buildClientApiUrl(baseUrl, path).href
 }
 
 async function sendResumeRequest(path: string, init: RequestInit): Promise<ResumeRequestResponse> {

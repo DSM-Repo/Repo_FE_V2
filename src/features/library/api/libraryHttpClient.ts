@@ -2,6 +2,7 @@
 
 import type { LibraryAuthInput, LibraryResumeInput, LibrarySearchInput } from './libraryApi.types'
 import { sendAuthenticatedRequest } from '../../auth/api/authenticatedRequest'
+import { buildClientApiUrl, getClientApiConfig } from '../../../shared/api/clientApiBaseUrl'
 
 type LibraryApiConfig =
   | {
@@ -32,32 +33,11 @@ const DEFAULT_LIBRARY_SEARCH_SIZE = 20
 const LIBRARY_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 function getLibraryApiConfig(): LibraryApiConfig {
-  if (!LIBRARY_API_BASE_URL) {
-    return {
-      kind: 'invalid',
-      message: 'API 주소가 설정되지 않았습니다.',
-    }
-  }
-
-  try {
-    return {
-      baseUrl: new URL(LIBRARY_API_BASE_URL).href,
-      kind: 'ready',
-    }
-  } catch (error) {
-    if (error instanceof TypeError) {
-      return {
-        kind: 'invalid',
-        message: 'API 주소 형식이 올바르지 않습니다.',
-      }
-    }
-
-    throw error
-  }
+  return getClientApiConfig(LIBRARY_API_BASE_URL, 'API 주소가 설정되지 않았습니다.')
 }
 
 function buildLibraryUrl(baseUrl: string, path: string) {
-  return new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`)
+  return buildClientApiUrl(baseUrl, path)
 }
 
 function appendSearchParam(searchParams: URLSearchParams, key: string, value: number | string | undefined) {

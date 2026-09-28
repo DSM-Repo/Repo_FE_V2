@@ -1,6 +1,7 @@
 'use client'
 
 import type { AuthEmailSendInput, AuthEmailVerifyInput, AuthLoginInput, AuthRefreshInput, AuthSignupInput } from './authApi.types'
+import { buildClientApiUrl, getClientApiConfig } from '../../../shared/api/clientApiBaseUrl'
 
 type AuthApiConfig =
   | {
@@ -30,32 +31,11 @@ const AUTH_REQUEST_TIMEOUT_MS = 8_000
 const AUTH_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 function getAuthApiConfig(): AuthApiConfig {
-  if (!AUTH_API_BASE_URL) {
-    return {
-      kind: 'invalid',
-      message: 'auth API 주소가 설정되지 않았습니다.',
-    }
-  }
-
-  try {
-    return {
-      kind: 'ready',
-      baseUrl: new URL(AUTH_API_BASE_URL).href,
-    }
-  } catch (error) {
-    if (error instanceof TypeError) {
-      return {
-        kind: 'invalid',
-        message: 'auth API 주소 형식이 올바르지 않습니다.',
-      }
-    }
-
-    throw error
-  }
+  return getClientApiConfig(AUTH_API_BASE_URL, 'auth API 주소가 설정되지 않았습니다.')
 }
 
 function buildAuthUrl(baseUrl: string, path: AuthJsonRequestPath | AuthRefreshRequestPath) {
-  return new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).href
+  return buildClientApiUrl(baseUrl, path).href
 }
 
 async function postAuthRequest(path: AuthJsonRequestPath | AuthRefreshRequestPath, init: RequestInit): Promise<AuthRequestResponse> {

@@ -1,0 +1,66 @@
+const DEFAULT_BACKEND_API_BASE_URL = 'http://52.78.201.218'
+const BACKEND_API_BASE_URL =
+  process.env.BACKEND_API_BASE_URL?.trim() || process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_API_BASE_URL
+
+function getBackendApiUrl(path: readonly string[], requestUrl: string) {
+  const targetUrl = new URL(path.map((segment) => encodeURIComponent(segment)).join('/'), getNormalizedBackendOrigin())
+  targetUrl.search = new URL(requestUrl).search
+
+  return targetUrl
+}
+
+function getNormalizedBackendOrigin() {
+  const backendUrl = new URL(BACKEND_API_BASE_URL)
+
+  if (backendUrl.protocol !== 'http:' && backendUrl.protocol !== 'https:') {
+    throw new Error('BACKEND_API_BASE_URL must use http or https.')
+  }
+
+  return backendUrl.href.endsWith('/') ? backendUrl.href : `${backendUrl.href}/`
+}
+
+function getForwardHeaders(request: Request) {
+  const headers = new Headers(request.headers)
+
+  headers.delete('host')
+  headers.delete('content-length')
+  headers.delete('origin')
+  headers.delete('referer')
+
+  return headers
+}
+
+async function proxyBackendRequest(request: Request, context: { params: Promise<{ path: string[] }> }) {
+  const { path } = await context.params
+  const method = request.method.toUpperCase()
+  const body = method === 'GET' || method === 'HEAD' ? undefined : request.body
+  const response = await fetch(getBackendApiUrl(path, request.url), {
+    body,
+    duplex: body ? 'half' : undefined,
+    headers: getForwardHeaders(request),
+    method,
+    redirect: 'manual',
+  } as RequestInit & { duplex?: 'half' })
+
+  return response
+}
+
+export function GET(request: Request, context: { params: Promise<{ path: string[] }> }) {
+  return proxyBackendRequest(request, context)
+}
+
+export function POST(request: Request, context: { params: Promise<{ path: string[] }> }) {
+  return proxyBackendRequest(request, context)
+}
+
+export function PATCH(request: Request, context: { params: Promise<{ path: string[] }> }) {
+  return proxyBackendRequest(request, context)
+}
+
+export function PUT(request: Request, context: { params: Promise<{ path: string[] }> }) {
+  return proxyBackendRequest(request, context)
+}
+
+export function DELETE(request: Request, context: { params: Promise<{ path: string[] }> }) {
+  return proxyBackendRequest(request, context)
+}

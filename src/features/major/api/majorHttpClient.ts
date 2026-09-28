@@ -2,6 +2,7 @@
 
 import type { MajorAuthInput, MajorCreateInput, MajorDeleteInput } from './majorApi.types'
 import { sendAuthenticatedRequest } from '../../auth/api/authenticatedRequest'
+import { buildClientApiUrl, getClientApiConfig } from '../../../shared/api/clientApiBaseUrl'
 
 type MajorApiConfig =
   | {
@@ -30,32 +31,11 @@ const MAJOR_REQUEST_TIMEOUT_MS = 8_000
 const MAJOR_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 function getMajorApiConfig(): MajorApiConfig {
-  if (!MAJOR_API_BASE_URL) {
-    return {
-      kind: 'invalid',
-      message: 'API 주소가 설정되지 않았습니다.',
-    }
-  }
-
-  try {
-    return {
-      baseUrl: new URL(MAJOR_API_BASE_URL).href,
-      kind: 'ready',
-    }
-  } catch (error) {
-    if (error instanceof TypeError) {
-      return {
-        kind: 'invalid',
-        message: 'API 주소 형식이 올바르지 않습니다.',
-      }
-    }
-
-    throw error
-  }
+  return getClientApiConfig(MAJOR_API_BASE_URL, 'API 주소가 설정되지 않았습니다.')
 }
 
 function buildMajorUrl(baseUrl: string, path: string) {
-  return new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`).href
+  return buildClientApiUrl(baseUrl, path).href
 }
 
 function buildAuthorizationHeader(input: MajorAuthInput) {

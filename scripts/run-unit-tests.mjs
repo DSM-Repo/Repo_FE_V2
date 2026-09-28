@@ -50,6 +50,7 @@ const tscArgs = [
   'src/features/user/api/userApi.ts',
   'src/features/user/api/userApi.types.ts',
   'src/features/user/api/userHttpClient.ts',
+  'src/shared/api/clientApiBaseUrl.ts',
   'src/shared/lib/internalHref.ts',
 ]
 
@@ -78,6 +79,15 @@ writeFileSync(
     .replace("from './authAccessToken'", "from './authAccessToken.js'")
     .replace("from './authHttpClient'", "from './authHttpClient.js'"),
 )
+const emittedAuthHttpClientPath = join(outDir, 'src/features/auth/api/authHttpClient.js')
+const emittedAuthHttpClient = readFileSync(emittedAuthHttpClientPath, 'utf8')
+writeFileSync(
+  emittedAuthHttpClientPath,
+  emittedAuthHttpClient.replace(
+    "from '../../../shared/api/clientApiBaseUrl'",
+    "from '../../../shared/api/clientApiBaseUrl.js'",
+  ),
+)
 
 const emittedAuthTokenStoragePath = join(outDir, 'src/features/auth/api/authTokenStorage.js')
 const emittedAuthTokenStorage = readFileSync(emittedAuthTokenStoragePath, 'utf8')
@@ -102,7 +112,9 @@ const emittedResumeHttpClientPath = join(outDir, 'src/features/resume/api/resume
 const emittedResumeHttpClient = readFileSync(emittedResumeHttpClientPath, 'utf8')
 writeFileSync(
   emittedResumeHttpClientPath,
-  emittedResumeHttpClient.replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'"),
+  emittedResumeHttpClient
+    .replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'")
+    .replace("from '../../../shared/api/clientApiBaseUrl'", "from '../../../shared/api/clientApiBaseUrl.js'"),
 )
 
 const emittedFeedbackApiPath = join(outDir, 'src/features/feedback/api/feedbackApi.js')
@@ -115,7 +127,9 @@ const emittedFeedbackHttpClientPath = join(outDir, 'src/features/feedback/api/fe
 const emittedFeedbackHttpClient = readFileSync(emittedFeedbackHttpClientPath, 'utf8')
 writeFileSync(
   emittedFeedbackHttpClientPath,
-  emittedFeedbackHttpClient.replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'"),
+  emittedFeedbackHttpClient
+    .replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'")
+    .replace("from '../../../shared/api/clientApiBaseUrl'", "from '../../../shared/api/clientApiBaseUrl.js'"),
 )
 
 const emittedLibraryApiPath = join(outDir, 'src/features/library/api/libraryApi.js')
@@ -125,7 +139,9 @@ const emittedLibraryHttpClientPath = join(outDir, 'src/features/library/api/libr
 const emittedLibraryHttpClient = readFileSync(emittedLibraryHttpClientPath, 'utf8')
 writeFileSync(
   emittedLibraryHttpClientPath,
-  emittedLibraryHttpClient.replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'"),
+  emittedLibraryHttpClient
+    .replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'")
+    .replace("from '../../../shared/api/clientApiBaseUrl'", "from '../../../shared/api/clientApiBaseUrl.js'"),
 )
 
 const emittedMajorApiPath = join(outDir, 'src/features/major/api/majorApi.js')
@@ -135,7 +151,9 @@ const emittedMajorHttpClientPath = join(outDir, 'src/features/major/api/majorHtt
 const emittedMajorHttpClient = readFileSync(emittedMajorHttpClientPath, 'utf8')
 writeFileSync(
   emittedMajorHttpClientPath,
-  emittedMajorHttpClient.replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'"),
+  emittedMajorHttpClient
+    .replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'")
+    .replace("from '../../../shared/api/clientApiBaseUrl'", "from '../../../shared/api/clientApiBaseUrl.js'"),
 )
 
 const emittedNotificationApiPath = join(outDir, 'src/features/notification/api/notificationApi.js')
@@ -148,10 +166,9 @@ const emittedNotificationHttpClientPath = join(outDir, 'src/features/notificatio
 const emittedNotificationHttpClient = readFileSync(emittedNotificationHttpClientPath, 'utf8')
 writeFileSync(
   emittedNotificationHttpClientPath,
-  emittedNotificationHttpClient.replace(
-    "from '../../auth/api/authenticatedRequest'",
-    "from '../../auth/api/authenticatedRequest.js'",
-  ),
+  emittedNotificationHttpClient
+    .replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'")
+    .replace("from '../../../shared/api/clientApiBaseUrl'", "from '../../../shared/api/clientApiBaseUrl.js'"),
 )
 
 const emittedUserApiPath = join(outDir, 'src/features/user/api/userApi.js')
@@ -161,7 +178,9 @@ const emittedUserHttpClientPath = join(outDir, 'src/features/user/api/userHttpCl
 const emittedUserHttpClient = readFileSync(emittedUserHttpClientPath, 'utf8')
 writeFileSync(
   emittedUserHttpClientPath,
-  emittedUserHttpClient.replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'"),
+  emittedUserHttpClient
+    .replace("from '../../auth/api/authenticatedRequest'", "from '../../auth/api/authenticatedRequest.js'")
+    .replace("from '../../../shared/api/clientApiBaseUrl'", "from '../../../shared/api/clientApiBaseUrl.js'"),
 )
 
 run('node', ['--test', `${outDir}/tests/unit/*.test.js`])
