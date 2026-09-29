@@ -796,6 +796,11 @@ test.describe('student resume management', () => {
     await expect(page.evaluate((storageKey) => window.localStorage.getItem(storageKey), studentResumeIdStorageKey)).resolves.toBe(
       'resume-id',
     )
+    const secondPreviewPage = page.getByRole('article', { name: '오혜민 이력서 2쪽' })
+    await expect(secondPreviewPage.getByRole('heading', { name: 'Repo' })).toBeVisible()
+    await expect(secondPreviewPage.getByText('2026-09-01 ~ 2026-09-18')).toBeVisible()
+    await expect(secondPreviewPage.getByText('디지털 레주메 플랫폼')).toBeVisible()
+    await expect(secondPreviewPage.getByText('사용자 경험을 개선하는 개발자입니다.')).toHaveCount(0)
 
     await page.getByRole('button', { name: '이력서 수정하기' }).click()
     await page.getByLabel('1쪽 추가 내용').fill('첫 저장 뒤 수정한 내용')

@@ -1,10 +1,19 @@
 import { Fragment, type ReactNode } from 'react'
+import Image from 'next/image'
 
 import styles from './ResumeBookSheet.module.css'
 
 export type ResumeBookSheetActivity = {
   readonly date: string
   readonly title: string
+}
+
+export type ResumeBookSheetProject = {
+  readonly endDate: string
+  readonly imageUrl: string
+  readonly name: string
+  readonly startDate: string
+  readonly summary: string
 }
 
 export type ResumeBookSheetContent = {
@@ -18,6 +27,7 @@ export type ResumeBookSheetContent = {
   readonly name: string
   readonly pageContent?: string
   readonly portfolioUrl?: string
+  readonly project?: ResumeBookSheetProject
   readonly projects: readonly string[]
   readonly skills: readonly string[]
 }
@@ -93,6 +103,24 @@ function toSafeHref(value: string) {
     const url = new URL(value)
 
     if (url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'mailto:') {
+      return url.href
+    }
+  } catch (error) {
+    if (error instanceof TypeError) {
+      return undefined
+    }
+
+    throw error
+  }
+
+  return undefined
+}
+
+function toSafeImageSrc(value: string) {
+  try {
+    const url = new URL(value)
+
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
       return url.href
     }
   } catch (error) {
@@ -229,6 +257,47 @@ export function MarkdownContent({ value }: { readonly value: string }) {
 export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookSheetProps) {
   const sheetClassName = [styles.sheet, className].filter(Boolean).join(' ')
   const label = ariaLabel ?? `${content.name} 포트폴리오`
+  const project = content.project
+
+  if (project) {
+    const projectPeriod = [project.startDate, project.endDate].filter(Boolean).join(' ~ ')
+    const projectImageUrl = toSafeImageSrc(project.imageUrl)
+
+    return (
+      <article className={sheetClassName} aria-label={label}>
+        <header className={styles.projectHeader}>
+          {projectImageUrl ? (
+            <Image
+              className={styles.projectImage}
+              src={projectImageUrl}
+              alt={`${project.name || '프로젝트'} 이미지`}
+              width={47}
+              height={47}
+              unoptimized
+            />
+          ) : (
+            <div className={styles.projectImagePlaceholder} aria-label="프로젝트 이미지" />
+          )}
+          <div className={styles.projectIdentity}>
+            <h2 className={styles.projectName}>{project.name || 'Project'}</h2>
+            {projectPeriod ? <p className={styles.projectPeriod}>{projectPeriod}</p> : null}
+          </div>
+        </header>
+
+        {project.summary ? (
+          <section className={styles.projectSummary} aria-label="프로젝트 소개">
+            <p>{project.summary}</p>
+          </section>
+        ) : null}
+
+        {content.pageContent ? (
+          <div className={styles.projectPageContent}>
+            <MarkdownContent value={content.pageContent} />
+          </div>
+        ) : null}
+      </article>
+    )
+  }
 
   return (
     <article className={sheetClassName} aria-label={label}>

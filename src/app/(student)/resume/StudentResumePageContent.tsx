@@ -157,6 +157,16 @@ function toSheetContent(draft: ResumeDraft, pageIndex: number): ResumeBookSheetC
   const page = draft.pages[pageIndex]
   const project = page?.project
   const department = getDepartmentFromSchoolNumber(draft.schoolNumber)
+  const sheetProject =
+    page?.type === 'PROJECT'
+      ? {
+          endDate: project?.endDate ?? '',
+          imageUrl: project?.imageUrl ?? '',
+          name: project?.name ?? '',
+          startDate: project?.startDate ?? '',
+          summary: project?.summary ?? '',
+        }
+      : undefined
 
   return {
     activities: page?.type === 'PROFILE' ? draft.activities : [],
@@ -169,6 +179,7 @@ function toSheetContent(draft: ResumeDraft, pageIndex: number): ResumeBookSheetC
     name: draft.name,
     pageContent: page?.content,
     portfolioUrl: draft.portfolioUrl,
+    ...(sheetProject ? { project: sheetProject } : {}),
     projects: project?.name ? [project.name] : [],
     skills: page?.type === 'PROFILE' ? draft.skills : [],
   }

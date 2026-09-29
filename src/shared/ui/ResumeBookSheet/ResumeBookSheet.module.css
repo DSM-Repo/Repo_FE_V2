@@ -7,11 +7,21 @@
   background: var(--repo-gray-50);
 }
 
-.sheetHeader {
+.sheetHeader,
+.projectHeader {
   display: grid;
+  min-width: 0;
+  align-items: start;
+}
+
+.sheetHeader {
   grid-template-columns: var(--resume-book-sheet-avatar-size, 50px) minmax(0, 1fr) var(--resume-book-sheet-qr-size, 47px);
   gap: var(--resume-book-sheet-header-gap, 13px);
-  align-items: start;
+}
+
+.projectHeader {
+  grid-template-columns: var(--resume-book-sheet-qr-size, 47px) minmax(0, 1fr);
+  gap: var(--resume-book-sheet-header-gap, 13px);
 }
 
 .profileImage {
@@ -77,6 +87,42 @@
   outline: 4px solid var(--repo-gray-50);
 }
 
+.projectImage,
+.projectImagePlaceholder {
+  width: var(--resume-book-sheet-qr-size, 47px);
+  height: var(--resume-book-sheet-qr-size, 47px);
+  object-fit: cover;
+}
+
+.projectImagePlaceholder {
+  border: 1px dashed var(--repo-gray-300);
+  background: var(--repo-gray-50);
+}
+
+.projectIdentity {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.projectName {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--repo-text-black);
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: var(--repo-font-title-small-line-height);
+  letter-spacing: 0;
+}
+
+.projectPeriod {
+  margin: 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-very-tiny-size);
+  font-weight: var(--repo-font-body-very-tiny-weight);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+}
+
 .introBox {
   display: grid;
   gap: 7px;
@@ -84,6 +130,24 @@
   padding: 11px 13px;
   border-radius: 8px;
   background: var(--repo-gray-100);
+}
+
+.projectSummary {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 11px 13px;
+  border-radius: 8px;
+  background: var(--repo-gray-100);
+}
+
+.projectSummary p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--repo-text-black);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
 }
 
 .introBox h3,
@@ -191,6 +255,17 @@
   line-height: var(--repo-font-resume-small-line-height);
 }
 
+.projectPageContent {
+  display: grid;
+  gap: 4px;
+  margin: 14px 0 0;
+  overflow: hidden;
+  color: var(--repo-gray-800);
+  font-size: var(--repo-font-resume-small-size);
+  font-weight: var(--repo-font-resume-small-weight);
+  line-height: var(--repo-font-resume-small-line-height);
+}
+
 .pageContent h1,
 .pageContent h2,
 .pageContent h3,
@@ -198,7 +273,15 @@
 .pageContent p,
 .pageContent blockquote,
 .pageContent ul,
-.pageContent hr {
+.pageContent hr,
+.projectPageContent h1,
+.projectPageContent h2,
+.projectPageContent h3,
+.projectPageContent h4,
+.projectPageContent p,
+.projectPageContent blockquote,
+.projectPageContent ul,
+.projectPageContent hr {
   margin: 0;
 }
 
@@ -224,7 +307,8 @@
   line-height: var(--repo-font-body-tiny-line-height);
 }
 
-.pageContent blockquote {
+.pageContent blockquote,
+.projectPageContent blockquote {
   padding-left: 8px;
   border-left: 2px solid var(--repo-gray-300);
   color: var(--repo-gray-500);
@@ -246,7 +330,8 @@
   background: var(--repo-gray-300);
 }
 
-.pageContent a {
+.pageContent a,
+.projectPageContent a {
   color: var(--repo-text-black);
   text-decoration: underline;
   text-underline-offset: 2px;
