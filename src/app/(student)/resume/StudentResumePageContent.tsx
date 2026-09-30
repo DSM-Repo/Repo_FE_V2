@@ -28,7 +28,7 @@ import {
 } from '@/features/resume/api'
 import { getUserMe, updateUserMajor, type UserMe, type UserMeResult } from '@/features/user/api'
 import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
-import { AppHeader, Icon, ResumeBookSheet, Toast } from '@/shared/ui'
+import { AppHeader, Icon, PortfolioUrlModal, ResumeBookSheet, Toast } from '@/shared/ui'
 
 import {
   getDepartmentFromSchoolNumber,
@@ -109,6 +109,9 @@ type FeedbackSubmitState =
   | { readonly kind: 'apply-all' }
   | { readonly feedbackId: string; readonly kind: 'item' }
   | { readonly kind: 'idle' }
+type PortfolioUrlModalState =
+  | { readonly kind: 'closed' }
+  | { readonly errorMessage?: string; readonly kind: 'open' }
 
 function toInitialViewMode(mode: string | null): ViewMode {
   if (mode === 'edit') {
@@ -333,6 +336,28 @@ function applyUserToDraft(draft: ResumeDraft, user: UserMe): ResumeDraft {
   }
 }
 
+function toNormalizedPortfolioUrl(value: string) {
+  const trimmedValue = value.trim()
+
+  if (!trimmedValue) {
+    return ''
+  }
+
+  try {
+    const url = new URL(trimmedValue)
+
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return url.href
+    }
+  } catch (error) {
+    if (!(error instanceof TypeError)) {
+      throw error
+    }
+  }
+
+  return undefined
+}
+
 export function StudentResumePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -351,6 +376,7 @@ export function StudentResumePageContent() {
   const [isDraftDirty, setIsDraftDirty] = useState(false)
   const [feedbackLoadState, setFeedbackLoadState] = useState<FeedbackLoadState>({ kind: 'idle' })
   const [feedbackSubmitState, setFeedbackSubmitState] = useState<FeedbackSubmitState>({ kind: 'idle' })
+  const [portfolioUrlModalState, setPortfolioUrlModalState] = useState<PortfolioUrlModalState>({ kind: 'closed' })
   const [openFeedbackId, setOpenFeedbackId] = useState<string>()
   const [spreadStartIndex, setSpreadStartIndex] = useState(0)
   const userRef = useRef<UserMe | undefined>(undefined)
@@ -678,6 +704,36 @@ export function StudentResumePageContent() {
     setActionFeedback(undefined)
   }, [])
 
+  const handlePortfolioUrlConfirm = useCallback(
+    (value: string) => {
+      const normalizedPortfolioUrl = toNormalizedPortfolioUrl(value)
+
+      if (normalizedPortfolioUrl === undefined) {
+        setPortfolioUrlModalState({
+          errorMessage: 'http:// 또는 https://로 시작하는 URL을 입력해주세요.',
+          kind: 'open',
+        })
+        return
+      }
+
+      if (normalizedPortfolioUrl.length > 106) {
+        setPortfolioUrlModalState({
+          errorMessage: 'QR 코드로 만들 URL은 106자 이하로 입력해주세요.',
+          kind: 'open',
+        })
+        return
+      }
+
+      handleDraftChange({ ...draft, portfolioUrl: normalizedPortfolioUrl })
+      setPortfolioUrlModalState({ kind: 'closed' })
+      setActionFeedback({
+        message: normalizedPortfolioUrl ? 'URL을 QR 코드로 추가했습니다.' : '포트폴리오 URL을 비웠습니다.',
+        tone: 'success',
+      })
+    },
+    [draft, handleDraftChange],
+  )
+
   const handleCancelEditing = useCallback(() => {
     if (loadState.kind === 'success') {
       const resumeDraft = toResumeDraft(loadState.resume)
@@ -1000,6 +1056,7 @@ export function StudentResumePageContent() {
                     onChange={handleDraftChange}
                     onImageUpload={handleImageUpload}
                     onMajorChange={(majorId) => void handleMajorChange(majorId)}
+                    onPortfolioUrlClick={() => setPortfolioUrlModalState({ kind: 'open' })}
                     pageIndex={pageIndex}
                   />
                 ) : (
@@ -1090,6 +1147,17 @@ export function StudentResumePageContent() {
                 <span className={styles.switchTrack} aria-hidden="true" />
               </label>
             </>
+          ) : null}
+
+          {portfolioUrlModalState.kind === 'open' ? (
+            <div className={styles.modalOverlay}>
+              <PortfolioUrlModal
+                defaultValue={draft.portfolioUrl}
+                errorMessage={portfolioUrlModalState.errorMessage}
+                onCancel={() => setPortfolioUrlModalState({ kind: 'closed' })}
+                onConfirm={handlePortfolioUrlConfirm}
+              />
+            </div>
           ) : null}
 
           {userLoadState.kind === 'loading' ? <p className={styles.loadingMessage}>학생 정보를 불러오는 중입니다.</p> : null}

@@ -283,6 +283,17 @@
   transform: translateX(-50%);
 }
 
+.modalOverlay {
+  position: fixed;
+  inset: var(--repo-size-header-min-height) 0 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: var(--space-10);
+  background: rgb(0 0 0 / 62%);
+  backdrop-filter: blur(6px);
+}
+
 .loadingMessage {
   position: absolute;
   top: 40px;

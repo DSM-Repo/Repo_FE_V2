@@ -74,17 +74,27 @@
   line-height: var(--repo-font-body-very-tiny-line-height);
 }
 
-.qrCode {
+.qrCode,
+.qrPlaceholder {
   width: var(--resume-book-sheet-qr-size, 47px);
   height: var(--resume-book-sheet-qr-size, 47px);
   margin-left: auto;
+  outline: 4px solid var(--repo-gray-50);
+}
+
+.qrCode {
+  display: block;
+  color: var(--repo-text-black);
+  background: var(--repo-gray-50);
+}
+
+.qrPlaceholder {
   background:
     linear-gradient(90deg, #000 50%, transparent 0) 0 0 / 9px 9px,
     linear-gradient(#000 50%, transparent 0) 0 0 / 9px 9px,
     linear-gradient(90deg, transparent 35%, #000 0 65%, transparent 0) 0 0 / 18px 18px,
     var(--repo-gray-50);
   image-rendering: pixelated;
-  outline: 4px solid var(--repo-gray-50);
 }
 
 .projectImage,

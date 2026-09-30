@@ -4,7 +4,7 @@ import { useId, useRef, useState, type ChangeEvent, type ClipboardEvent, type Ke
 
 import type { Major } from '@/features/major/api'
 import type { ResumePageType } from '@/features/resume/api'
-import { Icon } from '@/shared/ui'
+import { Icon, QrCode } from '@/shared/ui'
 
 import { MarkdownTextarea } from './MarkdownTextarea'
 import styles from './ResumeEditorSheet.module.css'
@@ -57,6 +57,7 @@ export type ResumeEditorSheetProps = {
   readonly onChange: (nextDraft: ResumeDraft) => void
   readonly onImageUpload?: (input: { readonly file: File; readonly target: ResumeImageTarget }) => void
   readonly onMajorChange?: (majorId: number) => void
+  readonly onPortfolioUrlClick?: () => void
   readonly pageIndex: number
 }
 
@@ -111,6 +112,7 @@ export function ResumeEditorSheet({
   onChange,
   onImageUpload,
   onMajorChange,
+  onPortfolioUrlClick,
   pageIndex,
 }: ResumeEditorSheetProps) {
   const fileInputId = useId()
@@ -397,8 +399,8 @@ export function ResumeEditorSheet({
             />
           </div>
         </div>
-        <button className={styles.qrButton} type="button" aria-label="포트폴리오 URL 추가">
-          <Icon name="plus" />
+        <button className={styles.qrButton} onClick={onPortfolioUrlClick} type="button" aria-label={draft.portfolioUrl ? '포트폴리오 URL 변경' : '포트폴리오 URL 추가'}>
+          {draft.portfolioUrl ? <QrCode label="포트폴리오 QR 코드" value={draft.portfolioUrl} /> : <Icon name="plus" />}
         </button>
       </header>
 

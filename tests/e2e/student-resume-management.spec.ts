@@ -332,6 +332,39 @@ test.describe('student resume management', () => {
     await expect.poll(() => savedProjectImageUrl).toBe('https://cdn.example.test/dsm_repo/project.png')
   })
 
+  test('adds a portfolio URL as a QR code and saves the URL', async ({ page }) => {
+    let savedPortfolioUrl = ''
+
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as { portfolioUrl: string }
+      savedPortfolioUrl = requestBody.portfolioUrl
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.setViewportSize({ height: 1080, width: 1920 })
+    await page.goto('/resume?mode=edit')
+
+    await page.getByRole('button', { name: '포트폴리오 URL 추가' }).click()
+    await expect(page.getByRole('dialog', { name: '자신의 메인 url을 입력해주세요.' })).toBeVisible()
+
+    await page.getByRole('textbox', { name: '메인 URL' }).fill('github.com/mare2mare6')
+    await page.getByRole('button', { name: '확인' }).click()
+    await expect(page.getByText('http:// 또는 https://로 시작하는 URL을 입력해주세요.')).toBeVisible()
+
+    await page.getByRole('textbox', { name: '메인 URL' }).fill('https://github.com/mare2mare6')
+    await page.getByRole('button', { name: '확인' }).click()
+
+    await expect(page.getByText('URL을 QR 코드로 추가했습니다.')).toBeVisible()
+    await expect(page.getByRole('button', { name: '포트폴리오 URL 변경' }).getByRole('img', { name: '포트폴리오 QR 코드' })).toBeVisible()
+
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect.poll(() => savedPortfolioUrl).toBe('https://github.com/mare2mare6')
+    await expect(page.getByRole('link', { name: '포트폴리오 QR 코드' })).toHaveAttribute('href', 'https://github.com/mare2mare6')
+  })
+
   test('loads teacher-managed majors and updates the selected student major', async ({ page }) => {
     let updatedMajorId: number | undefined
 

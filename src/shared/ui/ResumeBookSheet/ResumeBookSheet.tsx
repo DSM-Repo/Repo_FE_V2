@@ -1,6 +1,8 @@
 import { Fragment, type ReactNode } from 'react'
 import Image from 'next/image'
 
+import { QrCode } from '@/shared/ui/QrCode'
+
 import styles from './ResumeBookSheet.module.css'
 
 export type ResumeBookSheetActivity = {
@@ -327,7 +329,13 @@ export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookShe
             {[content.headline, content.email].filter(Boolean).join(' | ')}
           </p>
         </div>
-        <div className={styles.qrCode} aria-label="포트폴리오 QR 코드" />
+        {content.portfolioUrl ? (
+          <a className={styles.qrCode} href={content.portfolioUrl} rel="noreferrer" target="_blank">
+            <QrCode label="포트폴리오 QR 코드" value={content.portfolioUrl} />
+          </a>
+        ) : (
+          <div className={styles.qrPlaceholder} aria-label="포트폴리오 QR 코드" />
+        )}
       </header>
 
       <section className={styles.introBox}>
