@@ -46,6 +46,19 @@ function buildResumeUrl(baseUrl: string, path: string) {
   return buildClientApiUrl(baseUrl, path).href
 }
 
+function toResumeMutationBody(input: ResumeSaveInput) {
+  const profileImageUrl = input.profileImageUrl?.trim()
+
+  return {
+    email: input.email,
+    introduce: input.introduce,
+    pages: input.pages,
+    portfolioUrl: input.portfolioUrl,
+    ...(profileImageUrl ? { profileImageUrl } : {}),
+    skills: input.skills,
+  }
+}
+
 async function sendResumeRequest(path: string, init: RequestInit): Promise<ResumeRequestResponse> {
   const config = getResumeApiConfig()
 
@@ -129,14 +142,7 @@ export async function postResumeSubmitCancelRequest(input: ResumeSubmissionInput
 
 export async function postResumeSaveRequest(input: ResumeSaveInput): Promise<ResumeRequestResponse> {
   return sendResumeRequest('resume/save', {
-    body: JSON.stringify({
-      email: input.email,
-      introduce: input.introduce,
-      pages: input.pages,
-      portfolioUrl: input.portfolioUrl,
-      profileImageUrl: input.profileImageUrl,
-      skills: input.skills,
-    }),
+    body: JSON.stringify(toResumeMutationBody(input)),
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
       'Content-Type': 'application/json',
@@ -147,14 +153,7 @@ export async function postResumeSaveRequest(input: ResumeSaveInput): Promise<Res
 
 export async function postResumeAutoSaveRequest(input: ResumeAutoSaveInput): Promise<ResumeRequestResponse> {
   return sendResumeRequest('resume/auto-save', {
-    body: JSON.stringify({
-      email: input.email,
-      introduce: input.introduce,
-      pages: input.pages,
-      portfolioUrl: input.portfolioUrl,
-      profileImageUrl: input.profileImageUrl,
-      skills: input.skills,
-    }),
+    body: JSON.stringify(toResumeMutationBody(input)),
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
       'Content-Type': 'application/json',
