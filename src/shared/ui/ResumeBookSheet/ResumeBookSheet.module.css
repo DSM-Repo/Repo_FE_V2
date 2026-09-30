@@ -89,12 +89,30 @@
 }
 
 .qrPlaceholder {
-  background:
-    linear-gradient(90deg, #000 50%, transparent 0) 0 0 / 9px 9px,
-    linear-gradient(#000 50%, transparent 0) 0 0 / 9px 9px,
-    linear-gradient(90deg, transparent 35%, #000 0 65%, transparent 0) 0 0 / 18px 18px,
-    var(--repo-gray-50);
-  image-rendering: pixelated;
+  position: relative;
+  border: 1px dashed var(--repo-gray-300);
+  background: var(--repo-gray-50);
+}
+
+.qrPlaceholder::before,
+.qrPlaceholder::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: var(--repo-radius-pill);
+  background: var(--repo-gray-400);
+  content: '';
+  transform: translate(-50%, -50%);
+}
+
+.qrPlaceholder::before {
+  width: 21px;
+  height: 3px;
+}
+
+.qrPlaceholder::after {
+  width: 3px;
+  height: 21px;
 }
 
 .projectImage,

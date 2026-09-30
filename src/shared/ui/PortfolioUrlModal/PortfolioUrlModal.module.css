@@ -37,6 +37,14 @@
   line-height: var(--repo-font-body-large-line-height);
 }
 
+.modal :global(input) {
+  color: var(--repo-gray-50);
+}
+
+.modal :global(input::placeholder) {
+  color: var(--repo-gray-400);
+}
+
 .actions {
   display: flex;
   gap: var(--space-5);

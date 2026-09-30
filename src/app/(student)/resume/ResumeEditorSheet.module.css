@@ -78,6 +78,11 @@
   height: var(--space-4);
 }
 
+.qrButton svg[role='img'] {
+  width: 100%;
+  height: 100%;
+}
+
 .profileImageButton img,
 .projectImageButton img {
   width: 100%;

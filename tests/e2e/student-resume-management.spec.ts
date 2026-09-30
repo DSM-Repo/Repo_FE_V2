@@ -349,6 +349,7 @@ test.describe('student resume management', () => {
 
     await page.getByRole('button', { name: '포트폴리오 URL 추가' }).click()
     await expect(page.getByRole('dialog', { name: '자신의 메인 url을 입력해주세요.' })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: '메인 URL' })).toHaveCSS('color', 'rgb(255, 255, 255)')
 
     await page.getByRole('textbox', { name: '메인 URL' }).fill('github.com/mare2mare6')
     await page.getByRole('button', { name: '확인' }).click()
@@ -358,7 +359,19 @@ test.describe('student resume management', () => {
     await page.getByRole('button', { name: '확인' }).click()
 
     await expect(page.getByText('URL을 QR 코드로 추가했습니다.')).toBeVisible()
-    await expect(page.getByRole('button', { name: '포트폴리오 URL 변경' }).getByRole('img', { name: '포트폴리오 QR 코드' })).toBeVisible()
+    const qrButton = page.getByRole('button', { name: '포트폴리오 URL 변경' })
+    const qrImage = qrButton.getByRole('img', { name: '포트폴리오 QR 코드' })
+    await expect(qrImage).toBeVisible()
+    await expect
+      .poll(async () => {
+        const [buttonBox, imageBox] = await Promise.all([qrButton.boundingBox(), qrImage.boundingBox()])
+
+        return {
+          height: imageBox && buttonBox ? Math.round(imageBox.height / buttonBox.height) : 0,
+          width: imageBox && buttonBox ? Math.round(imageBox.width / buttonBox.width) : 0,
+        }
+      })
+      .toEqual({ height: 1, width: 1 })
 
     await page.getByRole('button', { exact: true, name: '저장' }).click()
     await expect.poll(() => savedPortfolioUrl).toBe('https://github.com/mare2mare6')
