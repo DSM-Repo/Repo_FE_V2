@@ -19,6 +19,7 @@ import {
   getSavedResumeId,
   saveResume,
   saveResumeId,
+  uploadResumeImage,
   type Resume,
   type ResumeDetailResult,
   type ResumePage,
@@ -33,6 +34,7 @@ import {
   getDepartmentFromSchoolNumber,
   ResumeEditorSheet,
   type ResumeDraft,
+  type ResumeImageTarget,
   type ResumeDraftPage,
   type ResumeDraftProject,
 } from './ResumeEditorSheet'
@@ -58,6 +60,7 @@ const defaultResumeDraft = {
     { content: '', index: 1, project: { endDate: '', imageUrl: '', name: '', startDate: '', summary: '' }, type: 'PROJECT' },
   ],
   portfolioUrl: '',
+  profileImageUrl: '',
   schoolNumber: '',
   skills: [],
 } satisfies ResumeDraft
@@ -94,6 +97,9 @@ type MajorLoadState =
   | { readonly kind: 'success' }
   | { readonly kind: 'failure'; readonly message: string }
 type MajorSubmitState = 'idle' | 'pending'
+type ImageUploadState =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'uploading'; readonly target: ResumeImageTarget }
 type FeedbackLoadState =
   | { readonly kind: 'idle' }
   | { readonly kind: 'loading' }
@@ -179,6 +185,7 @@ function toSheetContent(draft: ResumeDraft, pageIndex: number): ResumeBookSheetC
     name: draft.name,
     pageContent: page?.content,
     portfolioUrl: draft.portfolioUrl,
+    profileImageUrl: draft.profileImageUrl,
     ...(sheetProject ? { project: sheetProject } : {}),
     projects: project?.name ? [project.name] : [],
     skills: page?.type === 'PROFILE' ? draft.skills : [],
@@ -198,6 +205,7 @@ function toResumeDraft(resume: Resume): ResumeDraft {
     name: resume.name,
     pages: pages.length > 0 ? pages : defaultResumeDraft.pages,
     portfolioUrl: resume.portfolioUrl,
+    profileImageUrl: resume.profileImageUrl,
     skills: resume.skills,
   }
 }
@@ -270,7 +278,7 @@ function toSavedDraftResume(input: {
     name: input.draft.name,
     pages: input.pages,
     portfolioUrl: input.draft.portfolioUrl,
-    profileImageUrl: '',
+    profileImageUrl: input.draft.profileImageUrl,
     savedAt: input.savedAt,
     skills: input.draft.skills,
     submissionStatus: 'ONGOING',
@@ -338,6 +346,7 @@ export function StudentResumePageContent() {
   const [userLoadState, setUserLoadState] = useState<UserLoadState>({ kind: 'loading' })
   const [majorLoadState, setMajorLoadState] = useState<MajorLoadState>({ kind: 'loading' })
   const [majorSubmitState, setMajorSubmitState] = useState<MajorSubmitState>('idle')
+  const [imageUploadState, setImageUploadState] = useState<ImageUploadState>({ kind: 'idle' })
   const [majors, setMajors] = useState<readonly Major[]>([])
   const [isDraftDirty, setIsDraftDirty] = useState(false)
   const [feedbackLoadState, setFeedbackLoadState] = useState<FeedbackLoadState>({ kind: 'idle' })
@@ -481,7 +490,8 @@ export function StudentResumePageContent() {
   }, [loadResume, requestedResumeId])
 
   const resume = loadState.kind === 'success' ? loadState.resume : undefined
-  const isResumeActionPending = saveSubmitState !== 'idle' || majorSubmitState === 'pending'
+  const isImageUploading = imageUploadState.kind === 'uploading'
+  const isResumeActionPending = saveSubmitState !== 'idle' || majorSubmitState === 'pending' || isImageUploading
   const isEditing = viewMode === 'edit' || viewMode === 'feedback'
   const visiblePageIndexes = [spreadStartIndex, spreadStartIndex + 1].filter((index) => index < draft.pages.length)
   const canMovePrevious = spreadStartIndex > 0
@@ -701,6 +711,55 @@ export function StudentResumePageContent() {
     handleDraftChange({ ...draft, pages: [...draft.pages, nextPage] })
   }, [draft, handleDraftChange])
 
+  const handleImageUpload = useCallback(
+    async ({ file, target }: { readonly file: File; readonly target: ResumeImageTarget }) => {
+      if (imageUploadState.kind !== 'idle') {
+        return
+      }
+
+      const accessToken = getSavedAccessToken()
+
+      if (!accessToken) {
+        setActionFeedback({ message: '로그인 후 이미지를 업로드할 수 있습니다.', tone: 'error' })
+        return
+      }
+
+      setActionFeedback(undefined)
+      setImageUploadState({ kind: 'uploading', target })
+
+      const result = await uploadResumeImage({ accessToken, image: file })
+
+      setImageUploadState({ kind: 'idle' })
+
+      if (result.kind !== 'success') {
+        setActionFeedback({ message: result.message, tone: 'error' })
+        return
+      }
+
+      const nextDraft =
+        target === 'profile'
+          ? { ...draft, profileImageUrl: result.imageUrl }
+          : {
+              ...draft,
+              pages: draft.pages.map((page, index) =>
+                index === target.pageIndex
+                  ? {
+                      ...page,
+                      project: {
+                        ...(page.project ?? { endDate: '', imageUrl: '', name: '', startDate: '', summary: '' }),
+                        imageUrl: result.imageUrl,
+                      },
+                    }
+                  : page,
+              ),
+            }
+
+      handleDraftChange(nextDraft)
+      setActionFeedback({ message: '이미지를 업로드했습니다.', tone: 'success' })
+    },
+    [draft, handleDraftChange, imageUploadState.kind],
+  )
+
   const handleMajorChange = useCallback(
     async (majorId: number) => {
       if (majorSubmitState === 'pending') {
@@ -777,6 +836,7 @@ export function StudentResumePageContent() {
         introduce: joinIntroduction(draft),
         pages: savePages,
         portfolioUrl: draft.portfolioUrl,
+        profileImageUrl: draft.profileImageUrl,
         skills: draft.skills,
       }
       const result = mode === 'manual' ? await saveResume(saveInput) : await autoSaveResume(saveInput)
@@ -827,6 +887,7 @@ export function StudentResumePageContent() {
             introduce: joinIntroduction(draft),
             pages,
             portfolioUrl: draft.portfolioUrl,
+            profileImageUrl: draft.profileImageUrl,
             savedAt: result.savedAt,
             skills: draft.skills,
           },
@@ -930,11 +991,14 @@ export function StudentResumePageContent() {
                   <ResumeEditorSheet
                     className={styles.documentSheet}
                     draft={draft}
+                    imageUploadTarget={imageUploadState.kind === 'uploading' ? imageUploadState.target : undefined}
                     isMajorLoading={majorLoadState.kind === 'loading'}
                     isMajorPending={majorSubmitState === 'pending'}
+                    isUploadingImage={isImageUploading}
                     key={draft.pages[pageIndex]?.index ?? pageIndex}
                     majors={majors}
                     onChange={handleDraftChange}
+                    onImageUpload={handleImageUpload}
                     onMajorChange={(majorId) => void handleMajorChange(majorId)}
                     pageIndex={pageIndex}
                   />

@@ -27,6 +27,7 @@ export type ResumeBookSheetContent = {
   readonly name: string
   readonly pageContent?: string
   readonly portfolioUrl?: string
+  readonly profileImageUrl?: string
   readonly project?: ResumeBookSheetProject
   readonly projects: readonly string[]
   readonly skills: readonly string[]
@@ -258,6 +259,7 @@ export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookShe
   const sheetClassName = [styles.sheet, className].filter(Boolean).join(' ')
   const label = ariaLabel ?? `${content.name} 포트폴리오`
   const project = content.project
+  const profileImageUrl = toSafeImageSrc(content.profileImageUrl ?? '')
 
   if (project) {
     const projectPeriod = [project.startDate, project.endDate].filter(Boolean).join(' ~ ')
@@ -302,7 +304,18 @@ export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookShe
   return (
     <article className={sheetClassName} aria-label={label}>
       <header className={styles.sheetHeader}>
-        <div className={styles.profileImage} aria-label="프로필 이미지" />
+        {profileImageUrl ? (
+          <Image
+            className={styles.profileImage}
+            src={profileImageUrl}
+            alt={`${content.name || '학생'} 프로필 이미지`}
+            width={47}
+            height={47}
+            unoptimized
+          />
+        ) : (
+          <div className={styles.profileImage} aria-label="프로필 이미지" />
+        )}
         <div className={styles.identity}>
           <div className={styles.nameRow}>
             <h2 className={styles.name}>{content.name}</h2>

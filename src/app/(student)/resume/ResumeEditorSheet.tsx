@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
+import { useId, useRef, useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent } from 'react'
 
 import type { Major } from '@/features/major/api'
 import type { ResumePageType } from '@/features/resume/api'
@@ -39,17 +39,23 @@ export type ResumeDraft = {
   readonly name: string
   readonly pages: readonly ResumeDraftPage[]
   readonly portfolioUrl: string
+  readonly profileImageUrl: string
   readonly schoolNumber: string
   readonly skills: readonly string[]
 }
 
+export type ResumeImageTarget = 'profile' | { readonly pageIndex: number; readonly type: 'project' }
+
 export type ResumeEditorSheetProps = {
   readonly className?: string
   readonly draft: ResumeDraft
+  readonly imageUploadTarget?: ResumeImageTarget
   readonly isMajorLoading?: boolean
   readonly isMajorPending?: boolean
+  readonly isUploadingImage?: boolean
   readonly majors?: readonly Major[]
   readonly onChange: (nextDraft: ResumeDraft) => void
+  readonly onImageUpload?: (input: { readonly file: File; readonly target: ResumeImageTarget }) => void
   readonly onMajorChange?: (majorId: number) => void
   readonly pageIndex: number
 }
@@ -97,14 +103,20 @@ function toStudentMeta(schoolNumber: string) {
 export function ResumeEditorSheet({
   className,
   draft,
+  imageUploadTarget,
   isMajorLoading = false,
   isMajorPending = false,
+  isUploadingImage = false,
   majors = [],
   onChange,
+  onImageUpload,
   onMajorChange,
   pageIndex,
 }: ResumeEditorSheetProps) {
+  const fileInputId = useId()
   const [skillInput, setSkillInput] = useState('')
+  const profileImageInputRef = useRef<HTMLInputElement>(null)
+  const projectImageInputRef = useRef<HTMLInputElement>(null)
   const introBodyRef = useRef<HTMLTextAreaElement>(null)
   const isSkillComposingRef = useRef(false)
   const sheetClassName = [styles.sheet, className].filter(Boolean).join(' ')
@@ -127,6 +139,29 @@ export function ResumeEditorSheet({
 
   const updateProject = (patch: Partial<ResumeDraftProject>) => {
     updatePage({ project: { ...(page.project ?? emptyProject), ...patch } })
+  }
+
+  const isUploadingTarget = (target: ResumeImageTarget) => {
+    if (!isUploadingImage || !imageUploadTarget) {
+      return false
+    }
+
+    if (target === 'profile' || imageUploadTarget === 'profile') {
+      return target === imageUploadTarget
+    }
+
+    return imageUploadTarget.type === 'project' && target.type === 'project' && imageUploadTarget.pageIndex === target.pageIndex
+  }
+
+  const handleImageFileChange = (event: ChangeEvent<HTMLInputElement>, target: ResumeImageTarget) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    onImageUpload?.({ file, target })
   }
 
   const addSkill = () => {
@@ -184,12 +219,35 @@ export function ResumeEditorSheet({
 
   if (page.type === 'PROJECT') {
     const project = page.project ?? emptyProject
+    const isProjectImageUploading = isUploadingTarget({ pageIndex, type: 'project' })
 
     return (
       <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
         <header className={styles.projectHeader}>
-          <button className={styles.projectImageButton} type="button" aria-label="프로젝트 이미지 추가">
-            <Icon name="plus" />
+          <input
+            accept="image/jpeg,image/png,image/webp"
+            className={styles.fileInput}
+            id={`${fileInputId}-project-image`}
+            onChange={(event) => handleImageFileChange(event, { pageIndex, type: 'project' })}
+            ref={projectImageInputRef}
+            type="file"
+          />
+          <button
+            aria-busy={isProjectImageUploading}
+            className={styles.projectImageButton}
+            disabled={isProjectImageUploading || !onImageUpload}
+            onClick={() => projectImageInputRef.current?.click()}
+            type="button"
+            aria-label={project.imageUrl ? '프로젝트 이미지 변경' : '프로젝트 이미지 추가'}
+          >
+            {project.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- The uploaded URL is provided by the API and may be outside configured Next image hosts.
+              <img src={project.imageUrl} alt="" />
+            ) : isProjectImageUploading ? (
+              <span>업로드</span>
+            ) : (
+              <Icon name="plus" />
+            )}
           </button>
           <div className={styles.projectIdentity}>
             <label className={styles.srOnly} htmlFor={`resume-project-name-${page.index}`}>
@@ -260,8 +318,30 @@ export function ResumeEditorSheet({
   return (
     <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
       <header className={styles.profileHeader}>
-        <button className={styles.profileImageButton} type="button" aria-label="프로필 이미지 추가">
-          <Icon name="plus" />
+        <input
+          accept="image/jpeg,image/png,image/webp"
+          className={styles.fileInput}
+          id={`${fileInputId}-profile-image`}
+          onChange={(event) => handleImageFileChange(event, 'profile')}
+          ref={profileImageInputRef}
+          type="file"
+        />
+        <button
+          aria-busy={isUploadingTarget('profile')}
+          className={styles.profileImageButton}
+          disabled={isUploadingTarget('profile') || !onImageUpload}
+          onClick={() => profileImageInputRef.current?.click()}
+          type="button"
+          aria-label={draft.profileImageUrl ? '프로필 이미지 변경' : '프로필 이미지 추가'}
+        >
+          {draft.profileImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- The uploaded URL is provided by the API and may be outside configured Next image hosts.
+            <img src={draft.profileImageUrl} alt="" />
+          ) : isUploadingTarget('profile') ? (
+            <span>업로드</span>
+          ) : (
+            <Icon name="plus" />
+          )}
         </button>
         <div className={styles.identity}>
           <div className={styles.nameRow}>

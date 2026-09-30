@@ -44,16 +44,31 @@
   background: var(--repo-gray-50);
 }
 
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .profileImageButton {
   width: var(--resume-book-sheet-avatar-size, 56px);
   height: var(--resume-book-sheet-avatar-size, 56px);
   border-radius: var(--repo-radius-pill);
+  overflow: hidden;
 }
 
 .projectImageButton,
 .qrButton {
   width: var(--resume-book-sheet-qr-size, 56px);
   height: var(--resume-book-sheet-qr-size, 56px);
+  overflow: hidden;
 }
 
 .profileImageButton svg,
@@ -61,6 +76,26 @@
 .qrButton svg {
   width: var(--space-4);
   height: var(--space-4);
+}
+
+.profileImageButton img,
+.projectImageButton img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profileImageButton span,
+.projectImageButton span {
+  font-size: var(--repo-font-body-very-tiny-size);
+  font-weight: var(--repo-font-body-very-tiny-weight);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+}
+
+.profileImageButton:disabled,
+.projectImageButton:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .identity,

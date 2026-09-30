@@ -283,6 +283,55 @@ test.describe('student resume management', () => {
     await expect.poll(() => savedSkills).toEqual(['React', 'TypeScript', '안녕'])
   })
 
+  test('uploads a project image and saves the returned image url', async ({ page }) => {
+    let imageUploadRequested = false
+    let imageUploadContentType = ''
+    let savedProjectImageUrl = ''
+
+    await page.route(`${apiBaseUrl}/image`, async (route) => {
+      imageUploadRequested = true
+      imageUploadContentType = route.request().headers()['content-type'] ?? ''
+      await route.fulfill({
+        body: JSON.stringify({
+          imageUrl: 'https://cdn.example.test/dsm_repo/project.png',
+          key: 'dsm_repo/project.png',
+        }),
+        contentType: 'application/json',
+        status: 201,
+      })
+    })
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as {
+        pages: Array<{ project?: { imageUrl?: string } }>
+      }
+      savedProjectImageUrl = requestBody.pages[1]?.project?.imageUrl ?? ''
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.setViewportSize({ height: 1080, width: 1920 })
+    await page.goto('/resume?mode=edit')
+
+    const fileChooserPromise = page.waitForEvent('filechooser')
+    await page.getByRole('button', { name: '프로젝트 이미지 추가' }).click()
+    const fileChooser = await fileChooserPromise
+    await fileChooser.setFiles({
+      buffer: Buffer.from('fake png bytes'),
+      mimeType: 'image/png',
+      name: 'project.png',
+    })
+
+    await expect.poll(() => imageUploadRequested).toBe(true)
+    expect(imageUploadContentType).toContain('multipart/form-data')
+    await expect(page.getByRole('button', { name: '프로젝트 이미지 변경' })).toBeVisible()
+
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+
+    await expect.poll(() => savedProjectImageUrl).toBe('https://cdn.example.test/dsm_repo/project.png')
+  })
+
   test('loads teacher-managed majors and updates the selected student major', async ({ page }) => {
     let updatedMajorId: number | undefined
 
