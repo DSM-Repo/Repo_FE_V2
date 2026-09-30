@@ -86,6 +86,7 @@
   display: block;
   color: var(--repo-text-black);
   background: var(--repo-gray-50);
+  outline: 0;
 }
 
 .qrPlaceholder {

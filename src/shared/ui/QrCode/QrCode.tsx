@@ -14,7 +14,7 @@ export function QrCode({ label, value }: QrCodeProps) {
     return null
   }
 
-  const quietZone = 4
+  const quietZone = 0
   const viewBoxSize = qrCode.size + quietZone * 2
 
   return (

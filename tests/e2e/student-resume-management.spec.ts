@@ -362,6 +362,7 @@ test.describe('student resume management', () => {
     const qrButton = page.getByRole('button', { name: '포트폴리오 URL 변경' })
     const qrImage = qrButton.getByRole('img', { name: '포트폴리오 QR 코드' })
     await expect(qrImage).toBeVisible()
+    await expect(qrButton).toHaveCSS('border-top-width', '0px')
     await expect
       .poll(async () => {
         const [buttonBox, imageBox] = await Promise.all([qrButton.boundingBox(), qrImage.boundingBox()])

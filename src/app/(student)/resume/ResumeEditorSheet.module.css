@@ -71,6 +71,10 @@
   overflow: hidden;
 }
 
+.qrButtonFilled {
+  border: 0;
+}
+
 .profileImageButton svg,
 .projectImageButton svg,
 .qrButton svg {

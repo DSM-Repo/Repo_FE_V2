@@ -124,6 +124,7 @@ export function ResumeEditorSheet({
   const sheetClassName = [styles.sheet, className].filter(Boolean).join(' ')
   const selectedMajor = majors.find((major) => major.name === draft.headline)
   const page = draft.pages[pageIndex]
+  const hasPortfolioUrl = Boolean(draft.portfolioUrl)
 
   if (!page) {
     return null
@@ -399,8 +400,13 @@ export function ResumeEditorSheet({
             />
           </div>
         </div>
-        <button className={styles.qrButton} onClick={onPortfolioUrlClick} type="button" aria-label={draft.portfolioUrl ? '포트폴리오 URL 변경' : '포트폴리오 URL 추가'}>
-          {draft.portfolioUrl ? <QrCode label="포트폴리오 QR 코드" value={draft.portfolioUrl} /> : <Icon name="plus" />}
+        <button
+          className={[styles.qrButton, hasPortfolioUrl ? styles.qrButtonFilled : undefined].filter(Boolean).join(' ')}
+          onClick={onPortfolioUrlClick}
+          type="button"
+          aria-label={hasPortfolioUrl ? '포트폴리오 URL 변경' : '포트폴리오 URL 추가'}
+        >
+          {hasPortfolioUrl ? <QrCode label="포트폴리오 QR 코드" value={draft.portfolioUrl} /> : <Icon name="plus" />}
         </button>
       </header>
 
