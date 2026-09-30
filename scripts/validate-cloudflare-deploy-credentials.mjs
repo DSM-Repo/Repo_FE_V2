@@ -66,11 +66,15 @@ if (!apiToken) {
   fail('Missing CLOUDFLARE_API_TOKEN GitHub secret.')
 }
 
-const tokenCheck = await requestCloudflare('/user/tokens/verify')
+const accountCheck = await requestCloudflare(`/accounts/${encodeURIComponent(accountId)}`)
 
-if (!tokenCheck.response.ok || tokenCheck.body?.success !== true) {
+if (!accountCheck.response.ok || accountCheck.body?.success !== true) {
   fail(
-    `CLOUDFLARE_API_TOKEN is not a valid active Cloudflare API token. ${getCloudflareErrorMessage(tokenCheck.body)}`,
+    [
+      `CLOUDFLARE_API_TOKEN cannot access account ${accountId}.`,
+      getCloudflareErrorMessage(accountCheck.body),
+      'Create a token from the "Edit Cloudflare Workers" template scoped to this account, then update the GitHub CLOUDFLARE_API_TOKEN secret.',
+    ].join(' '),
   )
 }
 
