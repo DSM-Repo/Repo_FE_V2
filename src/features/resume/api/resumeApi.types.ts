@@ -63,10 +63,16 @@ export type ResumeSaveInput = {
   readonly introduce: string
   readonly pages: readonly ResumeSavePage[]
   readonly portfolioUrl: string
+  readonly profileImageUrl?: string
   readonly skills: readonly string[]
 }
 
 export type ResumeAutoSaveInput = ResumeSaveInput
+
+export type ResumeImageUploadInput = {
+  readonly accessToken: string
+  readonly image: File
+}
 
 export type ResumeSubmissionInput = {
   readonly accessToken: string
@@ -94,6 +100,11 @@ export type ResumeSave = {
 
 export type ResumeAutoSave = ResumeSave & {
   readonly autoSaved: boolean
+}
+
+export type ResumeImageUpload = {
+  readonly imageUrl: string
+  readonly key: string
 }
 
 export type ResumeSubmissionStatus = 'DELETED' | 'ONGOING' | 'RELEASED' | 'SUBMITTED'
@@ -170,5 +181,14 @@ export type ResumeAutoSaveResult =
     } & ResumeAutoSave)
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type ResumeImageUploadResult =
+  | ({
+      readonly kind: 'success'
+    } & ResumeImageUpload)
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error' | 'validation-error'
       readonly message: string
     }

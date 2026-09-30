@@ -6,6 +6,7 @@ export {
   saveResume,
   submitResume,
   updateResumeVisibility,
+  uploadResumeImage,
 } from './resumeApi'
 export { clearSavedResumeId, getSavedResumeId, saveResumeId } from './resumeIdStorage'
 export type {
@@ -15,6 +16,9 @@ export type {
   ResumeAutoSaveResult,
   ResumeDetailInput,
   ResumeDetailResult,
+  ResumeImageUpload,
+  ResumeImageUploadInput,
+  ResumeImageUploadResult,
   ResumePage,
   ResumePageType,
   ResumeProject,

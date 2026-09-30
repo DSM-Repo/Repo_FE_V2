@@ -123,7 +123,7 @@
 ### 현재 API 연동 상태
 
 - 알림 목록, 읽음 처리, 삭제 API는 학생 홈에 연동되어 있다.
-- `POST /image`는 Swagger에 있으나 request body가 `application/json` + `binary`로 표시되어 브라우저 업로드 계약이 불명확하다. 서버에서 `multipart/form-data` 여부, 필드명, 허용 파일 타입, 용량 제한을 확인하기 전까지 프론트 연동은 보류한다.
+- `POST /image`는 `multipart/form-data`의 `image` 파일 필드로 연동한다. 허용 MIME 타입은 `image/jpeg`, `image/png`, `image/webp`이며 파일당 최대 50MB, 전체 요청 최대 55MB를 기준으로 한다. 브라우저가 boundary를 자동 생성해야 하므로 프론트는 `Content-Type` 헤더를 직접 지정하지 않는다.
 - PDF 변환은 서버 책임으로 두고, 서버 작업 완료 후 클라이언트 통신 계약을 확정한다.
 
 ## Open Questions

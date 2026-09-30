@@ -7,6 +7,9 @@ import type {
   ResumeAutoSaveResult,
   ResumeDetailInput,
   ResumeDetailResult,
+  ResumeImageUpload,
+  ResumeImageUploadInput,
+  ResumeImageUploadResult,
   ResumePage,
   ResumePageType,
   ResumeProject,
@@ -29,6 +32,7 @@ import {
   getResumeStudentStatusesRequest,
   patchResumeVisibilityRequest,
   postResumeAutoSaveRequest,
+  postResumeImageRequest,
   postResumeSaveRequest,
   postResumeSubmitCancelRequest,
   postResumeSubmitRequest,
@@ -60,6 +64,10 @@ const INVALID_AUTO_SAVE_RESPONSE = {
   kind: 'server-error',
   message: '이력서 자동 저장 응답 형식이 올바르지 않습니다.',
 } as const satisfies ResumeAutoSaveResult
+const INVALID_IMAGE_UPLOAD_RESPONSE = {
+  kind: 'server-error',
+  message: '이미지 업로드 응답 형식이 올바르지 않습니다.',
+} as const satisfies ResumeImageUploadResult
 const INVALID_STUDENT_STATUS_RESPONSE = {
   kind: 'server-error',
   message: '학생 이력서 제출 현황 응답 형식이 올바르지 않습니다.',
@@ -81,6 +89,30 @@ function isResumePageType(value: unknown): value is ResumePageType {
 
 function isOptionalString(value: unknown): value is string | null | undefined {
   return value === undefined || value === null || typeof value === 'string'
+}
+
+function normalizeHttpImageUrl(value: string) {
+  const trimmedValue = value.trim()
+
+  if (!trimmedValue) {
+    return ''
+  }
+
+  try {
+    const url = trimmedValue.startsWith('//') ? new URL(`https:${trimmedValue}`) : new URL(trimmedValue)
+
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return url.href
+    }
+  } catch (error) {
+    if (error instanceof TypeError) {
+      return ''
+    }
+
+    throw error
+  }
+
+  return ''
 }
 
 function inferResumePageType(index: number): ResumePageType {
@@ -109,7 +141,7 @@ function parseResumeProject(value: unknown): ResumeProject | undefined {
 
   return {
     endDate: typeof value['endDate'] === 'string' ? value['endDate'] : '',
-    imageUrl: typeof value['imageUrl'] === 'string' ? value['imageUrl'] : '',
+    imageUrl: typeof value['imageUrl'] === 'string' ? normalizeHttpImageUrl(value['imageUrl']) : '',
     name: typeof value['name'] === 'string' ? value['name'] : '',
     startDate: typeof value['startDate'] === 'string' ? value['startDate'] : '',
     summary: typeof value['summary'] === 'string' ? value['summary'] : '',
@@ -204,7 +236,7 @@ function parseResume(value: unknown): Resume | undefined {
     name: typeof value['name'] === 'string' ? value['name'] : '',
     pages,
     portfolioUrl: typeof value['portfolioUrl'] === 'string' ? value['portfolioUrl'] : '',
-    profileImageUrl: typeof value['profileImageUrl'] === 'string' ? value['profileImageUrl'] : '',
+    profileImageUrl: typeof value['profileImageUrl'] === 'string' ? normalizeHttpImageUrl(value['profileImageUrl']) : '',
     savedAt: typeof value['savedAt'] === 'string' ? value['savedAt'] : '',
     skills,
     submissionStatus: typeof value['submissionStatus'] === 'string' ? value['submissionStatus'] : 'ONGOING',
@@ -254,6 +286,23 @@ function parseResumeAutoSave(value: unknown): ResumeAutoSave | undefined {
     autoSaved: value['autoSaved'],
     resumeId: savedResume.resumeId,
     savedAt: savedResume.savedAt,
+  }
+}
+
+function parseResumeImageUpload(value: unknown): ResumeImageUpload | undefined {
+  if (!isJsonRecord(value) || typeof value['imageUrl'] !== 'string' || typeof value['key'] !== 'string') {
+    return undefined
+  }
+
+  const imageUrl = normalizeHttpImageUrl(value['imageUrl'])
+
+  if (!imageUrl) {
+    return undefined
+  }
+
+  return {
+    imageUrl,
+    key: value['key'],
   }
 }
 
@@ -448,6 +497,30 @@ async function readAutoSaveResponseBody(response: ResumeHttpResponse): Promise<R
     kind: 'success',
     resumeId: autoSavedResume.resumeId,
     savedAt: autoSavedResume.savedAt,
+  }
+}
+
+async function readImageUploadResponseBody(response: ResumeHttpResponse): Promise<ResumeImageUploadResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.value.json()
+  } catch (error) {
+    return toResponseBodyReadFailure(error, INVALID_IMAGE_UPLOAD_RESPONSE)
+  } finally {
+    response.complete()
+  }
+
+  const uploadedImage = parseResumeImageUpload(responseBody)
+
+  if (!uploadedImage) {
+    return INVALID_IMAGE_UPLOAD_RESPONSE
+  }
+
+  return {
+    imageUrl: uploadedImage.imageUrl,
+    key: uploadedImage.key,
+    kind: 'success',
   }
 }
 
@@ -682,5 +755,59 @@ export async function autoSaveResume(input: ResumeAutoSaveInput): Promise<Resume
   return {
     kind: 'server-error',
     message: '이력서 자동 저장 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function uploadResumeImage(input: ResumeImageUploadInput): Promise<ResumeImageUploadResult> {
+  if (input.image.size === 0) {
+    return {
+      kind: 'validation-error',
+      message: '업로드할 이미지가 없습니다.',
+    }
+  }
+
+  if (input.image.size > 50 * 1024 * 1024) {
+    return {
+      kind: 'validation-error',
+      message: '이미지는 50MB 이하만 업로드할 수 있습니다.',
+    }
+  }
+
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(input.image.type)) {
+    return {
+      kind: 'validation-error',
+      message: 'JPEG, PNG, WebP 이미지만 업로드할 수 있습니다.',
+    }
+  }
+
+  const response = await postResumeImageRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readImageUploadResponseBody(response)
+  }
+
+  response.complete()
+
+  if (response.value.status === 400) {
+    return {
+      kind: 'validation-error',
+      message: '이미지 파일을 확인해주세요.',
+    }
+  }
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '이미지를 업로드할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '이미지 업로드에 실패했습니다.',
   }
 }

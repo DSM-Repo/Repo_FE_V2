@@ -551,6 +551,7 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
     introduce: '사용자 소개',
     pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
     portfolioUrl: 'https://repo.example.test/hong',
+    profileImageUrl: 'https://cdn.example.test/profile.png',
     skills: ['React', 'TypeScript'],
   })
 
@@ -565,6 +566,7 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
       introduce: '사용자 소개',
       pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
       portfolioUrl: 'https://repo.example.test/hong',
+      profileImageUrl: 'https://cdn.example.test/profile.png',
       skills: ['React', 'TypeScript'],
     }),
   )
@@ -572,6 +574,81 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
     kind: 'success',
     resumeId: 'resume-id',
     savedAt: '2026-09-10T14:03:35.469Z',
+  })
+})
+
+test('uploadResumeImage sends multipart form data with bearer auth and returns uploaded image url', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+  let requestedContentType: string | null = ''
+  let requestedImage: unknown
+
+  globalThis.fetch = async (input, init) => {
+    const headers = new Headers(init?.headers)
+    const body = init?.body
+
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = headers.get('Authorization') ?? ''
+    requestedContentType = headers.get('Content-Type')
+    requestedImage = body instanceof FormData ? body.get('image') : null
+
+    return new Response(
+      JSON.stringify({
+        imageUrl: 'https://cdn.example.test/dsm_repo/profile.png',
+        key: 'dsm_repo/profile.png',
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 201,
+      },
+    )
+  }
+
+  const result = await resumeApi.uploadResumeImage({
+    accessToken: 'access-token',
+    image: new File(['image-bytes'], 'profile.png', { type: 'image/png' }),
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/image')
+  assert.equal(requestedMethod, 'POST')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.equal(requestedContentType, null)
+  assert.ok(requestedImage instanceof File)
+  assert.equal(requestedImage.name, 'profile.png')
+  assert.deepEqual(result, {
+    imageUrl: 'https://cdn.example.test/dsm_repo/profile.png',
+    key: 'dsm_repo/profile.png',
+    kind: 'success',
+  })
+})
+
+test('uploadResumeImage rejects uploaded image responses without an accessible image url', async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        imageUrl: '4514af56-7086-4600-8257-af4a817e6.png',
+        key: 'dsm_repo/4514af56-7086-4600-8257-af4a817e6.png',
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 201,
+      },
+    )
+
+  const result = await resumeApi.uploadResumeImage({
+    accessToken: 'access-token',
+    image: new File(['image-bytes'], 'profile.png', { type: 'image/png' }),
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '이미지 업로드 응답 형식이 올바르지 않습니다.',
   })
 })
 

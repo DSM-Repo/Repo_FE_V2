@@ -3,6 +3,7 @@
 import type {
   ResumeAutoSaveInput,
   ResumeDetailInput,
+  ResumeImageUploadInput,
   ResumeSaveInput,
   ResumeStudentStatusListInput,
   ResumeSubmissionInput,
@@ -133,6 +134,7 @@ export async function postResumeSaveRequest(input: ResumeSaveInput): Promise<Res
       introduce: input.introduce,
       pages: input.pages,
       portfolioUrl: input.portfolioUrl,
+      profileImageUrl: input.profileImageUrl,
       skills: input.skills,
     }),
     headers: {
@@ -150,11 +152,25 @@ export async function postResumeAutoSaveRequest(input: ResumeAutoSaveInput): Pro
       introduce: input.introduce,
       pages: input.pages,
       portfolioUrl: input.portfolioUrl,
+      profileImageUrl: input.profileImageUrl,
       skills: input.skills,
     }),
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
       'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  })
+}
+
+export async function postResumeImageRequest(input: ResumeImageUploadInput): Promise<ResumeRequestResponse> {
+  const formData = new FormData()
+  formData.append('image', input.image)
+
+  return sendResumeRequest('image', {
+    body: formData,
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
     },
     method: 'POST',
   })
