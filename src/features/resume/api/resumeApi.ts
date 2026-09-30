@@ -266,7 +266,7 @@ function parseResumeStudentStatus(value: unknown): ResumeStudentStatus | undefin
     !isJsonRecord(value) ||
     typeof value['classNumber'] !== 'number' ||
     typeof value['grade'] !== 'number' ||
-    typeof value['majorName'] !== 'string' ||
+    !isOptionalString(value['majorName']) ||
     typeof value['name'] !== 'string' ||
     typeof value['number'] !== 'number' ||
     typeof value['schoolNumber'] !== 'string' ||
@@ -291,7 +291,7 @@ function parseResumeStudentStatus(value: unknown): ResumeStudentStatus | undefin
   return {
     classNumber: value['classNumber'],
     grade: value['grade'],
-    majorName: value['majorName'],
+    majorName: typeof value['majorName'] === 'string' ? value['majorName'] : '',
     name: value['name'],
     number: value['number'],
     ...(typeof resumeId === 'string' ? { resumeId } : {}),

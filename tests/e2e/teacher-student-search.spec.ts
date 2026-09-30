@@ -12,6 +12,8 @@ test.beforeEach(async ({ page }) => {
 
     await route.fulfill({
       body: JSON.stringify({
+        classNumber: null,
+        grade: null,
         lastUpdatedAt: '2026-09-20T09:30:00.000Z',
         numberOfData: 2,
         schoolYear: 2026,
@@ -32,7 +34,7 @@ test.beforeEach(async ({ page }) => {
           {
             classNumber: 1,
             grade: 1,
-            majorName: '백엔드',
+            majorName: null,
             name: '이작성',
             number: 2,
             schoolNumber: '1102',

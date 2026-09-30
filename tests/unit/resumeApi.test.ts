@@ -80,7 +80,7 @@ test('getStudentResumeStatuses sends class filters and returns parsed submission
           {
             classNumber: 2,
             grade: 1,
-            majorName: '',
+            majorName: null,
             name: '이학생',
             number: 2,
             resumeId: null,
