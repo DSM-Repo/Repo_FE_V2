@@ -207,6 +207,67 @@ test('getResumeById sends the resume id with bearer auth and returns parsed resu
   })
 })
 
+test('getStudentResumeById sends the student id with bearer auth and returns parsed resume data', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+
+    return new Response(
+      JSON.stringify({
+        email: 'student@dsm.hs.kr',
+        id: 'resume-before-submit',
+        introduce: '제출 전 이력서',
+        isPublic: false,
+        majorName: 'Backend Developer',
+        name: '김학생',
+        pages: [{ content: '작성 중인 본문', id: 'page-1', index: 0, type: 'PROFILE' }],
+        portfolioUrl: '',
+        profileImageUrl: '',
+        savedAt: '2026-09-30T12:00:00.000Z',
+        skills: ['TypeScript'],
+        submissionStatus: 'ONGOING',
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+  }
+
+  const result = await resumeApi.getStudentResumeById({
+    accessToken: 'teacher-access-token',
+    studentId: 11,
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/resume/students/11')
+  assert.equal(requestedMethod, 'GET')
+  assert.equal(requestedAuthorization, 'Bearer teacher-access-token')
+  assert.deepEqual(result, {
+    kind: 'success',
+    resume: {
+      email: 'student@dsm.hs.kr',
+      id: 'resume-before-submit',
+      introduce: '제출 전 이력서',
+      isPublic: false,
+      majorName: 'Backend Developer',
+      name: '김학생',
+      pages: [{ content: '작성 중인 본문', id: 'page-1', index: 0, type: 'PROFILE' }],
+      portfolioUrl: '',
+      profileImageUrl: '',
+      savedAt: '2026-09-30T12:00:00.000Z',
+      skills: ['TypeScript'],
+      submissionStatus: 'ONGOING',
+    },
+  })
+})
+
 test('getResumeById accepts nullable optional resume fields from the server contract', async () => {
   globalThis.fetch = async () =>
     new Response(
@@ -383,7 +444,7 @@ test('getResumeById returns network-error when the response body stream fails', 
   })
 })
 
-test('updateResumeVisibility sends the public flag with bearer auth and returns parsed visibility', async () => {
+test('updateResumeVisibility sends the student scoped public flag with bearer auth and returns parsed visibility', async () => {
   let requestedUrl = ''
   let requestedMethod = ''
   let requestedAuthorization = ''
@@ -406,9 +467,10 @@ test('updateResumeVisibility sends the public flag with bearer auth and returns 
   const result = await resumeApi.updateResumeVisibility({
     accessToken: 'access-token',
     isPublic: false,
+    studentId: 11,
   })
 
-  assert.equal(requestedUrl, 'https://api.example.test/resume/visibility')
+  assert.equal(requestedUrl, 'https://api.example.test/resume/students/11/visibility')
   assert.equal(requestedMethod, 'PATCH')
   assert.equal(requestedAuthorization, 'Bearer access-token')
   assert.equal(requestedBody, JSON.stringify({ isPublic: false }))
@@ -430,6 +492,7 @@ test('updateResumeVisibility returns server-error when the response body is not 
   const result = await resumeApi.updateResumeVisibility({
     accessToken: 'access-token',
     isPublic: true,
+    studentId: 11,
   })
 
   assert.deepEqual(result, {

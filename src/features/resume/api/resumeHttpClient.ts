@@ -5,6 +5,7 @@ import type {
   ResumeDetailInput,
   ResumeImageUploadInput,
   ResumeSaveInput,
+  ResumeStudentDetailInput,
   ResumeStudentStatusListInput,
   ResumeSubmissionInput,
   ResumeVisibilityInput,
@@ -111,8 +112,21 @@ export async function getResumeStudentStatusesRequest(
   })
 }
 
+export async function getResumeStudentRequest(input: ResumeStudentDetailInput): Promise<ResumeRequestResponse> {
+  const encodedStudentId = encodeURIComponent(String(input.studentId))
+
+  return sendResumeRequest(`resume/students/${encodedStudentId}`, {
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'GET',
+  })
+}
+
 export async function patchResumeVisibilityRequest(input: ResumeVisibilityInput): Promise<ResumeRequestResponse> {
-  return sendResumeRequest('resume/visibility', {
+  const encodedStudentId = encodeURIComponent(String(input.studentId))
+
+  return sendResumeRequest(`resume/students/${encodedStudentId}/visibility`, {
     body: JSON.stringify({ isPublic: input.isPublic }),
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
