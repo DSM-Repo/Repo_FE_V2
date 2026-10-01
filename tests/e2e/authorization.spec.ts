@@ -1,8 +1,8 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, apiBaseUrl } from './test-fixtures'
 
 import { authenticateAs, authenticateWithAccessToken, createTestAccessToken, type TestAuthRole } from './auth-fixtures'
 
-const apiBaseUrl = 'http://52.78.201.218'
+
 
 function createExpiredAccessToken(role: TestAuthRole) {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url')
@@ -18,6 +18,50 @@ function createExpiredAccessToken(role: TestAuthRole) {
 }
 
 test.describe('protected route authorization', () => {
+  for (const failure of ['network', 'server'] as const) {
+    test(`retains refresh credentials and offers retry after ${failure} failure`, async ({ page }) => {
+      await authenticateWithAccessToken(page, createExpiredAccessToken('STUDENT'), 'retained-refresh')
+      let rejectCredentials = false
+      await page.route(`${apiBaseUrl}/user/refresh`, async (route) => {
+        expect(route.request().headers()['refresh-token']).toBe('retained-refresh')
+        if (rejectCredentials) await route.fulfill({ status: 401 })
+        else if (failure === 'network') await route.abort('failed')
+        else await route.fulfill({ status: 503 })
+      })
+      await page.goto('/home')
+      await expect(page.getByRole('alert').filter({ hasText: failure === 'network' ? 'auth API' : '토큰 재발급' })).toBeVisible()
+      await expect(page.getByRole('button', { name: '다시 시도' })).toBeEnabled()
+      await expect(page).toHaveURL(/\/home$/)
+      expect(await page.evaluate(() => localStorage.getItem('repo.auth.refreshToken'))).toBe('retained-refresh')
+      rejectCredentials = true
+      await page.getByRole('button', { name: '다시 시도' }).click()
+      await expect(page).toHaveURL(/\/login$/)
+      expect(await page.evaluate(() => localStorage.getItem('repo.auth.refreshToken'))).toBeNull()
+    })
+  }
+
+  test('does not restore a session when guard refresh arrives after logout', async ({ page }) => {
+    await authenticateWithAccessToken(page, createExpiredAccessToken('STUDENT'), 'old-refresh')
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    let started: () => void = () => undefined
+    const requested = new Promise<void>((resolve) => { started = resolve })
+    await page.route(`${apiBaseUrl}/user/refresh`, async (route) => {
+      started()
+      await gate
+      await route.fulfill({ json: { accessToken: createTestAccessToken('STUDENT') } })
+    })
+    await page.goto('/home')
+    await requested
+    await page.evaluate(() => {
+      localStorage.removeItem('repo.auth.accessToken')
+      localStorage.removeItem('repo.auth.refreshToken')
+    })
+    release()
+    await expect(page).toHaveURL(/\/login$/)
+    expect(await page.evaluate(() => localStorage.getItem('repo.auth.accessToken'))).toBeNull()
+  })
+
   test('redirects an unauthenticated visitor from a student route to login', async ({ page }) => {
     // Given: no authentication tokens are stored.
 
@@ -31,6 +75,9 @@ test.describe('protected route authorization', () => {
   test('redirects a student away from a teacher route', async ({ page }) => {
     // Given: the browser has a server-issued student role token.
     await authenticateAs(page, 'STUDENT')
+    await page.route(`${apiBaseUrl}/alram`, async (route) => {
+      await route.fulfill({ json: [] })
+    })
 
     // When: the student opens a teacher-only route directly.
     await page.goto('/students')
@@ -42,6 +89,9 @@ test.describe('protected route authorization', () => {
   test('redirects a teacher away from a student route', async ({ page }) => {
     // Given: the browser has a server-issued teacher role token.
     await authenticateAs(page, 'TEACHER')
+    await page.route(`${apiBaseUrl}/resume/students`, (route) =>
+      route.fulfill({ json: { classNumber: null, grade: null, lastUpdatedAt: '', numberOfData: 0, schoolYear: 2026, students: [] } }),
+    )
 
     // When: the teacher opens a student-only route directly.
     await page.goto('/resume')

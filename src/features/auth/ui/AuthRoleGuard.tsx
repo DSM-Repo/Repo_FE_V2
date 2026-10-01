@@ -5,13 +5,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import {
-  clearAuthTokens,
-  getSavedAuthRole,
-  getSavedRefreshToken,
-  refreshAuthToken,
-  saveAuthAccessToken,
+  getAuthorizedRole,
+  isCurrentAuthSession,
   type AuthLoginRole,
 } from '@/features/auth/api'
+import { Button, Toast } from '@/shared/ui'
 
 type AuthRoleGuardProps = {
   readonly children: ReactNode
@@ -23,33 +21,11 @@ const roleHomePath = {
   teacher: '/students',
 } as const satisfies Record<AuthLoginRole, string>
 
-async function getAuthorizedRole() {
-  const savedRole = getSavedAuthRole()
-
-  if (savedRole) {
-    return savedRole
-  }
-
-  const refreshToken = getSavedRefreshToken()
-
-  if (!refreshToken) {
-    return undefined
-  }
-
-  const refreshResult = await refreshAuthToken({ refreshToken })
-
-  if (refreshResult.kind !== 'success') {
-    return undefined
-  }
-
-  saveAuthAccessToken(refreshResult.token.accessToken)
-
-  return getSavedAuthRole()
-}
-
 export function AuthRoleGuard({ children, requiredRole }: AuthRoleGuardProps) {
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const [retryMessage, setRetryMessage] = useState<string>()
 
   useEffect(() => {
     let isActive = true
@@ -61,24 +37,33 @@ export function AuthRoleGuard({ children, requiredRole }: AuthRoleGuardProps) {
         return
       }
 
-      const role = await getAuthorizedRole()
+      setIsAuthorized(false)
+      setRetryMessage(undefined)
+      const result = await getAuthorizedRole()
 
       if (!isActive) {
         return
       }
 
-      if (!role) {
-        clearAuthTokens()
-        router.replace('/login')
+      if (!isCurrentAuthSession(result.session) || result.kind === 'stale') {
+        setAttempt((value) => value + 1)
         return
       }
 
-      if (role !== requiredRole) {
-        router.replace(roleHomePath[role])
-        return
+      switch (result.kind) {
+        case 'invalid':
+          router.replace('/login')
+          return
+        case 'retryable':
+          setRetryMessage(result.message)
+          return
+        case 'authorized':
+          if (result.role !== requiredRole) {
+            router.replace(roleHomePath[result.role])
+            return
+          }
+          setIsAuthorized(true)
       }
-
-      setIsAuthorized(true)
     }
 
     void authorize()
@@ -86,7 +71,16 @@ export function AuthRoleGuard({ children, requiredRole }: AuthRoleGuardProps) {
     return () => {
       isActive = false
     }
-  }, [requiredRole, router])
+  }, [attempt, requiredRole, router])
+
+  if (retryMessage) {
+    return (
+      <div>
+        <Toast variant="error">{retryMessage}</Toast>
+        <Button onClick={() => { setRetryMessage(undefined); setAttempt((value) => value + 1) }}>다시 시도</Button>
+      </div>
+    )
+  }
 
   return isAuthorized ? children : null
 }

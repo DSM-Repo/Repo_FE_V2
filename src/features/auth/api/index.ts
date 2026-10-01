@@ -1,6 +1,7 @@
 export { loginWithAuthApi, refreshAuthToken, sendEmailVerificationCode, signupWithAuthApi, verifyEmailCode } from './authApi'
 export { getAuthRoleFromAccessToken } from './authAccessToken'
 export { sendAuthenticatedRequest } from './authenticatedRequest'
+export { getAuthorizedRole, isCurrentAuthSession } from './authSessionRefresh'
 export {
   AUTH_ACCESS_TOKEN_STORAGE_KEY,
   AUTH_REFRESH_TOKEN_STORAGE_KEY,

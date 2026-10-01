@@ -42,6 +42,10 @@
   justify-content: flex-end;
 }
 
+.failureActions {
+  pointer-events: none;
+}
+
 .primaryAction,
 .secondaryAction {
   display: inline-flex;

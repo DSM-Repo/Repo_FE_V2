@@ -1,7 +1,7 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, apiBaseUrl } from './test-fixtures'
 
 const accessTokenStorageKey = 'repo.auth.accessToken'
-const apiBaseUrl = 'http://52.78.201.218'
+
 const testAccessToken = 'e2e-access-token'
 
 test.describe('public route smoke', () => {

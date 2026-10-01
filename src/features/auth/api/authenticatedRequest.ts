@@ -1,7 +1,6 @@
 'use client'
 
-import { refreshAuthToken } from './authApi'
-import { clearAuthTokens, getSavedRefreshToken, saveAuthAccessToken } from './authTokenStorage'
+import { captureAuthSession, isCurrentAuthSession, refreshAuthSession } from './authSessionRefresh'
 
 type AuthenticatedRequestInput = {
   readonly init: RequestInit
@@ -26,8 +25,6 @@ function isAuthRejectedResponse(response: Response) {
 }
 
 function redirectToLogin() {
-  clearAuthTokens()
-
   if (typeof window === 'undefined') {
     return
   }
@@ -77,49 +74,25 @@ async function sendRequest(input: AuthenticatedRequestInput): Promise<Authentica
   }
 }
 
-function reuseRejectedResponse(response: Response): AuthenticatedRequestResponse {
-  return {
-    complete: () => undefined,
-    kind: 'response',
-    value: response,
-  }
-}
-
 export async function sendAuthenticatedRequest(input: AuthenticatedRequestInput): Promise<AuthenticatedRequestResponse> {
+  const session = captureAuthSession()
   const firstResponse = await sendRequest(input)
 
   if (firstResponse.kind !== 'response' || !isAuthRejectedResponse(firstResponse.value)) {
     return firstResponse
   }
 
+  if (!session.refreshToken) return firstResponse
+  const result = await refreshAuthSession(session)
+  if (!isCurrentAuthSession(result.session)) return firstResponse
+  if (result.kind !== 'ready') {
+    if (result.kind === 'invalid') redirectToLogin()
+    return firstResponse
+  }
+
   firstResponse.complete()
-
-  const refreshToken = getSavedRefreshToken()
-
-  if (!refreshToken) {
-    redirectToLogin()
-    return reuseRejectedResponse(firstResponse.value)
-  }
-
-  const refreshResult = await refreshAuthToken({ refreshToken })
-
-  if (refreshResult.kind !== 'success') {
-    redirectToLogin()
-    return reuseRejectedResponse(firstResponse.value)
-  }
-
-  saveAuthAccessToken(refreshResult.token.accessToken)
-
-  const retryResponse = await sendRequest({
+  return sendRequest({
     ...input,
-    init: withAccessToken(input.init, refreshResult.token.accessToken),
+    init: withAccessToken(input.init, result.accessToken),
   })
-
-  if (retryResponse.kind === 'response' && isAuthRejectedResponse(retryResponse.value)) {
-    retryResponse.complete()
-    redirectToLogin()
-    return reuseRejectedResponse(retryResponse.value)
-  }
-
-  return retryResponse
 }

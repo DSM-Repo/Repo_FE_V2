@@ -6,6 +6,11 @@ import { getAuthRoleFromAccessToken } from './authAccessToken'
 export const AUTH_ACCESS_TOKEN_STORAGE_KEY = 'repo.auth.accessToken'
 export const AUTH_REFRESH_TOKEN_STORAGE_KEY = 'repo.auth.refreshToken'
 const LEGACY_AUTH_LOGIN_ROLE_STORAGE_KEY = 'repo.auth.loginRole'
+let sessionGeneration = 0
+
+export function getAuthSessionGeneration(): number {
+  return sessionGeneration
+}
 
 export function getSavedAuthRole(): AuthLoginRole | undefined {
   const accessToken = getSavedAccessToken()
@@ -60,6 +65,7 @@ export function saveAuthAccessToken(accessToken: string) {
 }
 
 export function saveAuthTokens(input: { readonly accessToken: string; readonly refreshToken: string }) {
+  sessionGeneration += 1
   if (typeof window === 'undefined') {
     return
   }
@@ -70,6 +76,7 @@ export function saveAuthTokens(input: { readonly accessToken: string; readonly r
 }
 
 export function clearAuthTokens() {
+  sessionGeneration += 1
   if (typeof window === 'undefined') {
     return
   }

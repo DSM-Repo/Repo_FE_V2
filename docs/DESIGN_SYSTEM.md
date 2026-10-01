@@ -1,6 +1,6 @@
 # Design System
 
-이 문서는 Figma 디자인에서 확정된 디자인 시스템을 코드로 옮기기 위한 정리 자리입니다. 현재는 초안이며 실제 값은 TODO로 남깁니다.
+이 문서는 구현된 토큰/공통 UI와 남은 디자인 결정을 정리합니다. 2026-10-01 기준 디자인 방향은 [DESIGN.md](../DESIGN.md), 실제 값은 `src/shared/styles`와 `src/app/globals.css`를 함께 대조합니다. 아래 날짜별 초기 컴포넌트 계약은 역사적 기준이며 전체 제품 완료를 뜻하지 않습니다.
 
 ## UI Reference
 
@@ -49,8 +49,8 @@
 
 - 색상 token은 CSS variable로 관리합니다.
 - 컴포넌트에서는 hex 값을 직접 쓰기보다 semantic alias 또는 token 변수를 우선 사용합니다.
-- 현재 전역 placeholder 화면은 gray/main/bgmain token을 기반으로 연결합니다.
-- 색상 의미가 명확해지는 시점에 `surface`, `border`, `text`, `brand`, `state` 계열 semantic token을 추가할 수 있습니다.
+- 전역 화면은 gray/main/bgmain token을 기반으로 연결합니다.
+- `src/app/globals.css`에 `--surface`, `--border`, `--text-primary`, `--brand` 등 semantic alias가 존재합니다. 새 UI는 실제 color/typography token을 사용하며 임의 값을 추가하지 않는 `DESIGN.md` 규칙을 따릅니다.
 
 ### Typography
 
@@ -70,6 +70,10 @@
 | Title s-Medium | 600 | 32px | 120% | `.text-title-s-medium` |
 | Title Medium | 600 | 36px | 120% | `.text-title-medium` |
 | Title Large | 600 | 48px | 120% | `.text-title-large` |
+| Display Small | 600 | 52px | 120% | `.text-display-small` |
+| Display Medium | 600 | 64px | 120% | `.text-display-medium` |
+| Display Large | 700 | 84px | 120% | `.text-display-large` |
+| Display Mega | 600 | 96px | 120% | `.text-display-mega` |
 | resume small | 600 | 10px | 120% | `.text-resume-small` |
 | resume major | 200 | 16px | 120% | `.text-resume-major` |
 
@@ -83,6 +87,7 @@
 - 모든 typography token은 CSS variable과 utility class를 함께 둡니다.
 - `Body very Tiny`와 `resume small`은 보조 정보, PDF/이력서 내부의 제한된 정보 밀도 표현에만 사용합니다.
 - 일반 본문 기본값은 `Body Small` 이상을 우선합니다.
+- `DESIGN.md`의 일반 본문 하한은 14px이며 위 12px/10px 토큰은 기존 문서 시트의 고밀도 보조 정보에 한정합니다. Display 토큰은 랜딩 전용으로 일반 폼/패널에 적용하지 않습니다. 자간은 0입니다.
 - Figma token명이 바뀌면 CSS utility class 변경 전에 이 문서를 먼저 갱신합니다.
 
 
@@ -92,15 +97,43 @@
 
 - `LibraryBookCard`는 도서관/레주메북 진입용 160×220 책 커버 카드입니다. 현재 커버는 `public/assets/library-book-cover.svg` 고정 asset을 사용하며, 이 파일명/경로는 issue #14 초기 카드 계약입니다. 카드 종류가 늘어나면 `cover` 또는 `variant` 계약을 별도 결정합니다.
 - `PortfolioResumeSheet`는 학생 포트폴리오 첫 자기소개/이력서 시트입니다. 사용자 지정 기준에 따라 이름은 `Title Small`, 전공 상태는 `Body Tiny`, 학번/학과/email 메타는 `Body very Tiny`를 사용합니다. `resume small` / `resume major` token은 PDF/고밀도 출력 기준이 확정될 때 별도 적용 여부를 결정합니다.
-- 공개 포트폴리오 route에서 쓰는 예시 데이터는 실제 API mock이 아니라 화면 확인용 fixture이므로 `src/shared/fixtures/examples/publicExamples.ts`에 둡니다.
+- 초기 문서에 적힌 `src/shared/fixtures/examples/publicExamples.ts`는 현재 존재하지 않습니다. 이를 생성하거나 import하지 않습니다. 공통 UI의 화면 확인은 [component-showcase](../src/app/component-showcase/page.tsx), 테스트 mock은 `tests/e2e`를 확인합니다. 공개 slug route는 예시 데이터를 반환하지 않고 현재 항상 404이며, 학생 미리보기/도서관 HTML 열람은 `ResumeBookSheet`를 사용합니다.
 
 ### Spacing
 
-TODO: spacing scale을 정리한다.
+`DESIGN.md`의 4px 단위 기준과 `src/app/globals.css`의 현재 변수를 따릅니다.
+
+| CSS variable | px |
+| --- | ---: |
+| `--space-2` | 8 |
+| `--space-3` | 12 |
+| `--space-4` | 16 |
+| `--space-5` | 20 |
+| `--space-6` | 24 |
+| `--space-7` | 28 |
+| `--space-8` | 32 |
+| `--space-9` | 36 |
+| `--space-10` | 40 |
+| `--space-12` | 48 |
+| `--space-14` | 56 |
+| `--space-16` | 64 |
+| `--space-18` | 72 |
+| `--space-20` | 80 |
 
 ### Radius / Shadow
 
-TODO: radius와 shadow 기준을 정리한다.
+현재 `src/app/globals.css`의 값:
+
+| CSS variable | 값 |
+| --- | --- |
+| `--repo-radius-control` | `10px` |
+| `--repo-radius-panel` | `16px` |
+| `--repo-radius-card` | `14px` |
+| `--repo-radius-pill` | `999px` |
+| `--repo-shadow-book` | `0 14px 32px rgba(17, 17, 17, 0.28)` |
+| `--repo-shadow-modal` | `0 20px 60px rgba(17, 17, 17, 0.18)` |
+
+그림자는 `DESIGN.md`의 Book/Modal 기준과 같습니다. 아래 초기 Button 계약은 실제 CSS에 남은 `12px` radius로, 공통 control 토큰 `10px`와 구분합니다. 이 문서 정합성 작업에서 기존 컴포넌트 치수를 바꾸지 않습니다.
 
 ## Components
 
@@ -290,7 +323,7 @@ Button right icon으로 사용하는 오른쪽 화살표 아이콘입니다.
 ## Component Strategy
 
 - UI 컴포넌트는 headless/primitive 기반 사고를 우선합니다.
-- 공통 UI는 `shared/ui` 또는 Next.js 전환 후 동등한 shared layer에 둡니다.
+- 공통 UI는 `src/shared/ui`에 둡니다.
 - UI 컴포넌트 내부에 비즈니스 로직을 넣지 않습니다.
 - feature별 비즈니스 로직은 `features/*` 또는 route-specific layer에 둡니다.
 - 접근성이 중요한 컴포넌트는 Radix UI 같은 headless primitive 도입을 우선 검토합니다.
@@ -307,17 +340,11 @@ Button right icon으로 사용하는 오른쪽 화살표 아이콘입니다.
 
 ## 문서형 에디터 관련 UI
 
-TODO:
-
-- toolbar 구조
-- block 삽입 UI
-- 이미지 업로드 UI
-- 링크 삽입 UI
-- 피드백 표시 UI
+현재 `src/app/(student)/resume`에 toolbar/Markdown 편집/프로필·프로젝트 이미지 업로드/학생 피드백 drawer가 있습니다. 본문 링크·이미지 편집 완성도와 저장/표현 포맷은 [계약 및 결정 목록](exec-plans/003-mvp-contract-decisions-20261001.md)의 D02/D03, 피드백 위치/교사 CRUD는 D08로 남깁니다. PDF Viewer Controls는 요구 대상이며 현재 구현 완료 항목이 아닙니다.
 
 ## Open Questions
 
-- spacing/radius/shadow token도 CSS variables로 확장할 것인가?
+- 이미 선언된 spacing/radius/shadow token을 기존 개별 컴포넌트 치수에 어디까지 적용할 것인가?
 - 컴포넌트 variant 명명 규칙은 어떻게 할 것인가?
 - Figma 컴포넌트명과 코드 컴포넌트명을 얼마나 맞출 것인가?
 - Radix UI를 기본 primitive로 채택할 것인가?

@@ -2,6 +2,8 @@
 
 중요한 제품/기술/구조 결정을 기록합니다.
 
+날짜별 기록의 Context/Risk/Follow-up은 당시 상황입니다. 특히 2026-06-09의 Vite config 제거와 Playwright 준비는 전환 당시 기록으로 보존하며, 현재 상태는 아래 2026-10-01 정합성 기록과 [기술 스택](TECH_STACK.md)을 따릅니다.
+
 ## 결정 기록 형식
 
 ```md
@@ -181,10 +183,19 @@
 - Risk: semantic color alias와 component state color 체계는 실제 컴포넌트 구현 중 추가 정리가 필요하다.
 - Follow-up: Button/Input/Status 등 공통 컴포넌트 구현 시 semantic token을 보강한다.
 
+## 2026-10-01 — 현재 구현과 기존 결정의 적용 범위를 구분한다
+
+- Decision: 초기 설계/문서 하네스 단계의 구현 제외 범위는 역사적 문맥으로 한정한다. 현재 남은 MVP 작업은 [실행 계획](exec-plans/001-mvp-completion-20261001.md)을 따른다.
+- Context: Next 개발/E2E와 vinext/Workers 배포 구성이 공존한다. `vite.config.ts`는 현재 배포에 사용하며 초기 scaffold 제거 결정과 모순되지 않는다. Playwright 설정과 Node unit runner도 이미 존재한다.
+- Confirmed: [요구사항](REQUIREMENTS.md)에 따라 PDF 생성/변환 책임은 서버다. 책임 계층은 미정이 아니며, 서버 엔진·요청/상태/결과 계약·Viewer 선택은 D10으로 남긴다.
+- Observed: `POST /image`는 multipart `image` 필드로 연결되어 있다. [2026-09-20 QA](QA_REPORT_2026-09-20.md)의 이미지 HOLD는 당시 계약 불명확 판정이며, 현재 실서버 업로드 성공을 대신하는 증거는 아니다.
+- Non-decision: 현재 직접 구현된 Markdown 편집/저장 경로를 최종 에디터 기술 결정으로 승격하지 않는다. 상태 관리와 form/validation, Radix UI 도입도 이 정합성 작업에서 확정하지 않는다.
+- Follow-up: [계약 및 결정 목록](exec-plans/003-mvp-contract-decisions-20261001.md)의 D02/D03/D05~D13에서 저장 포맷·이미지·교사/공개/PDF/런타임 계약을 확인한다. 과거 결정의 후속 항목을 현재 완료 판정으로 사용하지 않는다.
+
 ## Open Questions
 
 - 관리자 역할 분리가 필요한가?
-- PDF 변환 책임을 어느 계층에 둘 것인가?
-- 문서형 에디터 저장 포맷은 무엇으로 할 것인가?
-- Next.js API route/server action을 사용할 것인가, 별도 백엔드 API만 사용할 것인가?
+- 서버 PDF job/결과 계약과 프론트 Viewer는 무엇으로 할 것인가? (D10)
+- 현재 Markdown 직렬화를 최종 문서형 에디터 저장 포맷으로 유지할 것인가? (D02)
+- 현재 backend proxy API route 외에 server action/API route 책임을 확장할 것인가?
 - 공개 URL slug 중복/예약어/변경/redirect 정책은 어떻게 관리할 것인가?

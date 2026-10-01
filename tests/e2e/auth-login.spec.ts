@@ -1,10 +1,10 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, apiBaseUrl } from './test-fixtures'
 
 import { createTestAccessToken } from './auth-fixtures'
 
 const studentAccessToken = createTestAccessToken('STUDENT')
 const teacherAccessToken = createTestAccessToken('TEACHER')
-const apiBaseUrl = 'http://52.78.201.218'
+
 
 test.describe('auth login route', () => {
   test.beforeEach(async ({ page }) => {

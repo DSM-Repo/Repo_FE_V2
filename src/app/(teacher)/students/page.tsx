@@ -59,6 +59,17 @@ function getStudentTone(student: ResumeStudentStatus): LinkRowTone {
   return student.submitted ? 'submitted' : 'missing';
 }
 
+function getStudentActionLabel(student: ResumeStudentStatus) {
+  return student.resumeId ? '레주메 보러가기' : '이력서 없음';
+}
+
+function getStudentMeta(student: ResumeStudentStatus, includeClass = false) {
+  const major = student.majorName ? ` · ${student.majorName}` : '';
+  return includeClass
+    ? `${student.grade}학년 ${student.classNumber}반${major}`
+    : student.majorName;
+}
+
 function formatUpdatedAt(value: string) {
   const date = new Date(value);
 
@@ -189,6 +200,13 @@ function TeacherStudentsContent() {
             .includes(normalizedSearchQuery))
     );
   }, [normalizedSearchQuery, selectedClass, students]);
+  const globalSearchStudents = useMemo(
+    () =>
+      students.filter((student) =>
+        student.name.toLocaleLowerCase('ko-KR').includes(normalizedSearchQuery)
+      ),
+    [normalizedSearchQuery, students]
+  );
 
   const countStudents = (grade: Grade, classNumber: ClassNumber) =>
     students.filter(
@@ -227,6 +245,48 @@ function TeacherStudentsContent() {
               spellCheck={false}
             />
           </div>
+
+          {normalizedSearchQuery ? (
+            <section
+              aria-label="전체 학생 검색 결과"
+              className={styles.searchResults}
+              role="region"
+            >
+              <h2 className={styles.searchResultsTitle}>전체 검색 결과</h2>
+              <div className={styles.studentRows}>
+                {loadState.kind === 'loading' ? (
+                  <p className={styles.emptyMessage}>학생 목록을 불러오는 중입니다.</p>
+                ) : null}
+                {loadState.kind === 'failure' ? (
+                  <p className={styles.emptyMessage} role="alert">
+                    {loadState.message}
+                  </p>
+                ) : null}
+                {loadState.kind === 'success' && globalSearchStudents.length === 0 ? (
+                  <p className={styles.emptyMessage}>검색 결과가 없습니다.</p>
+                ) : null}
+                {loadState.kind === 'success'
+                  ? globalSearchStudents.map((student) => {
+                      const rowProps = {
+                        actionLabel: getStudentActionLabel(student),
+                        className: styles.studentRow,
+                        key: student.studentId,
+                        meta: getStudentMeta(student, true),
+                        status: submissionLabels[student.submissionStatus],
+                        title: `${student.schoolNumber} ${student.name}`,
+                        tone: getStudentTone(student),
+                      } as const;
+
+                      return student.resumeId ? (
+                        <LinkRow {...rowProps} href={`/students/${student.resumeId}`} />
+                      ) : (
+                        <LinkRow {...rowProps} disabled />
+                      );
+                    })
+                  : null}
+              </div>
+            </section>
+          ) : null}
 
           <div className={styles.gradeGrid} aria-label="학년별 반 목록">
             {grades.map((grade) => (
@@ -318,12 +378,10 @@ function TeacherStudentsContent() {
                 {loadState.kind === 'success'
                   ? selectedStudents.map((student) => {
                       const sharedProps = {
-                        actionLabel: student.resumeId
-                          ? '레주메 보러가기'
-                          : '이력서 없음',
+                        actionLabel: getStudentActionLabel(student),
                         className: styles.studentRow,
                         key: student.studentId,
-                        meta: student.majorName,
+                        meta: getStudentMeta(student),
                         status: submissionLabels[student.submissionStatus],
                         title: `${student.schoolNumber} ${student.name}`,
                         tone: getStudentTone(student),

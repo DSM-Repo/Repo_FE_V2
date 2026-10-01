@@ -1,9 +1,20 @@
-import { expect, test } from '@playwright/test'
+import { apiBaseUrl, expect, test } from './test-fixtures'
 
 import { authenticateAs } from './auth-fixtures'
 
-const apiBaseUrl = 'http://52.78.201.218'
 const studentResumeIdStorageKey = 'repo.resume.id.student%40dsm.hs.kr'
+
+function raceResume(id: string, introduce: string) {
+  return {
+    email: '', id, introduce, isPublic: false, majorName: '', name: '',
+    pages: [
+      { content: '', id: `${id}-profile`, index: 0, type: 'PROFILE' },
+      { content: '', id: `${id}-project`, index: 1, type: 'PROJECT' },
+    ],
+    portfolioUrl: '', profileImageUrl: '', savedAt: '2026-09-20T10:00:00.000Z',
+    skills: [], submissionStatus: 'ONGOING',
+  }
+}
 
 test.describe('student resume management', () => {
   test.beforeEach(async ({ page }) => {
@@ -41,6 +52,368 @@ test.describe('student resume management', () => {
         status: 200,
       })
     })
+  })
+
+  for (const target of ['프로필', '프로젝트']) {
+    test(`race: delayed ${target} upload preserves typing and skills`, async ({ page }) => {
+      const upload = Promise.withResolvers<void>()
+      const started = Promise.withResolvers<void>()
+      await page.route(`${apiBaseUrl}/image`, async (route) => {
+        started.resolve()
+        await upload.promise
+        await route.fulfill({ json: { imageUrl: new URL('/race-image.png', page.url()).href, key: 'race-image.png' }, status: 201 })
+      })
+      await page.goto('/resume?mode=edit')
+      const chooser = page.waitForEvent('filechooser')
+      await page.getByRole('button', { name: `${target} 이미지 추가` }).click()
+      await (await chooser).setFiles({ buffer: Buffer.from('png'), mimeType: 'image/png', name: 'race.png' })
+      await started.promise
+      await page.getByLabel('자기소개 제목').fill('업로드 중 최신 입력')
+      await page.getByLabel('프로젝트 이름').fill('최신 프로젝트')
+      await page.getByLabel('1쪽 추가 내용').fill('업로드 중 본문')
+      await page.getByRole('textbox', { exact: true, name: '기술스택' }).fill('TypeScript')
+      await page.getByRole('textbox', { exact: true, name: '기술스택' }).press('Enter')
+      upload.resolve()
+      await expect(page.getByRole('button', { name: `${target} 이미지 변경` })).toBeVisible()
+      await expect(page.getByLabel('자기소개 제목')).toHaveValue('업로드 중 최신 입력')
+      await expect(page.getByLabel('프로젝트 이름')).toHaveValue('최신 프로젝트')
+      await expect(page.getByLabel('1쪽 추가 내용')).toContainText('업로드 중 본문')
+      await expect(page.getByRole('list', { name: '기술스택 태그' })).toContainText('TypeScript')
+    })
+  }
+
+  test('race: cancelled upload cannot revive a draft or overwrite a new upload', async ({ page }) => {
+    const oldUpload = Promise.withResolvers<void>()
+    const started = Promise.withResolvers<void>()
+    let uploads = 0
+    await page.route(`${apiBaseUrl}/image`, async (route) => {
+      uploads += 1
+      if (uploads === 1) {
+        started.resolve()
+        await oldUpload.promise
+        await route.fulfill({ json: { imageUrl: new URL('/old.png', page.url()).href, key: 'old.png' }, status: 201 })
+      } else {
+        await route.fulfill({ json: { imageUrl: new URL('/new.png', page.url()).href, key: 'new.png' }, status: 201 })
+      }
+    })
+    await page.goto('/resume?mode=edit')
+    await page.getByLabel('자기소개 제목').fill('취소할 내용')
+    for (const attempt of [0, 1]) {
+      const chooser = page.waitForEvent('filechooser')
+      await page.getByRole('button', { name: '프로젝트 이미지 추가' }).click()
+      await (await chooser).setFiles({ buffer: Buffer.from('png'), mimeType: 'image/png', name: 'race.png' })
+      if (attempt === 0) {
+        await started.promise
+        await page.getByRole('button', { name: '작성 취소' }).click()
+        await page.getByRole('button', { name: '이력서 수정하기' }).click()
+        await page.getByLabel('자기소개 제목').fill('새 편집 내용')
+      }
+    }
+    const image = page.getByRole('button', { name: '프로젝트 이미지 변경' }).locator('img')
+    await expect(image).toHaveAttribute('src', new URL('/new.png', page.url()).href)
+    const finished = page.waitForEvent('requestfinished', (request) => request.url() === `${apiBaseUrl}/image`)
+    oldUpload.resolve()
+    await finished
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('새 편집 내용')
+    await expect(image).toHaveAttribute('src', new URL('/new.png', page.url()).href)
+  })
+
+  test('race: late document A cannot overwrite loaded document B', async ({ page }) => {
+    const oldLoad = Promise.withResolvers<void>()
+    const started = Promise.withResolvers<void>()
+    await page.route(`${apiBaseUrl}/resume/race-a`, async (route) => {
+      started.resolve()
+      await oldLoad.promise
+      await route.fulfill({ json: raceResume('race-a', '늦은 A') })
+    })
+    await page.route(`${apiBaseUrl}/resume/race-b`, (route) => route.fulfill({ json: raceResume('race-b', '현재 B') }))
+    await page.goto('/resume?resumeId=race-a&mode=edit')
+    await started.promise
+    await expect(page.getByLabel('자기소개 제목')).toHaveCount(0)
+    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeDisabled()
+    await page.evaluate(() => window.history.pushState(null, '', '/resume?resumeId=race-b&mode=edit'))
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
+    const finished = page.waitForEvent('requestfinished', (request) => request.url() === `${apiBaseUrl}/resume/race-a`)
+    oldLoad.resolve()
+    await finished
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
+    await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), studentResumeIdStorageKey)).toBe('race-b')
+  })
+
+  test('race: failed lookup cannot save a blank replacement and can retry', async ({ page }) => {
+    let saves = 0
+    let loads = 0
+    await page.route(`${apiBaseUrl}/resume/race-failed`, async (route) => {
+      loads += 1
+      await route.fulfill(loads === 1 ? { status: 500 } : { json: raceResume('race-failed', '복구된 원본') })
+    })
+    await page.route('**/resume/save', async (route) => {
+      saves += 1
+      await route.fulfill({ status: 500 })
+    })
+    await page.goto('/resume?resumeId=race-failed&mode=edit')
+    await expect(page.getByRole('button', { name: '이력서 다시 불러오기' })).toBeVisible()
+    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeDisabled()
+    await expect(page.getByLabel('자기소개 제목')).toHaveCount(0)
+    expect(saves).toBe(0)
+    await page.getByRole('button', { name: '이력서 다시 불러오기' }).click()
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('복구된 원본')
+    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeEnabled()
+  })
+
+  test('race: delayed upload from document A cannot change document B', async ({ page }) => {
+    const upload = Promise.withResolvers<void>()
+    const started = Promise.withResolvers<void>()
+    await page.route(`${apiBaseUrl}/image`, async (route) => {
+      started.resolve()
+      await upload.promise
+      await route.fulfill({ json: { imageUrl: new URL('/old-document.png', page.url()).href, key: 'old-document.png' }, status: 201 })
+    })
+    await page.route(`${apiBaseUrl}/resume/race-b`, (route) => route.fulfill({ json: raceResume('race-b', '현재 B') }))
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+    const chooser = page.waitForEvent('filechooser')
+    await page.getByRole('button', { name: '프로필 이미지 추가' }).click()
+    await (await chooser).setFiles({ buffer: Buffer.from('png'), mimeType: 'image/png', name: 'race.png' })
+    await started.promise
+    await page.evaluate(() => window.history.pushState(null, '', '/resume?resumeId=race-b&mode=edit'))
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
+    const finished = page.waitForEvent('requestfinished', (request) => request.url() === `${apiBaseUrl}/image`)
+    upload.resolve()
+    await finished
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
+    await expect(page.getByRole('button', { name: '프로필 이미지 변경' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '프로필 이미지 추가' })).toBeEnabled()
+  })
+
+  test('race: late post-save lookup cannot restore the previous document', async ({ page }) => {
+    const lookup = Promise.withResolvers<void>()
+    const started = Promise.withResolvers<void>()
+    await page.route('**/resume/save', (route) => route.fulfill({
+      json: { resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' },
+    }))
+    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+      started.resolve()
+      await lookup.promise
+      await route.fulfill({ json: raceResume('resume-id', '늦은 저장 조회') })
+    })
+    await page.route(`${apiBaseUrl}/resume/race-b`, (route) => route.fulfill({ json: raceResume('race-b', '현재 B') }))
+    await page.goto('/resume?mode=edit')
+    await page.getByLabel('자기소개 제목').fill('첫 저장')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await started.promise
+    await page.evaluate(() => window.history.pushState(null, '', '/resume?resumeId=race-b&mode=edit'))
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
+    const finished = page.waitForEvent('requestfinished', (request) => request.url() === `${apiBaseUrl}/resume/resume-id`)
+    lookup.resolve()
+    await finished
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+    await expect(page).toHaveURL('/resume?resumeId=race-b&mode=edit')
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
+    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeEnabled()
+    await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), studentResumeIdStorageKey)).toBe('race-b')
+  })
+
+  test('race: typing during manual save stays editable and the next save preserves page IDs', async ({ page }) => {
+    const save = Promise.withResolvers<void>()
+    const started = Promise.withResolvers<void>()
+    const payloads: unknown[] = []
+    await page.route('**/resume/save', async (route) => {
+      payloads.push(route.request().postDataJSON())
+      if (payloads.length === 1) {
+        started.resolve()
+        await save.promise
+      }
+      await route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
+    })
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+    await page.getByLabel('자기소개 제목').fill('첫 저장 내용')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await started.promise
+    await page.getByLabel('자기소개 제목').fill('아직 저장하지 않은 내용')
+    save.resolve()
+    await expect(page.getByRole('status')).toContainText('저장되지 않은 변경사항이 있습니다.')
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('아직 저장하지 않은 내용')
+    await expect(page).toHaveURL(/mode=edit/)
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect(page.getByLabel('이력서 미리보기')).toBeVisible()
+    expect(payloads).toEqual([
+      expect.objectContaining({ introduce: '첫 저장 내용' }),
+      expect.objectContaining({ introduce: '아직 저장하지 않은 내용', pages: [
+        expect.objectContaining({ id: 'server-page-1' }),
+        expect.objectContaining({ id: 'server-page-2' }),
+      ] }),
+    ])
+  })
+
+  test('race: cancelling added pages restores a visible saved page', async ({ page }) => {
+    await page.goto('/resume?mode=edit')
+    const next = page.getByLabel('이력서 페이지 도구').getByRole('button', { name: '다음 페이지' })
+    await next.click()
+    await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()
+    await next.click()
+    await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()
+    await next.click()
+    await page.getByRole('button', { name: '작성 취소' }).click()
+    await expect(page.getByLabel('이력서 미리보기').getByRole('article')).toHaveCount(2)
+    await expect(page.getByRole('button', { name: '이전 페이지' })).toBeDisabled()
+    await expect(page.getByText('2 / 2')).toBeVisible()
+  })
+
+  test('race: failed upload preserves text and allows retry', async ({ page }) => {
+    let uploads = 0
+    await page.route(`${apiBaseUrl}/image`, async (route) => {
+      uploads += 1
+      await route.fulfill(uploads === 1
+        ? { status: 500 }
+        : { json: { imageUrl: new URL('/retried.png', page.url()).href, key: 'retried.png' }, status: 201 })
+    })
+    await page.goto('/resume?mode=edit')
+    await page.getByLabel('자기소개 제목').fill('실패해도 유지')
+    for (const attempt of [0, 1]) {
+      const chooser = page.waitForEvent('filechooser')
+      await page.getByRole('button', { name: '프로필 이미지 추가' }).click()
+      await (await chooser).setFiles({ buffer: Buffer.from('png'), mimeType: 'image/png', name: 'race.png' })
+      if (attempt === 0) {
+        await expect(page.getByRole('alert').filter({ hasText: '이미지 업로드에 실패했습니다' })).toBeVisible()
+        await expect(page.getByRole('button', { name: '프로필 이미지 추가' })).toBeEnabled()
+        await expect(page.getByLabel('자기소개 제목')).toHaveValue('실패해도 유지')
+      }
+    }
+    await expect(page.getByRole('button', { name: '프로필 이미지 변경' }).locator('img')).toHaveAttribute('src', new URL('/retried.png', page.url()).href)
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('실패해도 유지')
+  })
+
+  test('race: page ID lookup after saving preserves newer text and assigns IDs to the next save', async ({ page }) => {
+    const lookup = Promise.withResolvers<void>()
+    const started = Promise.withResolvers<void>()
+    const payloads: unknown[] = []
+    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+      started.resolve()
+      await lookup.promise
+      await route.fulfill({ json: raceResume('resume-id', '첫 저장') })
+    })
+    await page.route('**/resume/save', async (route) => {
+      payloads.push(route.request().postDataJSON())
+      await route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
+    })
+    await page.goto('/resume?mode=edit')
+    await page.getByLabel('자기소개 제목').fill('첫 저장')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await started.promise
+    await page.getByLabel('자기소개 제목').fill('조회 중 추가 입력')
+    lookup.resolve()
+    await expect(page.getByRole('status')).toContainText('저장되지 않은 변경사항이 있습니다.')
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('조회 중 추가 입력')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect(page.getByLabel('이력서 미리보기')).toBeVisible()
+    expect(payloads[1]).toMatchObject({ introduce: '조회 중 추가 입력', pages: [
+      { id: 'resume-id-profile' }, { id: 'resume-id-project' },
+    ] })
+  })
+
+  test('race: failed page ID lookup reports partial success and retries on the next save', async ({ page }) => {
+    let lookups = 0
+    const payloads: unknown[] = []
+    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+      lookups += 1
+      await route.fulfill(lookups === 1 ? { status: 500 } : { json: raceResume('resume-id', '보존된 입력') })
+    })
+    await page.route('**/resume/save', async (route) => {
+      payloads.push(route.request().postDataJSON())
+      await route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
+    })
+    await page.goto('/resume?mode=edit')
+    await page.getByLabel('자기소개 제목').fill('보존된 입력')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect(page.getByRole('alert').filter({ hasText: '이력서는 저장했지만 페이지 정보를 다시 불러오지 못했습니다.' })).toBeVisible()
+    await expect(page).toHaveURL('/resume?resumeId=resume-id')
+    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeEnabled()
+    await page.getByRole('button', { name: '이력서 수정하기' }).click()
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('보존된 입력')
+    await page.getByLabel('자기소개 제목').fill('취소할 추가 입력')
+    await page.getByRole('button', { name: '작성 취소' }).click()
+    await page.getByRole('button', { name: '이력서 수정하기' }).click()
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('보존된 입력')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect(page.getByRole('status')).toContainText('이력서를 저장했습니다.')
+    expect(lookups).toBe(2)
+    expect(payloads).toEqual([
+      expect.objectContaining({ introduce: '보존된 입력' }),
+      expect.objectContaining({ introduce: '보존된 입력' }),
+    ])
+  })
+
+  for (const query of ['mode=feedback', 'mode=edit&panel=writing']) {
+    test(`race: same document ${query} navigation keeps dirty input and its idle deadline`, async ({ page }) => {
+      let lookups = 0
+      let autoSaves = 0
+      await page.clock.install()
+      await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+        lookups += 1
+        await route.fulfill({ json: raceResume('resume-id', '조회 원본') })
+      })
+      await page.route('**/resume/auto-save', async (route) => {
+        autoSaves += 1
+        expect(route.request().postDataJSON()).toMatchObject({ introduce: '유지할 미저장 입력' })
+        await route.fulfill({ json: { autoSaved: true, resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
+      })
+      await page.goto('/resume?resumeId=resume-id&mode=edit')
+      await expect(page.getByLabel('자기소개 제목')).toHaveValue('조회 원본')
+      const initialLookups = lookups
+      await page.getByLabel('자기소개 제목').fill('유지할 미저장 입력')
+      await page.clock.runFor(0)
+      await page.clock.fastForward(90_000)
+      await page.evaluate((nextQuery) => window.history.pushState(null, '', `/resume?resumeId=resume-id&${nextQuery}`), query)
+      await expect(page).toHaveURL(`/resume?resumeId=resume-id&${query}`)
+      await expect(page.getByLabel('자기소개 제목')).toHaveValue('유지할 미저장 입력')
+      await page.clock.runFor(0)
+      await page.clock.fastForward(89_000)
+      expect(autoSaves).toBe(0)
+      await page.clock.fastForward(1_000)
+      await expect.poll(() => autoSaves).toBe(1)
+      await expect(page.getByRole('status')).toContainText('변경사항을 자동 저장했습니다.')
+      expect(lookups).toBe(initialLookups)
+    })
+  }
+
+  test('race: typing resets the 180 second idle deadline and pending manual save excludes autosave', async ({ page }) => {
+    const manualSave = Promise.withResolvers<void>()
+    const started = Promise.withResolvers<void>()
+    let autoSaves = 0
+    await page.clock.install()
+    await page.route('**/resume/auto-save', async (route) => {
+      autoSaves += 1
+      expect(route.request().postDataJSON()).toMatchObject({ introduce: '새 입력' })
+      await route.fulfill({ json: { autoSaved: true, resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
+    })
+    await page.route('**/resume/save', async (route) => {
+      started.resolve()
+      await manualSave.promise
+      await route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
+    })
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+    await page.getByLabel('자기소개 제목').fill('이전 입력')
+    await page.clock.runFor(0)
+    await page.clock.fastForward(179_000)
+    await page.getByLabel('자기소개 제목').fill('새 입력')
+    await page.clock.runFor(0)
+    await page.clock.fastForward(179_000)
+    expect(autoSaves).toBe(0)
+    await page.clock.fastForward(1_000)
+    await expect.poll(() => autoSaves).toBe(1)
+    await expect(page.getByRole('status')).toContainText('변경사항을 자동 저장했습니다.')
+    await page.getByLabel('자기소개 제목').fill('수동 저장')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await started.promise
+    await page.clock.fastForward(7_000)
+    expect(autoSaves).toBe(1)
+    manualSave.resolve()
+    await expect(page.getByLabel('이력서 미리보기')).toBeVisible()
+    await page.clock.fastForward(180_000)
+    expect(autoSaves).toBe(1)
   })
 
   test('opens resume management in preview mode before editing', async ({ page }) => {

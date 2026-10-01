@@ -7,6 +7,25 @@ const authApi = await import('../../src/features/auth/api/authApi.js')
 
 const originalFetch = globalThis.fetch
 
+test('refresh timeout covers a stalled response body', async (context) => {
+  // Given: headers arrive but the body stays open until abort.
+  context.mock.timers.enable({ apis: ['setTimeout'] })
+  let signal: AbortSignal | null | undefined
+  globalThis.fetch = async (_url, init) => {
+    signal = init?.signal
+    return new Response(new ReadableStream({ start(controller) {
+      signal?.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')))
+    } }))
+  }
+  // When: the full request deadline expires after headers.
+  const pending = authApi.refreshAuthToken({ refreshToken: 'refresh' })
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  context.mock.timers.tick(8000)
+  // Then: the request aborts and returns a handled network failure.
+  assert.equal(signal?.aborted, true)
+  assert.equal((await pending).kind, 'network-error')
+})
+
 function createAccessToken(role: string) {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url')
   const payload = Buffer.from(JSON.stringify({ exp: 4_102_444_800, role, sub: 'user@dsm.hs.kr' })).toString('base64url')

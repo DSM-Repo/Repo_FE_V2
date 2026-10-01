@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './test-fixtures'
 
 test('renders resume book empty state when no document data is loaded', async ({ page }) => {
   await page.goto('/resume-books/1')

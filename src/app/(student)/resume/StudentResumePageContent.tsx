@@ -381,9 +381,17 @@ export function StudentResumePageContent() {
   const [spreadStartIndex, setSpreadStartIndex] = useState(0)
   const userRef = useRef<UserMe | undefined>(undefined)
   const viewedResumeIdRef = useRef<string | undefined>(undefined)
-  const requestedResumeIdRef = useRef<string | undefined>(undefined)
+  const documentSessionRef = useRef(0)
+  const loadRequestRef = useRef(0)
+  const attemptedResumeIdRef = useRef('')
   const draftRevisionRef = useRef(0)
   const lastDraftChangeAtRef = useRef(0)
+  const savePendingRef = useRef(false)
+  const manualSaveRequestedRef = useRef(false)
+  const autoSaveTimerRef = useRef<number | undefined>(undefined)
+  const autoSaveGenerationRef = useRef(0)
+  const pendingSaveModeRef = useRef<SaveMode | undefined>(undefined)
+  const saveOperationRef = useRef(0)
 
   useEffect(() => {
     let isActive = true
@@ -465,6 +473,15 @@ export function StudentResumePageContent() {
       return
     }
 
+    const loadRequest = ++loadRequestRef.current
+    attemptedResumeIdRef.current = trimmedResumeId
+    documentSessionRef.current += 1
+    setIsDraftDirty(false)
+    setImageUploadState({ kind: 'idle' })
+    setSaveSubmitState('idle')
+    setPortfolioUrlModalState({ kind: 'closed' })
+    setSpreadStartIndex(0)
+
     const accessToken = getSavedAccessToken()
 
     if (!accessToken) {
@@ -480,6 +497,10 @@ export function StudentResumePageContent() {
       accessToken,
       resumeId: trimmedResumeId,
     })
+
+    if (loadRequestRef.current !== loadRequest) {
+      return
+    }
 
     if (result.kind === 'success') {
       viewedResumeIdRef.current = result.resume.id
@@ -507,18 +528,23 @@ export function StudentResumePageContent() {
   useEffect(() => {
     const resumeIdToLoad = requestedResumeId || getSavedResumeId() || ''
 
-    if (!resumeIdToLoad || requestedResumeIdRef.current === resumeIdToLoad) {
-      return
+    if (resumeIdToLoad && viewedResumeIdRef.current !== resumeIdToLoad) {
+      void loadResume(resumeIdToLoad, !requestedResumeId)
     }
 
-    requestedResumeIdRef.current = resumeIdToLoad
-    void loadResume(resumeIdToLoad, !requestedResumeId)
+    return () => {
+      loadRequestRef.current += 1
+      documentSessionRef.current += 1
+    }
   }, [loadResume, requestedResumeId])
 
   const resume = loadState.kind === 'success' ? loadState.resume : undefined
+  const isResumeReady = loadState.kind === 'success'
+    ? !requestedResumeId || loadState.resume.id === requestedResumeId
+    : loadState.kind === 'idle' && !requestedResumeId && !getSavedResumeId()
   const isImageUploading = imageUploadState.kind === 'uploading'
   const isResumeActionPending = saveSubmitState !== 'idle' || majorSubmitState === 'pending' || isImageUploading
-  const isEditing = viewMode === 'edit' || viewMode === 'feedback'
+  const isEditing = isResumeReady && (viewMode === 'edit' || viewMode === 'feedback')
   const visiblePageIndexes = [spreadStartIndex, spreadStartIndex + 1].filter((index) => index < draft.pages.length)
   const canMovePrevious = spreadStartIndex > 0
   const canMoveNext = isEditing ? spreadStartIndex < draft.pages.length - 1 : spreadStartIndex + 2 < draft.pages.length
@@ -696,9 +722,10 @@ export function StudentResumePageContent() {
     setActionFeedback({ message: `${result.successCount}개 피드백을 완료 처리했습니다.`, tone: 'success' })
   }, [feedbackLoadState, feedbackSubmitState.kind])
 
-  const handleDraftChange = useCallback((nextDraft: ResumeDraft) => {
+  const handleDraftChange = useCallback((nextDraft: ResumeDraft | ((currentDraft: ResumeDraft) => ResumeDraft)) => {
     draftRevisionRef.current += 1
     lastDraftChangeAtRef.current = Date.now()
+    autoSaveGenerationRef.current += 1
     setDraft(nextDraft)
     setIsDraftDirty(true)
     setActionFeedback(undefined)
@@ -735,6 +762,11 @@ export function StudentResumePageContent() {
   )
 
   const handleCancelEditing = useCallback(() => {
+    documentSessionRef.current += 1
+    draftRevisionRef.current += 1
+    setImageUploadState({ kind: 'idle' })
+    setPortfolioUrlModalState({ kind: 'closed' })
+    setSpreadStartIndex(0)
     if (loadState.kind === 'success') {
       const resumeDraft = toResumeDraft(loadState.resume)
       setDraft(userRef.current ? applyUserToDraft(resumeDraft, userRef.current) : resumeDraft)
@@ -782,8 +814,13 @@ export function StudentResumePageContent() {
 
       setActionFeedback(undefined)
       setImageUploadState({ kind: 'uploading', target })
+      const documentSession = documentSessionRef.current
 
       const result = await uploadResumeImage({ accessToken, image: file })
+
+      if (documentSessionRef.current !== documentSession) {
+        return
+      }
 
       setImageUploadState({ kind: 'idle' })
 
@@ -792,12 +829,12 @@ export function StudentResumePageContent() {
         return
       }
 
-      const nextDraft =
+      handleDraftChange((currentDraft) =>
         target === 'profile'
-          ? { ...draft, profileImageUrl: result.imageUrl }
+          ? { ...currentDraft, profileImageUrl: result.imageUrl }
           : {
-              ...draft,
-              pages: draft.pages.map((page, index) =>
+              ...currentDraft,
+              pages: currentDraft.pages.map((page, index) =>
                 index === target.pageIndex
                   ? {
                       ...page,
@@ -808,12 +845,11 @@ export function StudentResumePageContent() {
                     }
                   : page,
               ),
-            }
-
-      handleDraftChange(nextDraft)
+            },
+      )
       setActionFeedback({ message: '이미지를 업로드했습니다.', tone: 'success' })
     },
-    [draft, handleDraftChange, imageUploadState.kind],
+    [handleDraftChange, imageUploadState.kind],
   )
 
   const handleMajorChange = useCallback(
@@ -866,13 +902,29 @@ export function StudentResumePageContent() {
 
   const handleSave = useCallback(
     async (mode: SaveMode) => {
-      if (saveSubmitState !== 'idle') {
+      if (mode === 'auto' && (manualSaveRequestedRef.current || pendingSaveModeRef.current === 'manual')) {
         return
+      }
+
+      if (!isResumeReady || isResumeActionPending || savePendingRef.current) {
+        return
+      }
+
+      if (mode === 'manual') {
+        autoSaveGenerationRef.current += 1
+        if (autoSaveTimerRef.current !== undefined) {
+          window.clearTimeout(autoSaveTimerRef.current)
+          autoSaveTimerRef.current = undefined
+        }
       }
 
       const accessToken = getSavedAccessToken()
 
       if (!accessToken) {
+        savePendingRef.current = false
+        if (mode === 'manual') {
+          manualSaveRequestedRef.current = false
+        }
         setActionFeedback({ message: '로그인 후 이력서를 저장할 수 있습니다.', tone: 'error' })
         return
       }
@@ -882,7 +934,11 @@ export function StudentResumePageContent() {
       const pages = toResumePages(draft, activeResume)
       const savePages = toResumeSavePages(draft, activeResume)
       const saveRevision = draftRevisionRef.current
+      const documentSession = documentSessionRef.current
+      const saveOperation = ++saveOperationRef.current
 
+      savePendingRef.current = true
+      pendingSaveModeRef.current = mode
       setActionFeedback(undefined)
       setSaveSubmitState(mode === 'auto' ? 'auto-save' : mode === 'temporary' ? 'temporary-save' : 'save')
 
@@ -897,12 +953,24 @@ export function StudentResumePageContent() {
       }
       const result = mode === 'manual' ? await saveResume(saveInput) : await autoSaveResume(saveInput)
 
-      if (activeResumeId && viewedResumeIdRef.current !== activeResumeId) {
-        setSaveSubmitState('idle')
+      if (saveOperationRef.current !== saveOperation || documentSessionRef.current !== documentSession || (activeResumeId && viewedResumeIdRef.current !== activeResumeId)) {
+        if (saveOperationRef.current === saveOperation) {
+          savePendingRef.current = false
+          pendingSaveModeRef.current = undefined
+          if (mode === 'manual') {
+            manualSaveRequestedRef.current = false
+          }
+          setSaveSubmitState('idle')
+        }
         return
       }
 
       if (result.kind !== 'success') {
+        savePendingRef.current = false
+        pendingSaveModeRef.current = undefined
+        if (mode === 'manual') {
+          manualSaveRequestedRef.current = false
+        }
         setSaveSubmitState('idle')
         setActionFeedback({ message: result.message, tone: 'error' })
         return
@@ -916,13 +984,30 @@ export function StudentResumePageContent() {
         : undefined
       const syncedResume = syncedResumeResult?.kind === 'success' ? syncedResumeResult.resume : undefined
 
+      if (saveOperationRef.current !== saveOperation || documentSessionRef.current !== documentSession) {
+        if (saveOperationRef.current === saveOperation) {
+          savePendingRef.current = false
+          pendingSaveModeRef.current = undefined
+          if (mode === 'manual') {
+            manualSaveRequestedRef.current = false
+          }
+          setSaveSubmitState('idle')
+        }
+        return
+      }
+
+      savePendingRef.current = false
+      pendingSaveModeRef.current = undefined
+      if (mode === 'manual') {
+        manualSaveRequestedRef.current = false
+      }
       setSaveSubmitState('idle')
 
       viewedResumeIdRef.current = result.resumeId
-      requestedResumeIdRef.current = result.resumeId
       saveResumeId(result.resumeId)
 
-      const nextMode = mode === 'manual' || viewMode === 'view' ? null : 'edit'
+      const hasNewChanges = draftRevisionRef.current !== saveRevision
+      const nextMode = (mode === 'manual' && !hasNewChanges) || viewMode === 'view' ? null : 'edit'
       const nextUrl =
         nextMode === 'edit'
           ? `/resume?resumeId=${encodeURIComponent(result.resumeId)}&mode=edit`
@@ -934,6 +1019,13 @@ export function StudentResumePageContent() {
 
       if (syncedResume) {
         setLoadState({ kind: 'success', resume: syncedResume })
+        setDraft((currentDraft) => ({
+          ...currentDraft,
+          pages: currentDraft.pages.map((page) => {
+            const savedPage = syncedResume.pages.find((candidate) => candidate.index === page.index && candidate.type === page.type)
+            return savedPage ? { ...page, id: savedPage.id } : page
+          }),
+        }))
       } else if (activeResume) {
         setLoadState({
           kind: 'success',
@@ -960,11 +1052,11 @@ export function StudentResumePageContent() {
         })
       }
 
-      if (draftRevisionRef.current === saveRevision) {
+      if (!hasNewChanges) {
         setIsDraftDirty(false)
       }
 
-      if (mode === 'manual') {
+      if (mode === 'manual' && !hasNewChanges) {
         setFeedbackLoadState({ kind: 'idle' })
         setOpenFeedbackId(undefined)
         setViewMode('view')
@@ -972,26 +1064,35 @@ export function StudentResumePageContent() {
 
       setActionFeedback({
         message:
-          mode === 'auto'
+          syncedResumeResult && syncedResumeResult.kind !== 'success'
+            ? '이력서는 저장했지만 페이지 정보를 다시 불러오지 못했습니다. 다시 저장해 재시도해주세요.'
+            : hasNewChanges
+              ? '이전 내용은 저장했습니다. 저장되지 않은 변경사항이 있습니다.'
+              : mode === 'auto'
             ? '변경사항을 자동 저장했습니다.'
             : mode === 'temporary'
               ? '이력서를 임시저장했습니다.'
               : '이력서를 저장했습니다.',
-        tone: 'success',
+        tone: syncedResumeResult && syncedResumeResult.kind !== 'success' ? 'error' : 'success',
       })
     },
-    [draft, loadState, requestedMode, requestedResumeId, router, saveSubmitState, viewMode],
+    [draft, isResumeActionPending, isResumeReady, loadState, requestedMode, requestedResumeId, router, viewMode],
   )
 
   useEffect(() => {
-    if (!isDraftDirty || !isEditing || isResumeActionPending) {
+    if (!isDraftDirty || !isEditing || isResumeActionPending || savePendingRef.current) {
       return
     }
 
     let timerId = 0
+    const scheduledGeneration = autoSaveGenerationRef.current
 
     const scheduleAutoSave = (delay: number) => {
       timerId = window.setTimeout(() => {
+        autoSaveTimerRef.current = undefined
+        if (scheduledGeneration !== autoSaveGenerationRef.current || manualSaveRequestedRef.current || savePendingRef.current) {
+          return
+        }
         const remainingIdleTime = AUTO_SAVE_IDLE_MS - (Date.now() - lastDraftChangeAtRef.current)
 
         if (remainingIdleTime > 0) {
@@ -1001,12 +1102,16 @@ export function StudentResumePageContent() {
 
         void handleSave('auto')
       }, delay)
+      autoSaveTimerRef.current = timerId
     }
 
-    scheduleAutoSave(AUTO_SAVE_IDLE_MS)
+    scheduleAutoSave(Math.max(0, AUTO_SAVE_IDLE_MS - (Date.now() - lastDraftChangeAtRef.current)))
 
     return () => {
       window.clearTimeout(timerId)
+      if (autoSaveTimerRef.current === timerId) {
+        autoSaveTimerRef.current = undefined
+      }
     }
   }, [handleSave, isDraftDirty, isEditing, isResumeActionPending])
 
@@ -1017,18 +1122,18 @@ export function StudentResumePageContent() {
       <section className={`${styles.workspace} ${viewMode === 'feedback' ? styles.withFeedback : ''}`} aria-label="이력서 관리">
         {actionFeedback ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}
         <div className={styles.stage} aria-live="polite">
-          <div className={styles.topActions}>
-            <button
-              className={styles.secondaryAction}
-              disabled={isEditing && isResumeActionPending}
-              onClick={isEditing ? handleCancelEditing : () => setViewMode('edit')}
-              type="button"
-            >
-              {isEditing ? '작성 취소' : '이력서 수정하기'}
-            </button>
-            <button className={styles.primaryAction} disabled={isResumeActionPending} onClick={() => void handleSave('manual')} type="button">
-              {saveSubmitState === 'save' ? '저장 중' : '저장'}
-            </button>
+          <div className={`${styles.topActions} ${loadState.kind === 'failure' ? styles.failureActions : ''}`}>
+              <button
+                className={styles.secondaryAction}
+                disabled={!isResumeReady || (isEditing && (saveSubmitState !== 'idle' || majorSubmitState === 'pending'))}
+                onClick={isEditing ? handleCancelEditing : () => setViewMode('edit')}
+                type="button"
+              >
+                {isEditing ? '작성 취소' : '이력서 수정하기'}
+              </button>
+              <button className={styles.primaryAction} disabled={!isResumeReady || isResumeActionPending} onClick={() => { manualSaveRequestedRef.current = true; void handleSave('manual') }} type="button">
+                {saveSubmitState === 'save' ? '저장 중' : '저장'}
+              </button>
           </div>
 
           <div className={styles.sheetViewport}>
@@ -1165,6 +1270,9 @@ export function StudentResumePageContent() {
           {loadState.kind === 'failure' ? (
             <p className={styles.loadingMessage} role="alert">
               {loadState.message}
+              <button onClick={() => void loadResume(attemptedResumeIdRef.current, !requestedResumeId)} type="button">
+                이력서 다시 불러오기
+              </button>
             </p>
           ) : null}
           {userLoadState.kind === 'failure' ? (

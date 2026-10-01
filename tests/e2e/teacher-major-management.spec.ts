@@ -1,8 +1,8 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, apiBaseUrl } from './test-fixtures'
 
 import { authenticateWithAccessToken, createTestAccessToken } from './auth-fixtures'
 
-const apiBaseUrl = 'http://52.78.201.218'
+
 const teacherAccessToken = createTestAccessToken('TEACHER')
 
 test.describe('teacher major management', () => {

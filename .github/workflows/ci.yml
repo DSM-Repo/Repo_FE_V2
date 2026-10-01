@@ -11,10 +11,10 @@ permissions:
 
 jobs:
   verify:
-    name: Lint, build, and E2E smoke
+    name: Lint, unit, typecheck, build, and E2E
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_API_BASE_URL: http://52.78.201.218
+      NEXT_PUBLIC_API_BASE_URL: http://api.repo.test
 
     steps:
       - name: Checkout
@@ -40,8 +40,30 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: Unit runner regression tests
+        run: pnpm test:unit:runner
+
+      - name: Generate route types
+        run: pnpm exec next typegen
+
+      - name: Typecheck
+        run: pnpm typecheck
+
       - name: Build
         run: pnpm build
 
       - name: E2E smoke
         run: pnpm test:e2e
+
+      - name: Preserve failed E2E artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ github.sha }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

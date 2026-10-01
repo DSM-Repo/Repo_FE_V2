@@ -14,6 +14,8 @@
 | Language | TypeScript | 타입 안정성과 AI/사람 모두의 코드 이해 가능성 향상 |
 | Lint | ESLint | 현재 프로젝트 검증 명령으로 사용 |
 | E2E / Acceptance Test | Playwright | 사용자 흐름, 권한별 라우팅, 공개 페이지, PDF/도서관 흐름 검증에 적합 |
+| Workers Build | vinext + Vite + Cloudflare plugin | Next 앱의 Workers 배포 구성. Next E2E와 별도 런타임 검증 필요 |
+| Unit Test | Node test runner + TypeScript 컴파일 | `scripts/run-unit-tests.mjs`를 통한 현재 단위 테스트 실행 |
 
 현재 `package.json` 기준 주요 버전 범위:
 
@@ -24,16 +26,30 @@
 - `eslint`: `^9.39.4`
 - `eslint-config-next`: `^16.2.7`
 - `pnpm`: `packageManager` 필드로 고정
+- `@playwright/test`: `^1.60.0`
+- `vinext`: `1.0.0-beta.8`, `@vinext/cloudflare`: `1.0.0-beta.6`
+- `vite`: `^8.2.2`, `wrangler`: `^4.126.0`
 
-TODO: Playwright 설정과 `test:e2e` script는 다음 작업 단위에서 반영한다.
+2026-10-01 현재 [package.json](../package.json), [Playwright 설정](../playwright.config.ts)에 `test:e2e`와 `test:unit`이 존재한다. 개발 및 E2E 서버는 Next이며, `build`는 Next build 후 `postbuild`에서 vinext build와 Next typegen을 실행한다. [Vite 설정](../vite.config.ts)은 현재 Workers 배포 구성으로 유지한다.
+
+CI 명령은 [CI workflow](../.github/workflows/ci.yml)가 기준이다. 현재 작업 트리에는 `lint` → `test:unit` → `next typegen` → `typecheck` → `build` → `test:e2e`와 실패 아티팩트 보존이 설정되어 있다. [배포 workflow](../.github/workflows/deploy.yml)는 CI 성공의 `workflow_run.head_sha`를 checkout하고 main head 일치를 검사한다. 이는 설정 확인이며 실제 CI/배포 성공 증거는 S01/S11에서 별도로 검증한다. `pnpm check`는 lint/typecheck/vinext build만 포함하며 unit/E2E/Next build 전체 검증 명령이 아니다. 명령 상세는 [로컬 환경](LOCAL_ENVIRONMENT.md)을 따른다.
+
+## 현재 구현과 남은 검증
+
+- 에디터는 현재 직접 구현된 Markdown 직렬화 경로를 사용한다. 이 구현 사실은 에디터 라이브러리/최종 저장 포맷의 사용자 결정을 대신하지 않는다 (D02).
+- 이미지 업로드는 `src/features/resume/api/resumeHttpClient.ts`에서 `POST /image`, multipart `image` 필드, 브라우저 boundary 자동 생성을 사용한다. `resumeApi.ts`는 JPEG/PNG/WebP와 파일당 최대 50MiB (`50 * 1024 * 1024`)를 검사한다. [요구사항](REQUIREMENTS.md)의 전체 요청 55MB 기준은 서버 계약이며 이 클라이언트 검사를 뜻하지 않는다.
+- [2026-09-20 QA](QA_REPORT_2026-09-20.md)의 이미지 HOLD는 당시 JSON/binary 계약 불명확 상태의 기록으로 보존한다. 현재 프로필/프로젝트 업로드 코드는 연결되어 있지만 실제 서버 업로드·이미지 접근 성공은 별도 증거가 필요하다 (D03).
+- PDF 변환 책임은 서버로 확정되어 있다. 서버 엔진, job 요청/상태/결과 계약, 출력 정합성 및 프론트 Viewer 선택은 미정이다 (D10). 현재 도서관은 HTML 시트를 표시한다.
+
+D 번호는 [계약 및 결정 목록](exec-plans/003-mvp-contract-decisions-20261001.md)을 참조한다.
 
 ## 아직 확정하지 않은 항목
 
 - 문서형 에디터 라이브러리 또는 직접 구현 여부
-- PDF 변환 방식
+- 서버 PDF 변환 엔진/출력 계약과 프론트 PDF Viewer
 - 상태 관리 라이브러리
 - form/validation 라이브러리
-- CI에서 실행할 최소 검증 명령
+- CI 및 동일 SHA 배포 게이트의 실환경 검증과 staging 설정 (S01/S11, D13)
 
 ## 최우선 평가 기준
 
@@ -73,7 +89,7 @@ Repo-V2는 UI/UX 변화가 크므로 디자인 구현 정확도가 중요합니�
 ## 후보를 비교할 때 확인할 질문
 
 - 문서형 에디터를 직접 만들 것인가, 라이브러리를 사용할 것인가?
-- PDF 변환은 브라우저 렌더링 기반인가, 서버 렌더링 기반인가?
+- 서버 PDF 엔진은 어떤 렌더링 방식과 문서 입력을 지원하며, 프론트 Viewer와 어떻게 연결할 것인가?
 - 에디터 저장 포맷과 PDF 변환 포맷 사이의 변환 비용은 어느 정도인가?
 - Figma 디자인을 컴포넌트 시스템으로 안정적으로 옮길 수 있는가?
 - 팀원이 빠르게 개발할 수 있는가?
@@ -81,9 +97,9 @@ Repo-V2는 UI/UX 변화가 크므로 디자인 구현 정확도가 중요합니�
 ## TODO
 
 - 문서형 에디터 후보 정리
-- PDF 변환 방식 후보 정리
+- 서버 PDF 계약 및 Viewer 후보 정리 (D10)
 - 상태 관리/form 라이브러리 후보 정리
-- Playwright 설정 및 테스트 스크립트 추가
+- 기존 Playwright/unit의 mock 격리·발견·아티팩트 검증 보강 (S01)
 
 ## Next.js 결정 메모
 
@@ -100,7 +116,7 @@ Next.js에서 우선 활용할 영역:
 
 ## Non-decision
 
-이 문서는 확정된 기본 프론트엔드 스택을 기록하지만, editor/PDF/form/state 등 미결정 항목은 확정하지 않습니다.
+이 문서는 기본 프론트엔드 스택과 현재 코드 사실을 기록합니다. PDF의 서버 책임 외에 editor/PDF 엔진·Viewer/form/state 등 미결정 기술을 새로 확정하지 않습니다. 아래 날짜별 결정과 Follow-up은 당시 기록이며 현재 설정 여부는 위 현황을 따릅니다.
 
 ## Decisions
 

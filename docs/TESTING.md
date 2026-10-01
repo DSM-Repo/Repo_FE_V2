@@ -1,6 +1,6 @@
 # Testing Strategy
 
-이 문서는 Repo-V2의 테스트 전략 초안입니다. 핵심 테스트 도구는 `Playwright`로 시작합니다.
+이 문서는 Repo-V2의 현재 테스트 전략입니다. 사용자 흐름은 Playwright, API 파서·요청 처리는 Node 내장 test runner로 검증합니다. 전체 acceptance 기준은 [MVP 검증 명세](exec-plans/002-mvp-test-spec-20261001.md)를 따릅니다.
 
 ## 테스트 레벨
 
@@ -60,19 +60,43 @@
 - [ ] 선생님이 피드백을 관리할 수 있다.
 - [ ] 내부 사용자가 도서관을 열람할 수 있다.
 
-## TODO
-
-- Playwright 설정 추가
-- `pnpm test:e2e` 스크립트 추가
-- 시각적 회귀 테스트 필요 여부 결정
-- CI에서 실행할 최소 검증 명령 결정
-
-## 최소 검증 명령 초안
-
-Next.js 전환 후 CI는 최소한 아래 명령을 실행합니다.
+## 현재 검증 명령
 
 ```bash
 pnpm lint
+pnpm test:unit
+pnpm exec next typegen
+pnpm typecheck
 pnpm build
 pnpm test:e2e
 ```
+
+`pnpm build`는 Next production build 뒤 postbuild에서 vinext/Workers build와 Next route type 생성을 수행합니다. Playwright의 기본 실행 표면은 Next 서버이므로 Workers 검증은 별도로 필요합니다.
+
+## Mock 격리
+
+- 모든 `tests/e2e/*.spec.ts`는 `test-fixtures.ts`의 `test`/`expect`와 공통 `apiBaseUrl`을 사용합니다.
+- 기본 API 주소는 운영 서버가 아닌 `http://api.repo.test`입니다. 빌드와 테스트의 `NEXT_PUBLIC_API_BASE_URL`은 동일해야 합니다.
+- 명시한 `page.route` mock이 처리하지 않은 API/fetch/XHR는 차단하고 해당 테스트를 실패시킵니다. 같은 origin의 `/api/backend/`도 차단하여 로컬 프록시를 통한 원격 변경을 막습니다. 외부 이미지 등 미등록 asset도 네트워크로 보내지 않습니다.
+- 실이미지 표시를 검사하는 테스트는 해당 asset을 실제 이미지 fixture로 명시해야 합니다. 차단된 이미지를 정상 표시 증거로 계산하지 않습니다.
+- `mock-network.spec.ts`에서 미등록 원격 요청/로컬 프록시 차단과 명시 mock 우선순위를 검사합니다.
+- 합성 JWT와 mock 응답은 실제 서버의 권한·영속성·CORS 증거가 아닙니다. live 검증은 D13의 폐기 가능한 staging 계정/리소스와 합의된 명령이 준비된 뒤 별도로 수행합니다.
+
+## Fresh 서버와 실패 증거
+
+Playwright는 기존 서버를 재사용하지 않습니다. 사용하지 않는 port를 선택합니다.
+
+```bash
+PLAYWRIGHT_PORT=3114 pnpm test:e2e
+```
+
+CI 모드에서는 같은 소스와 API 환경으로 `pnpm build`를 먼저 실행하고 `CI=1 PLAYWRIGHT_PORT=3114 pnpm test:e2e`를 실행합니다. CI는 lint/unit/typecheck/build/E2E를 수행하고 실패 시 `test-results/`의 trace·screenshot 및 `playwright-report/`를 해당 SHA의 아티팩트로 보존합니다.
+
+## 남은 검증
+
+- 실제 서버 계약/학생·교사 계정 및 저장·공개·피드백 영속성
+- 서버 PDF 생성·내용·다운로드·학생/반 페이지 인덱스
+- Workers runtime 및 KV/IMAGES/CDN 공개 무효화
+- 시각적 회귀 기준과 비교 이미지 관리 정책
+
+이 항목들은 mock 통과만으로 완료 처리하지 않습니다.

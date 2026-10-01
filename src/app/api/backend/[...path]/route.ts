@@ -1,6 +1,6 @@
 const DEFAULT_BACKEND_API_BASE_URL = 'http://52.78.201.218'
-const BACKEND_API_BASE_URL =
-  process.env.BACKEND_API_BASE_URL?.trim() || process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_API_BASE_URL
+const MAX_BODY_BYTES = 55 * 1024 * 1024
+const UPSTREAM_TIMEOUT_MS = 30_000
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
 
@@ -12,7 +12,9 @@ function getBackendApiUrl(path: readonly string[], requestUrl: string) {
 }
 
 function getNormalizedBackendOrigin() {
-  const backendUrl = new URL(BACKEND_API_BASE_URL)
+  const backendUrl = new URL(
+    process.env.BACKEND_API_BASE_URL?.trim() || process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_API_BASE_URL,
+  )
 
   if (backendUrl.protocol !== 'http:' && backendUrl.protocol !== 'https:') {
     throw new Error('BACKEND_API_BASE_URL must use http or https.')
@@ -72,10 +74,6 @@ function concatBytes(chunks: Uint8Array[]) {
   return result
 }
 
-function toArrayBuffer(bytes: Uint8Array) {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
-}
-
 function decodeChunkedBody(bytes: Uint8Array) {
   const chunks: Uint8Array[] = []
   let offset = 0
@@ -90,45 +88,77 @@ function decodeChunkedBody(bytes: Uint8Array) {
     const chunkSizeText = textDecoder.decode(bytes.subarray(offset, lineEnd)).split(';')[0]?.trim() ?? ''
     const chunkSize = Number.parseInt(chunkSizeText, 16)
 
-    if (!Number.isFinite(chunkSize)) {
+    if (!/^[0-9a-f]+$/i.test(chunkSizeText) || !Number.isSafeInteger(chunkSize)) {
       throw new Error('Invalid chunk size from backend API.')
     }
 
     offset = lineEnd + 2
 
     if (chunkSize === 0) {
-      break
+      while (true) {
+        const trailerEnd = findLineEnd(bytes, offset)
+        if (trailerEnd < 0) throw new Error('Truncated chunk trailers.')
+        if (trailerEnd === offset) {
+          if (trailerEnd + 2 !== bytes.length) throw new Error('Unexpected bytes after chunked body.')
+          return concatBytes(chunks)
+        }
+        const trailer = textDecoder.decode(bytes.subarray(offset, trailerEnd))
+        if (!/^[!#$%&'*+.^_`|~\w-]+:/.test(trailer)) throw new Error('Invalid chunk trailer.')
+        offset = trailerEnd + 2
+      }
     }
 
+    if (chunkSize > bytes.length - offset - 2 || bytes[offset + chunkSize] !== 13 || bytes[offset + chunkSize + 1] !== 10) {
+      throw new Error('Truncated or invalid chunk data.')
+    }
     chunks.push(bytes.subarray(offset, offset + chunkSize))
     offset += chunkSize + 2
   }
 
-  return concatBytes(chunks)
+  throw new Error('Missing final chunk.')
 }
 
-async function readAllBytes(stream: ReadableStream<Uint8Array>) {
+class BodyLimitError extends Error {}
+
+function withAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason)
+    signal.addEventListener('abort', abort, { once: true })
+    operation.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort))
+    if (signal.aborted) abort()
+  })
+}
+
+async function readAllBytes(stream: ReadableStream<Uint8Array>, signal: AbortSignal) {
   const reader = stream.getReader()
   const chunks: Uint8Array[] = []
+  let length = 0
+  let complete = false
 
   try {
     while (true) {
-      const { done, value } = await reader.read()
+      const { done, value } = await withAbort(reader.read(), signal)
 
       if (done) {
+        complete = true
         break
       }
 
+      length += value.byteLength
+      if (length > MAX_BODY_BYTES) throw new BodyLimitError('Body exceeds 55 MiB.')
       chunks.push(value)
     }
   } finally {
+    if (!complete) {
+      void reader.cancel().catch((error: unknown) => console.error('Backend stream cancellation failed.', error))
+    }
     reader.releaseLock()
   }
 
   return concatBytes(chunks)
 }
 
-function createHttpResponseFromBytes(bytes: Uint8Array) {
+function createHttpResponseFromBytes(bytes: Uint8Array<ArrayBuffer>) {
   const boundaryIndex = findHeaderBoundary(bytes)
 
   if (boundaryIndex < 0) {
@@ -137,8 +167,9 @@ function createHttpResponseFromBytes(bytes: Uint8Array) {
 
   const headerText = textDecoder.decode(bytes.subarray(0, boundaryIndex))
   const [statusLine = '', ...headerLines] = headerText.split('\r\n')
-  const [, statusCodeText, ...statusTextParts] = statusLine.split(' ')
-  const status = Number.parseInt(statusCodeText ?? '', 10)
+  const statusMatch = /^HTTP\/1\.[01] ([2-5][0-9]{2})(?: (.*))?$/.exec(statusLine)
+  if (!statusMatch) throw new Error('Invalid backend status line.')
+  const status = Number(statusMatch[1])
   const headers = new Headers()
 
   for (const headerLine of headerLines) {
@@ -146,26 +177,33 @@ function createHttpResponseFromBytes(bytes: Uint8Array) {
 
     if (separatorIndex > 0) {
       headers.append(headerLine.slice(0, separatorIndex), headerLine.slice(separatorIndex + 1).trim())
-    }
+    } else throw new Error('Invalid backend header.')
   }
 
   const bodyBytes = bytes.subarray(boundaryIndex + 4)
-  const isChunked = headers.get('transfer-encoding')?.toLowerCase().includes('chunked') ?? false
-  const body = isChunked ? decodeChunkedBody(bodyBytes) : bodyBytes
+  const encoding = headers.get('transfer-encoding')?.toLowerCase()
+  const empty = status === 204 || status === 205 || status === 304
+  if (encoding && encoding !== 'chunked') throw new Error('Unsupported transfer encoding.')
+  const length = headers.get('content-length')
+  if (!empty && length !== null && (!/^\d+$/.test(length) || Number(length) !== bodyBytes.length || encoding)) {
+    throw new Error('Invalid backend content length.')
+  }
+  const body = empty ? null : encoding ? decodeChunkedBody(bodyBytes) : bodyBytes
 
   headers.delete('connection')
   headers.delete('content-length')
   headers.delete('transfer-encoding')
 
-  return new Response(toArrayBuffer(body), {
+  return new Response(body, {
     headers,
-    status: Number.isFinite(status) ? status : 502,
-    statusText: statusTextParts.join(' '),
+    status,
+    statusText: statusMatch[2] ?? '',
   })
 }
 
-async function fetchBackendViaTcp(targetUrl: URL, method: string, headers: Headers, body: ArrayBuffer | undefined) {
-  const { connect } = await import('cloudflare:sockets')
+async function fetchBackendViaTcp(targetUrl: URL, method: string, headers: Headers, body: Uint8Array<ArrayBuffer> | undefined, signal: AbortSignal) {
+  const { connect } = await withAbort(import('cloudflare:sockets'), signal)
+  signal.throwIfAborted()
   const socket = connect(
     { hostname: targetUrl.hostname, port: Number(targetUrl.port || 80) },
     { allowHalfOpen: true, secureTransport: 'off' },
@@ -184,40 +222,55 @@ async function fetchBackendViaTcp(targetUrl: URL, method: string, headers: Heade
   const requestHead = `${method} ${targetUrl.pathname}${targetUrl.search} HTTP/1.1\r\n${headerLines.join('\r\n')}\r\n\r\n`
 
   try {
-    await writer.write(textEncoder.encode(requestHead))
+    await withAbort(writer.write(textEncoder.encode(requestHead)), signal)
 
     if (body) {
-      await writer.write(new Uint8Array(body))
+      await withAbort(writer.write(body), signal)
     }
 
-    writer.releaseLock()
-
-    return createHttpResponseFromBytes(await readAllBytes(socket.readable))
+    return createHttpResponseFromBytes(await readAllBytes(socket.readable, signal))
   } finally {
-    socket.close()
+    writer.releaseLock()
+    void Promise.resolve(socket.close()).catch((error: unknown) => console.error('Backend socket close failed.', error))
   }
 }
 
 async function proxyBackendRequest(request: Request, context: { params: Promise<{ path: string[] }> }) {
-  const { path } = await context.params
-  const method = request.method.toUpperCase()
-  const body = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer()
-  const targetUrl = getBackendApiUrl(path, request.url)
-  const headers = getForwardHeaders(request)
-
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(new Error('Backend timeout.')), UPSTREAM_TIMEOUT_MS)
+  const abort = () => controller.abort(request.signal.reason)
+  request.signal.addEventListener('abort', abort, { once: true })
+  if (request.signal.aborted) abort()
   try {
-    if (targetUrl.protocol === 'http:' && isIpv4Address(targetUrl.hostname)) {
-      return await fetchBackendViaTcp(targetUrl, method, headers, body)
+    const { path } = await withAbort(context.params, controller.signal)
+    const method = request.method.toUpperCase()
+    const targetUrl = getBackendApiUrl(path, request.url)
+    const headers = getForwardHeaders(request)
+    if (Number(request.headers.get('content-length')) > MAX_BODY_BYTES) {
+      void request.body?.cancel().catch((error: unknown) => console.error('Request cancellation failed.', error))
+      return new Response('Backend API request body too large.', { status: 413 })
+    }
+    let body: Uint8Array<ArrayBuffer> | undefined
+    try {
+      body = method === 'GET' || method === 'HEAD' || !request.body ? undefined : await readAllBytes(request.body, controller.signal)
+    } catch (error) {
+      if (error instanceof BodyLimitError) return new Response('Backend API request body too large.', { status: 413 })
+      throw error
+    }
+    if (globalThis.navigator?.userAgent === 'Cloudflare-Workers' && targetUrl.protocol === 'http:' && isIpv4Address(targetUrl.hostname)) {
+      return await fetchBackendViaTcp(targetUrl, method, headers, body, controller.signal)
     }
 
-    const upstreamResponse = await fetch(targetUrl, {
+    const upstreamResponse = await withAbort(fetch(targetUrl, {
       body,
       headers,
       method,
       redirect: 'manual',
-    })
+      signal: controller.signal,
+    }), controller.signal)
+    const responseBody = upstreamResponse.body ? await readAllBytes(upstreamResponse.body, controller.signal) : null
 
-    return new Response(upstreamResponse.body, {
+    return new Response(responseBody, {
       headers: new Headers(upstreamResponse.headers),
       status: upstreamResponse.status,
       statusText: upstreamResponse.statusText,
@@ -226,6 +279,9 @@ async function proxyBackendRequest(request: Request, context: { params: Promise<
     console.error('Backend API proxy request failed.', error)
 
     return new Response('Backend API proxy request failed.', { status: 502 })
+  } finally {
+    clearTimeout(timer)
+    request.signal.removeEventListener('abort', abort)
   }
 }
 

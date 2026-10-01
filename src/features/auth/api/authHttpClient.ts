@@ -57,10 +57,15 @@ async function postAuthRequest(path: AuthJsonRequestPath | AuthRefreshRequestPat
       method: 'POST',
       signal: controller.signal,
     })
+    const body = response.body === null ? null : await response.arrayBuffer()
 
     return {
       kind: 'response',
-      value: response,
+      value: new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      }),
     }
   } catch (error) {
     if (error instanceof DOMException || error instanceof TypeError) {
