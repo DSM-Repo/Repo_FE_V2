@@ -439,15 +439,11 @@
   }
 
   .sheetViewport {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
   }
 
   .spread {
     flex-wrap: wrap;
-  }
-
-  .sheetViewport .pageArrow {
-    display: none;
   }
 
   .documentSheet {

@@ -92,9 +92,15 @@ function compareHistoryByDateDesc(left: HistoryItem, right: HistoryItem) {
   const leftTime = new Date(left.date).getTime()
   const rightTime = new Date(right.date).getTime()
 
-  if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+  const leftInvalid = Number.isNaN(leftTime)
+  const rightInvalid = Number.isNaN(rightTime)
+
+  if (leftInvalid && rightInvalid) {
     return right.date.localeCompare(left.date)
   }
+
+  if (leftInvalid) return 1
+  if (rightInvalid) return -1
 
   return rightTime - leftTime
 }
