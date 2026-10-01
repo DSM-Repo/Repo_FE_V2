@@ -52,7 +52,7 @@
 .name {
   margin: 0;
   color: var(--repo-text-black);
-  font-size: var(--repo-font-title-small-size);
+  font-size: var(--resume-book-sheet-name-size, var(--repo-font-title-small-size));
   font-weight: var(--repo-font-title-small-weight);
   line-height: var(--repo-font-title-small-line-height);
   letter-spacing: 0;
@@ -138,7 +138,7 @@
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--repo-text-black);
-  font-size: var(--repo-font-title-small-size);
+  font-size: var(--resume-book-sheet-project-name-size, var(--repo-font-title-small-size));
   font-weight: var(--repo-font-title-small-weight);
   line-height: var(--repo-font-title-small-line-height);
   letter-spacing: 0;

@@ -250,7 +250,8 @@ test.describe('student resume management', () => {
 
   test('race: cancelling added pages restores a visible saved page', async ({ page }) => {
     await page.goto('/resume?mode=edit')
-    const next = page.getByLabel('이력서 페이지 도구').getByRole('button', { name: '다음 페이지' })
+    const next = page.getByRole('button', { name: '다음 페이지' })
+    await page.getByLabel('프로젝트 이름').fill('첫 프로젝트')
     await next.click()
     await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()
     await next.click()
@@ -436,8 +437,6 @@ test.describe('student resume management', () => {
     await expect(page.getByLabel('학번 전공')).toHaveText('')
     await expect(page.getByLabel('자기소개 제목')).toHaveValue('')
     await expect(page.getByText('2 / 2')).toBeVisible()
-    await expect(page.getByLabel('이력서 페이지 도구')).toBeVisible()
-
     await page.getByRole('button', { name: '작성 취소' }).click()
 
     await expect(page.getByRole('button', { name: '이력서 수정하기' })).toBeVisible()
@@ -1110,11 +1109,8 @@ test.describe('student resume management', () => {
     await page.setViewportSize({ height: 1080, width: 1920 })
     await page.goto('/resume?mode=edit')
 
-    const pageTools = page.getByLabel('이력서 페이지 도구')
-    await expect(pageTools.getByRole('button', { name: '텍스트 작성' })).toBeVisible()
-    await expect(pageTools.getByRole('button', { name: '이미지 추가 준비 중' })).toBeVisible()
-    await expect(pageTools.getByRole('button', { name: '파일 업로드 준비 중' })).toBeVisible()
-    await pageTools.getByRole('button', { name: '다음 페이지' }).click()
+    await page.getByLabel('프로젝트 이름').fill('첫 프로젝트')
+    await page.getByRole('button', { name: '다음 페이지' }).click()
 
     await expect(page.getByRole('button', { name: '프로젝트 페이지 추가' })).toBeVisible()
     await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()

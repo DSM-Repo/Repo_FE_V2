@@ -132,7 +132,7 @@ export function StudentHomePageContent(): ReactElement {
 
   return (
     <main className={styles.page}>
-      <AppHeader activeItem="home" items={navigationItems} loginHref="#notifications-title" />
+      <AppHeader activeItem="home" items={navigationItems} loginHref="#notifications-title" showLogout />
 
       <section className={styles.content} aria-labelledby="student-home-title">
         <header className={styles.profileHero}>

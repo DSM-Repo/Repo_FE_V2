@@ -219,7 +219,7 @@ function TeacherStudentsContent() {
       className={styles.page}
       data-dialog-open={selectedClass ? 'true' : 'false'}
     >
-      <AppHeader activeItem="students" items={navigationItems} />
+      <AppHeader activeItem="students" items={navigationItems} showLogout />
       {loadState.kind === 'failure' ? (
         <div className={styles.toastLayer}>
           <Toast variant="error">{loadState.message}</Toast>

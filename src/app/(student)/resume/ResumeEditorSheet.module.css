@@ -107,6 +107,24 @@
   opacity: 0.72;
 }
 
+.profileImageButton:hover:not(:disabled),
+.projectImageButton:hover:not(:disabled),
+.qrButton:hover,
+.addInlineButton:hover,
+.inlineIconButton:hover {
+  border-color: var(--repo-gray-500);
+  color: var(--repo-text-black);
+  background: var(--repo-gray-100);
+}
+
+.profileImageButton:active:not(:disabled),
+.projectImageButton:active:not(:disabled),
+.qrButton:active,
+.addInlineButton:active,
+.inlineIconButton:active {
+  transform: translateY(1px);
+}
+
 .identity,
 .projectIdentity {
   min-width: 0;
@@ -200,7 +218,7 @@
 
 .nameInput {
   flex: 0 1 68px;
-  font-size: var(--repo-font-title-tiny-size);
+  font-size: var(--resume-book-sheet-name-size, var(--repo-font-title-tiny-size));
   font-weight: var(--repo-font-title-small-weight);
   line-height: var(--repo-font-title-tiny-line-height);
 }
@@ -491,7 +509,7 @@
 }
 
 .projectNameInput {
-  font-size: var(--repo-font-body-large-size);
+  font-size: var(--resume-book-sheet-project-name-size, var(--repo-font-body-large-size));
   font-weight: var(--repo-font-title-small-weight);
   line-height: var(--repo-font-body-large-line-height);
 }

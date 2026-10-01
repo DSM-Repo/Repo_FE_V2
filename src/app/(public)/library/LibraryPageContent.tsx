@@ -235,7 +235,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
 
   return (
     <main className={styles.page}>
-      <AppHeader activeItem="library" items={navigationItems} />
+      <AppHeader activeItem="library" items={navigationItems} showLogout={Boolean(accessToken)} />
       {showsLoadError ? (
         <div className={styles.toastLayer}>
           <Toast variant="error">포트폴리오 문서를 불러오는데 실패하였습니다. 잠시 후 다시 시도해 주세요.</Toast>

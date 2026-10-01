@@ -64,6 +64,19 @@
   border-radius: var(--repo-radius-pill);
   color: var(--repo-gray-50);
   background: var(--repo-bg-main-lighter);
+  transition:
+    background 120ms ease-out,
+    color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.iconButton:hover {
+  color: var(--repo-main);
+  background: var(--repo-gray-800);
+}
+
+.iconButton:active {
+  transform: scale(0.94);
 }
 
 .loginButton {

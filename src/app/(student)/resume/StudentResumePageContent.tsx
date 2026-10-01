@@ -545,6 +545,9 @@ export function StudentResumePageContent() {
   const isImageUploading = imageUploadState.kind === 'uploading'
   const isResumeActionPending = saveSubmitState !== 'idle' || majorSubmitState === 'pending' || isImageUploading
   const isEditing = isResumeReady && (viewMode === 'edit' || viewMode === 'feedback')
+  const hasWrittenProject = draft.pages.some((page) => page.type === 'PROJECT' && Boolean(
+    page.project?.name.trim() || page.project?.summary.trim() || page.content.trim(),
+  ))
   const visiblePageIndexes = [spreadStartIndex, spreadStartIndex + 1].filter((index) => index < draft.pages.length)
   const canMovePrevious = spreadStartIndex > 0
   const canMoveNext = isEditing ? spreadStartIndex < draft.pages.length - 1 : spreadStartIndex + 2 < draft.pages.length
@@ -1007,15 +1010,14 @@ export function StudentResumePageContent() {
       saveResumeId(result.resumeId)
 
       const hasNewChanges = draftRevisionRef.current !== saveRevision
-      const nextMode = (mode === 'manual' && !hasNewChanges) || viewMode === 'view' ? null : 'edit'
+      const shouldEnterView = (mode === 'manual' && !hasNewChanges) || viewMode === 'view'
+      const nextMode = shouldEnterView ? null : 'edit'
       const nextUrl =
         nextMode === 'edit'
           ? `/resume?resumeId=${encodeURIComponent(result.resumeId)}&mode=edit`
           : `/resume?resumeId=${encodeURIComponent(result.resumeId)}`
 
-      if (requestedResumeId !== result.resumeId || requestedMode !== nextMode) {
-        router.replace(nextUrl, { scroll: false })
-      }
+      window.history.replaceState(null, '', nextUrl)
 
       if (syncedResume) {
         setLoadState({ kind: 'success', resume: syncedResume })
@@ -1056,7 +1058,7 @@ export function StudentResumePageContent() {
         setIsDraftDirty(false)
       }
 
-      if (mode === 'manual' && !hasNewChanges) {
+      if (shouldEnterView && mode === 'manual') {
         setFeedbackLoadState({ kind: 'idle' })
         setOpenFeedbackId(undefined)
         setViewMode('view')
@@ -1076,7 +1078,7 @@ export function StudentResumePageContent() {
         tone: syncedResumeResult && syncedResumeResult.kind !== 'success' ? 'error' : 'success',
       })
     },
-    [draft, isResumeActionPending, isResumeReady, loadState, requestedMode, requestedResumeId, router, viewMode],
+    [draft, isResumeActionPending, isResumeReady, loadState, viewMode],
   )
 
   useEffect(() => {
@@ -1117,7 +1119,7 @@ export function StudentResumePageContent() {
 
   return (
     <main className={styles.page}>
-      <AppHeader activeItem="resume" items={navigationItems} />
+      <AppHeader activeItem="resume" items={navigationItems} showLogout />
 
       <section className={`${styles.workspace} ${viewMode === 'feedback' ? styles.withFeedback : ''}`} aria-label="이력서 관리">
         {actionFeedback ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}
@@ -1173,7 +1175,7 @@ export function StudentResumePageContent() {
                   />
                 ),
               )}
-              {isEditing && spreadStartIndex + 1 >= draft.pages.length ? (
+              {isEditing && hasWrittenProject && spreadStartIndex + 1 >= draft.pages.length ? (
                 <button
                   className={`${styles.documentSheet} ${styles.addPageSheet}`}
                   onClick={addProjectPage}
@@ -1198,47 +1200,6 @@ export function StudentResumePageContent() {
           <p className={styles.pageCount}>
             {Math.min(spreadStartIndex + 2, draft.pages.length)} / {draft.pages.length}
           </p>
-
-          {isEditing ? (
-            <div className={styles.editorToolbar} aria-label="이력서 페이지 도구">
-              <div className={styles.toolGroup}>
-                <button
-                  className={styles.iconTool}
-                  disabled={!canMovePrevious}
-                  onClick={() => setSpreadStartIndex((currentIndex) => Math.max(0, currentIndex - 1))}
-                  type="button"
-                  aria-label="이전 페이지"
-                >
-                  <Icon name="chevron-left" />
-                </button>
-                <button
-                  className={styles.iconTool}
-                  disabled={!canMoveNext}
-                  onClick={() => setSpreadStartIndex((currentIndex) => Math.min(draft.pages.length - 1, currentIndex + 1))}
-                  type="button"
-                  aria-label="다음 페이지"
-                >
-                  <Icon name="chevron-right" />
-                </button>
-              </div>
-              <div className={styles.toolGroup}>
-                <button
-                  className={styles.textTool}
-                  onClick={() => document.getElementById(`resume-page-content-${draft.pages[spreadStartIndex]?.index ?? 0}`)?.focus()}
-                  type="button"
-                  aria-label="텍스트 작성"
-                >
-                  T
-                </button>
-                <button className={styles.iconTool} disabled type="button" aria-label="이미지 추가 준비 중">
-                  <Icon name="image" />
-                </button>
-                <button className={styles.iconTool} disabled type="button" aria-label="파일 업로드 준비 중">
-                  <Icon name="upload" />
-                </button>
-              </div>
-            </div>
-          ) : null}
 
           {isEditing ? (
             <>

@@ -229,7 +229,7 @@ export default function TeacherMajorsPage() {
 
   return (
     <main className={styles.page} data-major-selected={selectedMajor ? 'true' : 'false'}>
-      <AppHeader activeItem="majors" items={navigationItems} />
+      <AppHeader activeItem="majors" items={navigationItems} showLogout />
 
       <section className={styles.content} aria-labelledby="majors-title">
         {notice ? (

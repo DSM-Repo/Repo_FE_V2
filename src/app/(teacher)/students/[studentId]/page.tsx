@@ -14,7 +14,7 @@ const navigationItems = [
 export default function TeacherStudentReviewPage() {
   return (
     <main className={styles.page} data-feedback-panel-open="false">
-      <AppHeader activeItem="students" items={navigationItems} />
+      <AppHeader activeItem="students" items={navigationItems} showLogout />
 
       <section className={styles.workspace} aria-label="학생 포트폴리오 검토">
         <div className={styles.viewer} data-document-empty="true">

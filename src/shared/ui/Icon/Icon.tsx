@@ -8,6 +8,7 @@ export type IconName =
   | 'eye-off'
   | 'image'
   | 'login'
+  | 'logout'
   | 'plus'
   | 'right-arrow'
   | 'search'
@@ -44,6 +45,10 @@ export function Icon({ name, 'aria-hidden': ariaHidden = true, focusable = false
 
   if (name === 'login') {
     return <LoginIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
+  }
+
+  if (name === 'logout') {
+    return <LogoutIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
   }
 
   if (name === 'plus') {
@@ -158,6 +163,15 @@ function LoginIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
         strokeLinejoin="round"
         strokeWidth="1.6"
       />
+    </svg>
+  )
+}
+
+function LogoutIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
+  return (
+    <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M9.33 5.33L12 8M12 8L9.33 10.67M12 8H5.33" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" />
+      <path d="M7.33 3.33H4C3.26 3.33 2.67 3.93 2.67 4.67V11.33C2.67 12.07 3.26 12.67 4 12.67H7.33" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" />
     </svg>
   )
 }

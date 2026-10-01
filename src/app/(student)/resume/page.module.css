@@ -9,7 +9,7 @@
 
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  min-height: calc(100dvh - var(--repo-size-header-min-height));
+  min-height: auto;
   background: var(--repo-bg-main);
 }
 
@@ -28,7 +28,7 @@
   row-gap: var(--space-5);
   justify-items: center;
   padding: var(--space-10);
-  overflow: auto;
+  overflow: visible;
   background: var(--repo-bg-main);
 }
 
@@ -36,7 +36,7 @@
   position: relative;
   z-index: 2;
   display: flex;
-  width: min(100%, 1480px);
+  width: min(100%, 1240px);
   gap: 12px;
   align-items: center;
   justify-content: flex-end;
@@ -59,6 +59,11 @@
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
   letter-spacing: 0;
+  transition:
+    background 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out,
+    transform 120ms ease-out;
   white-space: nowrap;
 }
 
@@ -72,6 +77,20 @@
   background: var(--repo-bg-main);
 }
 
+.primaryAction:hover:not(:disabled) {
+  background: var(--repo-main-darker);
+}
+
+.secondaryAction:hover:not(:disabled) {
+  border-color: var(--repo-gray-50);
+  background: var(--repo-bg-main-lighter);
+}
+
+.primaryAction:active:not(:disabled),
+.secondaryAction:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
 .primaryAction:disabled,
 .secondaryAction:disabled {
   cursor: not-allowed;
@@ -81,8 +100,6 @@
 .primaryAction:focus-visible,
 .secondaryAction:focus-visible,
 .pageArrow:focus-visible,
-.iconTool:focus-visible,
-.textTool:focus-visible,
 .closeButton:focus-visible,
 .feedbackItemButton:focus-visible {
   outline: 2px solid var(--repo-main);
@@ -91,7 +108,7 @@
 
 .sheetViewport {
   display: grid;
-  width: min(100%, 1480px);
+  width: min(100%, 1240px);
   min-height: auto;
   grid-template-columns: 24px minmax(0, auto) 24px;
   gap: 20px;
@@ -140,7 +157,9 @@
   );
   --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 551 / 780);
   --resume-book-sheet-padding: clamp(var(--space-4), 1.35vw, var(--space-6));
-  --resume-book-sheet-avatar-size: clamp(36px, 2.1vw, 44px);
+  --resume-book-sheet-avatar-size: clamp(40px, 2.5vw, 48px);
+  --resume-book-sheet-name-size: clamp(16px, 1.25vw, 22px);
+  --resume-book-sheet-project-name-size: clamp(16px, 1.35vw, 24px);
   --resume-book-sheet-qr-size: clamp(42px, 2.8vw, 56px);
   --resume-book-sheet-header-gap: clamp(var(--space-2), 1.15vw, var(--space-5));
 }
@@ -166,6 +185,10 @@
   opacity: 0.28;
 }
 
+.pageArrow:hover:not(:disabled) {
+  color: var(--repo-main);
+}
+
 .pageCount {
   position: relative;
   z-index: 2;
@@ -174,51 +197,6 @@
   font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
-}
-
-.editorToolbar {
-  position: relative;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toolGroup {
-  display: inline-flex;
-  align-items: center;
-  overflow: hidden;
-  border-radius: var(--repo-radius-pill);
-  background: var(--repo-bg-main-point);
-}
-
-.iconTool,
-.textTool {
-  display: inline-flex;
-  width: 34px;
-  height: 38px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  color: var(--repo-gray-50);
-  background: transparent;
-}
-
-.textTool {
-  width: 42px;
-  font-size: var(--repo-font-title-tiny-size);
-  font-weight: 600;
-  line-height: 1;
-}
-
-.iconTool svg {
-  width: var(--space-4);
-  height: var(--space-4);
-}
-
-.iconTool:disabled {
-  cursor: default;
-  opacity: 0.66;
 }
 
 .feedbackToggle {
@@ -312,6 +290,7 @@
 }
 
 .feedbackPanel {
+  align-self: stretch;
   min-height: calc(100dvh - var(--repo-size-header-min-height));
   border-left: 1px solid var(--repo-bg-main-point);
   background: var(--repo-bg-main-lighter);
@@ -344,6 +323,12 @@
   background: transparent;
   font-size: 22px;
   line-height: 1;
+  transition: color 120ms ease-out, transform 120ms ease-out;
+}
+
+.closeButton:hover {
+  color: var(--repo-main);
+  transform: scale(1.08);
 }
 
 .feedbackListHeader {
@@ -371,6 +356,22 @@
   font-size: var(--repo-font-body-very-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-body-very-tiny-line-height);
+  transition:
+    background 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.feedbackBulkAction:hover:not(:disabled),
+.feedbackStatusAction:hover:not(:disabled) {
+  border-color: var(--repo-gray-50);
+  background: var(--repo-bg-main-lighter);
+}
+
+.feedbackBulkAction:active:not(:disabled),
+.feedbackStatusAction:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .feedbackBulkAction {
@@ -521,7 +522,7 @@
 
   .stage {
     height: auto;
-    overflow: auto;
+    overflow: visible;
   }
 
   .sheetViewport {
