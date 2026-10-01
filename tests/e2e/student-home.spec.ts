@@ -84,6 +84,27 @@ test.describe('student home page', () => {
     )
   })
 
+  test('centers the desktop dashboard content within the viewport', async ({ page }) => {
+    await page.setViewportSize({ height: 1000, width: 1680 })
+    await page.goto('/home')
+
+    const progressPanelBox = await page
+      .getByRole('progressbar', { name: '이력서 완성도 0%' })
+      .locator('xpath=ancestor::section[1]')
+      .boundingBox()
+    const notificationPanelBox = await page
+      .getByRole('region', { name: '알림 목록' })
+      .boundingBox()
+
+    expect(progressPanelBox).not.toBeNull()
+    expect(notificationPanelBox).not.toBeNull()
+
+    const leftGap = progressPanelBox?.x ?? 0
+    const rightGap = 1680 - ((notificationPanelBox?.x ?? 0) + (notificationPanelBox?.width ?? 0))
+
+    expect(Math.abs(leftGap - rightGap)).toBeLessThanOrEqual(2)
+  })
+
   test('renders logged-in user info and resume progress from API', async ({ page }) => {
     await page.route(`${apiBaseUrl}/user`, async (route) => {
       expect(route.request().headers()['authorization']).toBe(`Bearer ${studentAccessToken}`)

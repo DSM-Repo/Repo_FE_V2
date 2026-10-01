@@ -5,13 +5,20 @@
 }
 
 .content {
-  width: min(100%, 1492px);
+  --student-home-content-width: 1388px;
+
+  display: grid;
+  width: 100%;
+  max-width: calc(var(--student-home-content-width) + 64px);
+  justify-items: center;
   margin: 0 auto;
   padding: 64px 32px 120px;
 }
 
 .profileHero {
   display: flex;
+  width: 100%;
+  max-width: var(--student-home-content-width);
   align-items: center;
   gap: 16px;
 }
@@ -66,10 +73,13 @@
 
 .dashboard {
   display: grid;
+  width: 100%;
+  max-width: var(--student-home-content-width);
   grid-template-columns: minmax(0, 799px) minmax(360px, 535px);
   column-gap: 54px;
   row-gap: 48px;
   align-items: start;
+  justify-content: center;
   margin-top: 54px;
 }
 
