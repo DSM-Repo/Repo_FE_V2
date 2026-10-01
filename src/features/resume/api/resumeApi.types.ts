@@ -52,9 +52,15 @@ export type ResumeDetailInput = {
   readonly resumeId: string
 }
 
+export type ResumeStudentDetailInput = {
+  readonly accessToken: string
+  readonly studentId: number
+}
+
 export type ResumeVisibilityInput = {
   readonly accessToken: string
   readonly isPublic: boolean
+  readonly studentId: number
 }
 
 export type ResumeSaveInput = {

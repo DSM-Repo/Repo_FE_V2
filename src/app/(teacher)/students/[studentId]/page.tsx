@@ -1,7 +1,19 @@
 'use client'
 
-import type { AppHeaderItem } from '@/shared/ui'
-import { AppHeader, Button, Switch } from '@/shared/ui'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useParams } from 'next/navigation'
+
+import { getSavedAccessToken } from '@/features/auth/api'
+import { getFeedbacks, type FeedbackListItem } from '@/features/feedback/api'
+import {
+  getStudentResumeById,
+  updateResumeVisibility,
+  type Resume,
+  type ResumePage,
+  type ResumeSubmissionStatus,
+} from '@/features/resume/api'
+import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
+import { AppHeader, Button, Icon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -11,27 +23,280 @@ const navigationItems = [
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
 
+type LoadState =
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'success'; readonly resume: Resume }
+  | { readonly kind: 'failure'; readonly message: string }
+type FeedbackLoadState =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'loading' }
+  | { readonly feedbacks: readonly FeedbackListItem[]; readonly kind: 'success'; readonly numberOfData: number }
+  | { readonly kind: 'failure'; readonly message: string }
+type ActionFeedback = {
+  readonly message: string
+  readonly tone: 'error' | 'success'
+}
+
+function toStudentId(value: string | string[] | undefined) {
+  const rawValue = Array.isArray(value) ? value[0] : value
+  const studentId = rawValue ? Number(rawValue) : Number.NaN
+
+  return Number.isInteger(studentId) && studentId > 0 ? studentId : undefined
+}
+
+function splitIntroduction(value: string) {
+  const [introTitle = '', ...introduceLines] = value.replace(/\r/g, '').split('\n')
+
+  return {
+    introduce: introduceLines.join('\n'),
+    introTitle,
+  }
+}
+
+function toSheetContent(resume: Resume, page: ResumePage | undefined): ResumeBookSheetContent {
+  const introduction = splitIntroduction(resume.introduce)
+  const project = page?.project
+  const sheetProject =
+    page?.type === 'PROJECT'
+      ? {
+          endDate: project?.endDate ?? '',
+          imageUrl: project?.imageUrl ?? '',
+          name: project?.name ?? '',
+          startDate: project?.startDate ?? '',
+          summary: project?.summary ?? '',
+        }
+      : undefined
+
+  return {
+    activities: [],
+    contests: project?.summary ? [project.summary] : [],
+    email: resume.email,
+    headline: '',
+    introTitle: introduction.introTitle,
+    introduce: introduction.introduce,
+    majorName: resume.majorName || '전공미정',
+    name: resume.name,
+    pageContent: page?.content,
+    portfolioUrl: resume.portfolioUrl,
+    profileImageUrl: resume.profileImageUrl,
+    ...(sheetProject ? { project: sheetProject } : {}),
+    projects: project?.name ? [project.name] : [],
+    skills: page?.type === 'PROFILE' ? resume.skills : [],
+  }
+}
+
+function isSubmittedResume(status: string): status is Extract<ResumeSubmissionStatus, 'RELEASED' | 'SUBMITTED'> {
+  return status === 'RELEASED' || status === 'SUBMITTED'
+}
+
+function toFeedbackSummary(content: string) {
+  const [firstLine = ''] = content.replace(/\r/g, '').split('\n')
+  return firstLine.trim() || '내용 없는 피드백'
+}
+
+function formatFeedbackDate(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    dateStyle: 'medium',
+  }).format(date)
+}
+
 export default function TeacherStudentReviewPage() {
+  const params = useParams<{ readonly studentId?: string }>()
+  const studentId = toStudentId(params.studentId)
+  const [loadState, setLoadState] = useState<LoadState>({ kind: 'loading' })
+  const [feedbackLoadState, setFeedbackLoadState] = useState<FeedbackLoadState>({ kind: 'idle' })
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const [spreadStartIndex, setSpreadStartIndex] = useState(0)
+  const [visibilitySubmitState, setVisibilitySubmitState] = useState<'idle' | 'pending'>('idle')
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback>()
+
+  useEffect(() => {
+    let active = true
+
+    async function loadResume() {
+      if (!studentId) {
+        setLoadState({ kind: 'failure', message: '학생 정보를 찾을 수 없습니다.' })
+        return
+      }
+
+      const accessToken = getSavedAccessToken()
+
+      if (!accessToken) {
+        setLoadState({ kind: 'failure', message: '로그인 후 학생 이력서를 조회할 수 있습니다.' })
+        return
+      }
+
+      setLoadState({ kind: 'loading' })
+      const result = await getStudentResumeById({ accessToken, studentId })
+
+      if (!active) {
+        return
+      }
+
+      if (result.kind !== 'success') {
+        setLoadState({ kind: 'failure', message: result.message })
+        return
+      }
+
+      setLoadState({ kind: 'success', resume: result.resume })
+      setSpreadStartIndex(0)
+      setFeedbackLoadState({ kind: 'idle' })
+      setIsFeedbackOpen(false)
+    }
+
+    void loadResume()
+
+    return () => {
+      active = false
+    }
+  }, [studentId])
+
+  const resume = loadState.kind === 'success' ? loadState.resume : undefined
+  const pages = useMemo(() => (resume ? [...resume.pages].sort((left, right) => left.index - right.index) : []), [resume])
+  const visiblePageIndexes = pages.length <= 1 ? [0] : [spreadStartIndex, Math.min(spreadStartIndex + 1, pages.length - 1)]
+  const canMovePrevious = spreadStartIndex > 0
+  const canMoveNext = spreadStartIndex + 1 < pages.length - 1
+  const canUpdateVisibility = Boolean(resume && isSubmittedResume(resume.submissionStatus))
+
+  const handleVisibilityChange = useCallback(
+    async (isPublic: boolean) => {
+      if (!studentId || !resume || visibilitySubmitState !== 'idle' || !canUpdateVisibility) {
+        return
+      }
+
+      const accessToken = getSavedAccessToken()
+
+      if (!accessToken) {
+        setActionFeedback({ message: '로그인 후 공개 여부를 변경할 수 있습니다.', tone: 'error' })
+        return
+      }
+
+      setVisibilitySubmitState('pending')
+      setActionFeedback(undefined)
+      const result = await updateResumeVisibility({ accessToken, isPublic, studentId })
+      setVisibilitySubmitState('idle')
+
+      if (result.kind !== 'success') {
+        setActionFeedback({ message: result.message, tone: 'error' })
+        return
+      }
+
+      setLoadState({ kind: 'success', resume: { ...resume, isPublic: result.isPublic } })
+      setActionFeedback({
+        message: result.isPublic ? '이력서를 도서관에 공개했습니다.' : '이력서를 비공개로 전환했습니다.',
+        tone: 'success',
+      })
+    },
+    [canUpdateVisibility, resume, studentId, visibilitySubmitState],
+  )
+
+  const handleFeedbackToggle = useCallback(
+    async (checked: boolean) => {
+      setIsFeedbackOpen(checked)
+
+      if (!checked || !resume || feedbackLoadState.kind === 'loading' || feedbackLoadState.kind === 'success') {
+        return
+      }
+
+      const accessToken = getSavedAccessToken()
+
+      if (!accessToken) {
+        setFeedbackLoadState({ kind: 'failure', message: '로그인 후 피드백을 조회할 수 있습니다.' })
+        return
+      }
+
+      setFeedbackLoadState({ kind: 'loading' })
+      const result = await getFeedbacks({ accessToken, documentId: resume.id })
+
+      if (result.kind !== 'success') {
+        setFeedbackLoadState({ kind: 'failure', message: result.message })
+        return
+      }
+
+      setFeedbackLoadState({
+        feedbacks: result.feedbacks,
+        kind: 'success',
+        numberOfData: result.numberOfData,
+      })
+    },
+    [feedbackLoadState.kind, resume],
+  )
+
   return (
-    <main className={styles.page} data-feedback-panel-open="false">
+    <main className={styles.page} data-feedback-panel-open={isFeedbackOpen}>
       <AppHeader activeItem="students" items={navigationItems} showLogout />
 
       <section className={styles.workspace} aria-label="학생 포트폴리오 검토">
-        <div className={styles.viewer} data-document-empty="true">
-          <div
-            aria-describedby="teacher-resume-api-notice"
-            aria-label="학생 포트폴리오 문서 페이지"
-            className={styles.documentEmpty}
-          >
-            <strong>학생 이력서를 불러올 수 없습니다.</strong>
-            <span id="teacher-resume-api-notice">
-              교사가 학생의 이력서 본문을 조회하는 API가 아직 제공되지 않았습니다.
-            </span>
-          </div>
+        {actionFeedback ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}
+
+        <div className={styles.viewer} data-document-empty={loadState.kind !== 'success'}>
+          {loadState.kind === 'loading' ? (
+            <div className={styles.documentEmpty} role="status">
+              <strong>학생 이력서를 불러오는 중입니다.</strong>
+              <span>잠시만 기다려주세요.</span>
+            </div>
+          ) : null}
+
+          {loadState.kind === 'failure' ? (
+            <div className={styles.documentEmpty} role="alert">
+              <strong>학생 이력서를 불러올 수 없습니다.</strong>
+              <span>{loadState.message}</span>
+            </div>
+          ) : null}
+
+          {resume ? (
+            <div className={styles.sheetViewport}>
+              <button
+                aria-label="이전 페이지"
+                className={`${styles.pageArrow} ${styles.previousArrow}`}
+                disabled={!canMovePrevious}
+                onClick={() => setSpreadStartIndex((currentIndex) => Math.max(0, currentIndex - 1))}
+                type="button"
+              >
+                <Icon name="chevron-left" />
+              </button>
+
+              <div className={styles.spread} aria-label="학생 이력서 미리보기">
+                {visiblePageIndexes.map((pageIndex) => {
+                  const page = pages[pageIndex]
+                  return (
+                    <ResumeBookSheet
+                      ariaLabel={`${resume.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
+                      className={styles.documentSheet}
+                      content={toSheetContent(resume, page)}
+                      key={page?.id ?? pageIndex}
+                    />
+                  )
+                })}
+              </div>
+
+              <button
+                aria-label="다음 페이지"
+                className={`${styles.pageArrow} ${styles.nextArrow}`}
+                disabled={!canMoveNext}
+                onClick={() => setSpreadStartIndex((currentIndex) => Math.min(pages.length - 1, currentIndex + 1))}
+                type="button"
+              >
+                <Icon name="chevron-right" />
+              </button>
+            </div>
+          ) : null}
         </div>
 
+        {resume ? (
+          <p className={styles.pageIndicator} aria-label="이력서 페이지">
+            <strong>{Math.min(spreadStartIndex + 1, Math.max(pages.length, 1))}</strong> / {Math.max(pages.length, 1)}
+          </p>
+        ) : null}
+
         <div className={styles.bottomControls}>
-          <Button aria-describedby="teacher-resume-api-notice" className={styles.feedbackButton} disabled>
+          <Button className={styles.feedbackButton} disabled>
             피드백 추가 <span aria-hidden="true">＋</span>
           </Button>
         </div>
@@ -41,11 +306,10 @@ export default function TeacherStudentReviewPage() {
             <span>이력서 공개</span>
             <span className={styles.switchFrame}>
               <Switch
-                aria-describedby="teacher-resume-api-notice"
                 aria-label="이력서 공개"
-                checked={false}
-                disabled
-                onCheckedChange={() => undefined}
+                checked={resume?.isPublic ?? false}
+                disabled={!canUpdateVisibility || visibilitySubmitState === 'pending'}
+                onCheckedChange={(checked) => void handleVisibilityChange(checked)}
               />
             </span>
           </label>
@@ -53,15 +317,60 @@ export default function TeacherStudentReviewPage() {
             <span>피드백 보기</span>
             <span className={styles.switchFrame}>
               <Switch
-                aria-describedby="teacher-resume-api-notice"
                 aria-label="피드백 보기"
-                checked={false}
-                disabled
-                onCheckedChange={() => undefined}
+                checked={isFeedbackOpen}
+                disabled={!resume}
+                onCheckedChange={(checked) => void handleFeedbackToggle(checked)}
               />
             </span>
           </label>
         </div>
+
+        {isFeedbackOpen ? (
+          <aside className={styles.feedbackPanel} aria-label="피드백 목록">
+            <header className={styles.feedbackPanelHeader}>
+              <h2>피드백 목록</h2>
+              <button
+                aria-label="피드백 목록 닫기"
+                className={styles.feedbackPanelClose}
+                onClick={() => setIsFeedbackOpen(false)}
+                type="button"
+              >
+                ×
+              </button>
+            </header>
+            <div className={styles.feedbackPanelToolbar}>
+              <button disabled={feedbackLoadState.kind !== 'success' || feedbackLoadState.feedbacks.length === 0} type="button">
+                전체 완료 처리
+              </button>
+            </div>
+            {feedbackLoadState.kind === 'loading' ? <p className={styles.feedbackEmpty}>피드백을 불러오는 중입니다.</p> : null}
+            {feedbackLoadState.kind === 'failure' ? (
+              <p className={styles.feedbackEmpty} role="alert">
+                {feedbackLoadState.message}
+              </p>
+            ) : null}
+            {feedbackLoadState.kind === 'success' && feedbackLoadState.feedbacks.length === 0 ? (
+              <p className={styles.feedbackEmpty}>아직 받은 피드백이 없습니다.</p>
+            ) : null}
+            {feedbackLoadState.kind === 'success' && feedbackLoadState.feedbacks.length > 0 ? (
+              <ul className={styles.feedbackList}>
+                {feedbackLoadState.feedbacks.map((feedback) => (
+                  <li className={styles.feedbackItem} key={feedback.feedbackId}>
+                    <button className={styles.feedbackItemButton} type="button">
+                      <span className={styles.feedbackTitle}>
+                        <span className={styles.feedbackSummary}>{toFeedbackSummary(feedback.content)}</span>
+                        <span className={styles.feedbackMeta}>
+                          {feedback.teacherName || '선생님'} / {formatFeedbackDate(feedback.createdAt)}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </aside>
+        ) : null}
       </section>
     </main>
   )

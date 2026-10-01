@@ -1,6 +1,81 @@
-import { expect, test } from './test-fixtures'
+import { apiBaseUrl, expect, test, type Page } from './test-fixtures'
 
 import { authenticateAs } from './auth-fixtures'
+
+function createResumeResponse(submissionStatus = 'SUBMITTED', isPublic = false) {
+  return {
+    email: 'student@dsm.hs.kr',
+    id: 'resume-id',
+    introduce: '한줄 자기소개\n문제를 제품으로 풀어내는 개발자입니다.',
+    isPublic,
+    majorName: 'Frontend Developer',
+    name: '김학생',
+    pages: [
+      { content: '기술스택과 활동을 정리했습니다.', id: 'profile-page', index: 0, type: 'PROFILE' },
+      {
+        content: '프로젝트 상세 설명입니다.',
+        id: 'project-page',
+        index: 1,
+        project: {
+          endDate: '2026-09',
+          imageUrl: '',
+          name: 'Repo',
+          startDate: '2026-03',
+          summary: '학생 포트폴리오 관리 서비스',
+        },
+        type: 'PROJECT',
+      },
+    ],
+    portfolioUrl: '',
+    profileImageUrl: '',
+    savedAt: '2026-10-01T08:00:00.000Z',
+    skills: ['TypeScript', 'React'],
+    submissionStatus,
+  }
+}
+
+async function mockTeacherResumeReview(
+  page: Page,
+  options: { readonly isPublic?: boolean; readonly submissionStatus?: string } = {},
+) {
+  let visibilityRequestBody = ''
+  await page.route(`${apiBaseUrl}/resume/students/1`, async (route) => {
+    await route.fulfill({
+      json: createResumeResponse(options.submissionStatus, options.isPublic ?? false),
+    })
+  })
+  await page.route(`${apiBaseUrl}/resume/students/1/visibility`, async (route) => {
+    visibilityRequestBody = route.request().postData() ?? ''
+    await route.fulfill({
+      json: { isPublic: true },
+    })
+  })
+  await page.route(`${apiBaseUrl}/feedback?documentId=resume-id`, async (route) => {
+    await route.fulfill({
+      json: {
+        feedbacks: [
+          {
+            completedAt: '',
+            content: '프로젝트 성과를 숫자로 표현해보세요.',
+            createdAt: '2026-10-01T07:00:00.000Z',
+            feedbackId: 'feedback-1',
+            pageDeleted: false,
+            pageId: 'project-page',
+            status: 'PENDING',
+            teacherName: '담임 선생님',
+            x: 0.42,
+            y: 0.36,
+          },
+        ],
+        numberOfData: 1,
+      },
+    })
+  })
+
+  return {
+    getVisibilityRequestBody: () => visibilityRequestBody,
+  }
+}
 
 test.describe('teacher student portfolio review', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,6 +83,8 @@ test.describe('teacher student portfolio review', () => {
   })
 
   test('keeps the teacher-only review route available', async ({ page }) => {
+    await mockTeacherResumeReview(page)
+
     await page.goto('/students/1')
     await expect(page).toHaveURL(/\/students\/1$/)
     await expect(page.getByRole('navigation', { name: '주요 메뉴' }).getByText('학생 관리')).toHaveAttribute(
@@ -16,18 +93,36 @@ test.describe('teacher student portfolio review', () => {
     )
   })
 
-  test('does not report success for teacher actions that have no backend contract', async ({ page }) => {
+  test('loads a student resume, publishes it, and opens feedback with the student resume API', async ({ page }) => {
+    const mocks = await mockTeacherResumeReview(page)
     await page.setViewportSize({ height: 854, width: 1528 })
+
     await page.goto('/students/1')
 
     await expect(page.getByLabel('학생 포트폴리오 검토')).toBeVisible()
-    await expect(page.getByText('학생 이력서를 불러올 수 없습니다.')).toBeVisible()
-    await expect(page.getByText('교사가 학생의 이력서 본문을 조회하는 API가 아직 제공되지 않았습니다.')).toBeVisible()
+    await expect(page.getByText('학생 이력서를 불러올 수 없습니다.')).toHaveCount(0)
+    await expect(page.getByText('김학생')).toBeVisible()
+    await expect(page.getByText('TypeScript')).toBeVisible()
     await expect(page.getByRole('button', { name: '필터 열기' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '전체 PDF 다운로드' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /피드백 추가/ })).toBeDisabled()
+
+    await page.getByRole('switch', { name: '이력서 공개' }).click()
+    await expect.poll(() => mocks.getVisibilityRequestBody()).toBe(JSON.stringify({ isPublic: true }))
+    await expect(page.getByText('이력서를 도서관에 공개했습니다.')).toBeVisible()
+
+    await page.getByRole('switch', { name: '피드백 보기' }).click()
+    await expect(page.getByRole('complementary', { name: '피드백 목록' })).toBeVisible()
+    await expect(page.getByText('프로젝트 성과를 숫자로 표현해보세요.')).toBeVisible()
+  })
+
+  test('shows pre-submit resumes but keeps publication disabled', async ({ page }) => {
+    await mockTeacherResumeReview(page, { submissionStatus: 'ONGOING' })
+
+    await page.goto('/students/1')
+
+    await expect(page.getByText('김학생')).toBeVisible()
     await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeDisabled()
-    await expect(page.getByRole('switch', { name: '피드백 보기' })).toBeDisabled()
-    await expect(page.getByRole('status')).toHaveCount(0)
+    await expect(page.getByRole('switch', { name: '피드백 보기' })).toBeEnabled()
   })
 })

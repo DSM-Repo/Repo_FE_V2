@@ -16,6 +16,7 @@ import type {
   ResumeSave,
   ResumeSaveInput,
   ResumeSaveResult,
+  ResumeStudentDetailInput,
   ResumeStudentStatus,
   ResumeStudentStatusListInput,
   ResumeStudentStatusListResult,
@@ -29,6 +30,7 @@ import type {
 } from './resumeApi.types'
 import {
   getResumeRequest,
+  getResumeStudentRequest,
   getResumeStudentStatusesRequest,
   patchResumeVisibilityRequest,
   postResumeAutoSaveRequest,
@@ -625,6 +627,39 @@ export async function getStudentResumeStatuses(
   return {
     kind: 'server-error',
     message: '학생 이력서 제출 현황 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function getStudentResumeById(input: ResumeStudentDetailInput): Promise<ResumeDetailResult> {
+  const response = await getResumeStudentRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readResumeResponseBody(response)
+  }
+
+  response.complete()
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return {
+      kind: 'forbidden',
+      message: '학생 이력서를 조회할 권한이 없습니다. 다시 로그인해주세요.',
+    }
+  }
+
+  if (response.value.status === 404) {
+    return {
+      kind: 'not-found',
+      message: '학생 이력서를 찾을 수 없습니다.',
+    }
+  }
+
+  return {
+    kind: 'server-error',
+    message: '학생 이력서 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }
 
