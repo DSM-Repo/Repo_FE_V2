@@ -18,9 +18,9 @@ const navigationItems = [
 ] satisfies readonly AppHeaderItem[]
 
 const defaultProgressItems = [
-  { completed: false, key: 'PROFILE', name: '내 정보' },
-  { completed: false, key: 'ACTIVITY', name: '활동' },
-  { completed: false, key: 'PROJECT', name: '프로젝트' },
+  { completed: false, key: 'PROFILE', name: '내 정보', percent: 0 },
+  { completed: false, key: 'ACTIVITY', name: '활동', percent: 0 },
+  { completed: false, key: 'PROJECT', name: '프로젝트', percent: 0 },
 ] as const
 
 const shortcutCards = [
@@ -84,8 +84,8 @@ function toProgressRingStyle(percent: number) {
   } as CSSProperties
 }
 
-function renderSectionStatus(completed: boolean): ReactNode {
-  return completed ? <strong>완료</strong> : null
+function renderSectionPercent(percent: number): ReactNode {
+  return <strong>{toProgressPercent(percent)}%</strong>
 }
 
 export function StudentHomePageContent(): ReactElement {
@@ -178,7 +178,7 @@ export function StudentHomePageContent(): ReactElement {
                 {progressSections.map((item) => (
                   <li key={item.key}>
                     <span>{item.name}</span>
-                    {renderSectionStatus(item.completed)}
+                    {renderSectionPercent(item.percent)}
                   </li>
                 ))}
               </ul>

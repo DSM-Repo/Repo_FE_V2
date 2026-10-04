@@ -123,9 +123,9 @@ test.describe('student home page', () => {
           profileImageUrl: '',
           progress: {
             sections: [
-              { completed: true, key: 'PROFILE', name: '내 정보' },
-              { completed: false, key: 'ACTIVITY', name: '활동' },
-              { completed: false, key: 'PROJECT', name: '프로젝트' },
+              { completed: true, key: 'PROFILE', name: '내 정보', percent: 100 },
+              { completed: false, key: 'ACTIVITY', name: '활동', percent: 40 },
+              { completed: false, key: 'PROJECT', name: '프로젝트', percent: 0 },
             ],
             totalPercent: 35,
           },
@@ -141,7 +141,10 @@ test.describe('student home page', () => {
     await expect(page.getByText('2415 인공지능소프트웨어과')).toBeVisible()
     await expect(page.getByText('나만의 이력서를 작성 중입니다.')).toBeVisible()
     await expect(page.getByRole('progressbar', { name: '이력서 완성도 35%' })).toHaveAttribute('aria-valuenow', '35')
-    await expect(page.getByText('완료')).toHaveCount(1)
+    await expect(page.getByText('완료')).toHaveCount(0)
+    await expect(page.getByText('100%', { exact: true })).toBeVisible()
+    await expect(page.getByText('40%', { exact: true })).toBeVisible()
+    await expect(page.getByText('0%', { exact: true })).toBeVisible()
   })
 
   test('redirects to login when auth reissue fails after protected API rejection', async ({ page }) => {

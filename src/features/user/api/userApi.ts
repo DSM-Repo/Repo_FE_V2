@@ -59,10 +59,13 @@ function parseProgressSection(value: unknown): UserProgressSection | undefined {
     return undefined
   }
 
+  const percent = typeof value['percent'] === 'number' ? value['percent'] : value['completed'] ? 100 : 0
+
   return {
     completed: value['completed'],
     key: value['key'],
     name: value['name'],
+    percent,
   }
 }
 

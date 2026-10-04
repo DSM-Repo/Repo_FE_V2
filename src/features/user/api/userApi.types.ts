@@ -9,6 +9,7 @@ export type UserProgressSection = {
   readonly completed: boolean
   readonly key: string
   readonly name: string
+  readonly percent: number
 }
 
 export type UserProgress = {
