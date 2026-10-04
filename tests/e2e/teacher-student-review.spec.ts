@@ -39,6 +39,7 @@ async function mockTeacherResumeReview(
   options: { readonly isPublic?: boolean; readonly submissionStatus?: string } = {},
 ) {
   let visibilityRequestBody = ''
+  let createdFeedbackRequestBody = ''
   await page.route(`${apiBaseUrl}/resume/students/1`, async (route) => {
     await route.fulfill({
       json: createResumeResponse(options.submissionStatus, options.isPublic ?? false),
@@ -71,8 +72,22 @@ async function mockTeacherResumeReview(
       },
     })
   })
+  await page.route(`${apiBaseUrl}/feedback`, async (route) => {
+    createdFeedbackRequestBody = route.request().postData() ?? ''
+    await route.fulfill({
+      json: {
+        createdAt: '2026-10-01T08:30:00.000Z',
+        feedbackId: 'feedback-created',
+        pageId: 'profile-page',
+        x: 0.5,
+        y: 0.5,
+      },
+      status: 201,
+    })
+  })
 
   return {
+    getCreatedFeedbackRequestBody: () => createdFeedbackRequestBody,
     getVisibilityRequestBody: () => visibilityRequestBody,
   }
 }
@@ -103,17 +118,57 @@ test.describe('teacher student portfolio review', () => {
     await expect(page.getByText('학생 이력서를 불러올 수 없습니다.')).toHaveCount(0)
     await expect(page.getByText('김학생')).toBeVisible()
     await expect(page.getByText('TypeScript')).toBeVisible()
+    await expect(page.getByLabel('김학생 이력서 1쪽')).toHaveCSS('aspect-ratio', '423 / 599')
+    const sheetBox = await page.getByLabel('김학생 이력서 1쪽').boundingBox()
+    expect(sheetBox).not.toBeNull()
+    expect(sheetBox?.width).toBeGreaterThan(360)
+    expect(sheetBox ? sheetBox.height / sheetBox.width : 0).toBeCloseTo(599 / 423, 1)
     await expect(page.getByRole('button', { name: '필터 열기' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: '전체 PDF 다운로드' })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: /피드백 추가/ })).toBeDisabled()
+    await expect(page.getByRole('button', { name: /피드백 추가/ })).toBeEnabled()
+
+    await page.getByRole('button', { name: /피드백 추가/ }).click()
+    await expect(page.getByRole('complementary', { name: '피드백 목록' })).toBeVisible()
+    await expect(page.getByLabel('새 피드백')).toBeFocused()
+    await page.getByLabel('새 피드백').fill('프로젝트 성과를 구체적으로 적어주세요.')
+    await page.getByRole('button', { name: '피드백 저장' }).click()
+    await expect.poll(() => {
+      const body = mocks.getCreatedFeedbackRequestBody()
+      return body ? JSON.parse(body) : undefined
+    }).toEqual({
+      comment: '프로젝트 성과를 구체적으로 적어주세요.',
+      documentId: 'resume-id',
+      pageId: 'profile-page',
+      x: 0.5,
+      y: 0.5,
+    })
+    await expect(page.getByText('피드백을 추가했습니다.')).toBeVisible()
+    await expect(page.getByText('프로젝트 성과를 구체적으로 적어주세요.')).toBeVisible()
 
     await page.getByRole('switch', { name: '이력서 공개' }).click()
     await expect.poll(() => mocks.getVisibilityRequestBody()).toBe(JSON.stringify({ isPublic: true }))
     await expect(page.getByText('이력서를 도서관에 공개했습니다.')).toBeVisible()
 
-    await page.getByRole('switch', { name: '피드백 보기' }).click()
     await expect(page.getByRole('complementary', { name: '피드백 목록' })).toBeVisible()
     await expect(page.getByText('프로젝트 성과를 숫자로 표현해보세요.')).toBeVisible()
+  })
+
+  test('keeps the resume sheets clear of the feedback button on short desktop viewports', async ({ page }) => {
+    await mockTeacherResumeReview(page)
+    await page.setViewportSize({ height: 702, width: 927 })
+
+    await page.goto('/students/1')
+
+    const sheetBox = await page.getByLabel('김학생 이력서 1쪽').boundingBox()
+    const feedbackButtonBox = await page.getByRole('button', { name: /피드백 추가/ }).boundingBox()
+
+    expect(sheetBox).not.toBeNull()
+    expect(feedbackButtonBox).not.toBeNull()
+    expect(sheetBox?.width).toBeGreaterThan(280)
+    expect(sheetBox ? sheetBox.height / sheetBox.width : 0).toBeCloseTo(599 / 423, 1)
+    expect(sheetBox && feedbackButtonBox ? sheetBox.y + sheetBox.height : Number.POSITIVE_INFINITY).toBeLessThan(
+      feedbackButtonBox?.y ?? 0,
+    )
   })
 
   test('shows pre-submit resumes but keeps publication disabled', async ({ page }) => {

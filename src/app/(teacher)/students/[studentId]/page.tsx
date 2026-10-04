@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 
 import { getSavedAccessToken } from '@/features/auth/api'
-import { getFeedbacks, type FeedbackListItem } from '@/features/feedback/api'
+import { createFeedback, getFeedbacks, type FeedbackListItem } from '@/features/feedback/api'
 import {
   getStudentResumeById,
   updateResumeVisibility,
@@ -36,6 +36,7 @@ type ActionFeedback = {
   readonly message: string
   readonly tone: 'error' | 'success'
 }
+type FeedbackSubmitState = 'idle' | 'pending'
 
 function toStudentId(value: string | string[] | undefined) {
   const rawValue = Array.isArray(value) ? value[0] : value
@@ -112,9 +113,12 @@ export default function TeacherStudentReviewPage() {
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'loading' })
   const [feedbackLoadState, setFeedbackLoadState] = useState<FeedbackLoadState>({ kind: 'idle' })
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const [feedbackDraft, setFeedbackDraft] = useState('')
+  const [feedbackSubmitState, setFeedbackSubmitState] = useState<FeedbackSubmitState>('idle')
   const [spreadStartIndex, setSpreadStartIndex] = useState(0)
   const [visibilitySubmitState, setVisibilitySubmitState] = useState<'idle' | 'pending'>('idle')
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback>()
+  const feedbackTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     let active = true
@@ -147,6 +151,8 @@ export default function TeacherStudentReviewPage() {
       setLoadState({ kind: 'success', resume: result.resume })
       setSpreadStartIndex(0)
       setFeedbackLoadState({ kind: 'idle' })
+      setFeedbackDraft('')
+      setFeedbackSubmitState('idle')
       setIsFeedbackOpen(false)
     }
 
@@ -163,6 +169,7 @@ export default function TeacherStudentReviewPage() {
   const canMovePrevious = spreadStartIndex > 0
   const canMoveNext = spreadStartIndex + 1 < pages.length - 1
   const canUpdateVisibility = Boolean(resume && isSubmittedResume(resume.submissionStatus))
+  const currentFeedbackPage = pages[spreadStartIndex] ?? pages[0]
 
   const handleVisibilityChange = useCallback(
     async (isPublic: boolean) => {
@@ -196,36 +203,141 @@ export default function TeacherStudentReviewPage() {
     [canUpdateVisibility, resume, studentId, visibilitySubmitState],
   )
 
+  const loadFeedbacks = useCallback(async () => {
+    if (!resume) {
+      return
+    }
+
+    const accessToken = getSavedAccessToken()
+
+    if (!accessToken) {
+      setFeedbackLoadState({ kind: 'failure', message: '로그인 후 피드백을 조회할 수 있습니다.' })
+      return
+    }
+
+    setFeedbackLoadState({ kind: 'loading' })
+    const result = await getFeedbacks({ accessToken, documentId: resume.id })
+
+    if (result.kind !== 'success') {
+      setFeedbackLoadState({ kind: 'failure', message: result.message })
+      return
+    }
+
+    setFeedbackLoadState((currentState) => {
+      if (currentState.kind !== 'success') {
+        return {
+          feedbacks: result.feedbacks,
+          kind: 'success',
+          numberOfData: result.numberOfData,
+        }
+      }
+
+      const loadedFeedbackIds = new Set(result.feedbacks.map((feedback) => feedback.feedbackId))
+      const localFeedbacks = currentState.feedbacks.filter((feedback) => !loadedFeedbackIds.has(feedback.feedbackId))
+
+      return {
+        feedbacks: [...localFeedbacks, ...result.feedbacks],
+        kind: 'success',
+        numberOfData: result.numberOfData + localFeedbacks.length,
+      }
+    })
+  }, [resume])
+
   const handleFeedbackToggle = useCallback(
     async (checked: boolean) => {
       setIsFeedbackOpen(checked)
 
-      if (!checked || !resume || feedbackLoadState.kind === 'loading' || feedbackLoadState.kind === 'success') {
+      if (!checked || feedbackLoadState.kind === 'loading' || feedbackLoadState.kind === 'success') {
+        return
+      }
+
+      await loadFeedbacks()
+    },
+    [feedbackLoadState.kind, loadFeedbacks],
+  )
+
+  const handleFeedbackAddClick = useCallback(() => {
+    setIsFeedbackOpen(true)
+
+    if (feedbackLoadState.kind !== 'loading' && feedbackLoadState.kind !== 'success') {
+      void loadFeedbacks()
+    }
+
+    window.setTimeout(() => feedbackTextareaRef.current?.focus(), 0)
+  }, [feedbackLoadState.kind, loadFeedbacks])
+
+  const handleFeedbackCreate = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
+
+      const comment = feedbackDraft.trim()
+
+      if (!resume || !currentFeedbackPage || feedbackSubmitState !== 'idle') {
+        return
+      }
+
+      if (!comment) {
+        setActionFeedback({ message: '피드백 내용을 입력해주세요.', tone: 'error' })
+        feedbackTextareaRef.current?.focus()
         return
       }
 
       const accessToken = getSavedAccessToken()
 
       if (!accessToken) {
-        setFeedbackLoadState({ kind: 'failure', message: '로그인 후 피드백을 조회할 수 있습니다.' })
+        setActionFeedback({ message: '로그인 후 피드백을 작성할 수 있습니다.', tone: 'error' })
         return
       }
 
-      setFeedbackLoadState({ kind: 'loading' })
-      const result = await getFeedbacks({ accessToken, documentId: resume.id })
+      setActionFeedback(undefined)
+      setFeedbackSubmitState('pending')
+      const result = await createFeedback({
+        accessToken,
+        comment,
+        documentId: resume.id,
+        pageId: currentFeedbackPage.id,
+        x: 0.5,
+        y: 0.5,
+      })
+      setFeedbackSubmitState('idle')
 
       if (result.kind !== 'success') {
-        setFeedbackLoadState({ kind: 'failure', message: result.message })
+        setActionFeedback({ message: result.message, tone: 'error' })
         return
       }
 
-      setFeedbackLoadState({
-        feedbacks: result.feedbacks,
-        kind: 'success',
-        numberOfData: result.numberOfData,
+      const createdFeedback: FeedbackListItem = {
+        completedAt: '',
+        content: comment,
+        createdAt: result.createdAt,
+        feedbackId: result.feedbackId,
+        pageDeleted: false,
+        pageId: result.pageId,
+        status: 'PENDING',
+        teacherName: '선생님',
+        x: result.x,
+        y: result.y,
+      }
+
+      setFeedbackLoadState((currentState) => {
+        if (currentState.kind !== 'success') {
+          return {
+            feedbacks: [createdFeedback],
+            kind: 'success',
+            numberOfData: 1,
+          }
+        }
+
+        return {
+          feedbacks: [createdFeedback, ...currentState.feedbacks],
+          kind: 'success',
+          numberOfData: currentState.numberOfData + 1,
+        }
       })
+      setFeedbackDraft('')
+      setActionFeedback({ message: '피드백을 추가했습니다.', tone: 'success' })
     },
-    [feedbackLoadState.kind, resume],
+    [currentFeedbackPage, feedbackDraft, feedbackSubmitState, resume],
   )
 
   return (
@@ -296,7 +408,7 @@ export default function TeacherStudentReviewPage() {
         ) : null}
 
         <div className={styles.bottomControls}>
-          <Button className={styles.feedbackButton} disabled>
+          <Button className={styles.feedbackButton} disabled={!resume || feedbackSubmitState === 'pending'} onClick={handleFeedbackAddClick}>
             피드백 추가 <span aria-hidden="true">＋</span>
           </Button>
         </div>
@@ -344,6 +456,28 @@ export default function TeacherStudentReviewPage() {
                 전체 완료 처리
               </button>
             </div>
+            <form className={styles.feedbackCreateForm} onSubmit={(event) => void handleFeedbackCreate(event)}>
+              <label className={styles.feedbackCreateLabel} htmlFor="teacher-feedback-comment">
+                새 피드백
+              </label>
+              <textarea
+                className={styles.feedbackCreateInput}
+                disabled={feedbackSubmitState === 'pending'}
+                id="teacher-feedback-comment"
+                onChange={(event) => setFeedbackDraft(event.target.value)}
+                placeholder="학생에게 남길 피드백을 입력하세요."
+                ref={feedbackTextareaRef}
+                rows={4}
+                value={feedbackDraft}
+              />
+              <button
+                className={styles.feedbackCreateButton}
+                disabled={feedbackSubmitState === 'pending' || !feedbackDraft.trim() || !currentFeedbackPage}
+                type="submit"
+              >
+                {feedbackSubmitState === 'pending' ? '추가 중' : '피드백 저장'}
+              </button>
+            </form>
             {feedbackLoadState.kind === 'loading' ? <p className={styles.feedbackEmpty}>피드백을 불러오는 중입니다.</p> : null}
             {feedbackLoadState.kind === 'failure' ? (
               <p className={styles.feedbackEmpty} role="alert">

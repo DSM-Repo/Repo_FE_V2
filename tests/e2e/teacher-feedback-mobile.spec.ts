@@ -22,12 +22,23 @@ test('keeps teacher review controls usable on narrow screens', async ({ page }) 
       },
     })
   })
+  await page.route(`${apiBaseUrl}/feedback?documentId=resume-id`, async (route) => {
+    await route.fulfill({
+      json: {
+        feedbacks: [],
+        numberOfData: 0,
+      },
+    })
+  })
   await page.setViewportSize({ height: 854, width: 720 })
   await page.goto('/students/1')
 
   await expect(page.getByText('김학생')).toBeVisible()
   await expect(page.getByLabel('학생 이력서 검토 설정')).toBeVisible()
-  await expect(page.getByRole('button', { name: /피드백 추가/ })).toBeDisabled()
+  await expect(page.getByRole('button', { name: /피드백 추가/ })).toBeEnabled()
+  await page.getByRole('button', { name: /피드백 추가/ }).click()
+  await expect(page.getByRole('complementary', { name: '피드백 목록' })).toBeVisible()
+  await expect(page.getByLabel('새 피드백')).toBeVisible()
   await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeDisabled()
   await expect(page.getByRole('switch', { name: '피드백 보기' })).toBeEnabled()
 })

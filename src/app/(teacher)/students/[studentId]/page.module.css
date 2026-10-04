@@ -8,10 +8,12 @@
 }
 
 .workspace {
+  --review-reserved-block-size: 172px;
+
   position: relative;
   display: flex;
   height: calc(100dvh - var(--repo-size-header-min-height));
-  min-height: 700px;
+  min-height: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -79,17 +81,18 @@
 }
 
 .documentSheet {
-  --resume-book-sheet-height: min(
-    780px,
-    calc(100dvh - var(--repo-size-header-min-height) - 164px),
-    calc((100vw - 280px) * 599 / 846)
+  --resume-book-sheet-width: min(
+    423px,
+    28vw,
+    calc((100dvh - var(--repo-size-header-min-height) - var(--review-reserved-block-size)) * 423 / 599)
   );
-  --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 423 / 599);
+  --resume-book-sheet-height: auto;
   --resume-book-sheet-padding: clamp(var(--space-4), 1.15vw, var(--space-5));
   --resume-book-sheet-avatar-size: clamp(40px, 2.2vw, 47px);
   --resume-book-sheet-name-size: clamp(16px, 1.12vw, 20px);
   --resume-book-sheet-project-name-size: clamp(16px, 1.16vw, 22px);
   --resume-book-sheet-qr-size: clamp(40px, 2.2vw, 47px);
+  flex: 0 0 var(--resume-book-sheet-width);
 }
 
 .page[data-feedback-panel-open='true'] .viewer {
@@ -264,7 +267,7 @@
   bottom: 0;
   display: grid;
   width: var(--feedback-panel-width);
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   border-left: 1px solid var(--repo-bg-main-point);
   color: var(--repo-gray-50);
   background: var(--repo-bg-main-lighter);
@@ -325,6 +328,69 @@
   font-weight: var(--repo-font-body-small-weight);
   line-height: var(--repo-font-body-small-line-height);
   cursor: pointer;
+}
+
+.feedbackCreateForm {
+  display: grid;
+  gap: 10px;
+  padding: 10px clamp(24px, 2vw, 36px) 16px;
+  border-bottom: 1px solid var(--repo-bg-main-point);
+}
+
+.feedbackCreateLabel {
+  color: var(--repo-gray-400);
+  font-size: var(--repo-font-body-very-tiny-size);
+  font-weight: var(--repo-font-body-very-tiny-weight);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+}
+
+.feedbackCreateInput {
+  width: 100%;
+  min-height: 94px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: 6px;
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main);
+  font: inherit;
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  outline: none;
+}
+
+.feedbackCreateInput::placeholder {
+  color: var(--repo-gray-500);
+}
+
+.feedbackCreateInput:focus-visible {
+  border-color: var(--repo-gray-400);
+  outline: 2px solid var(--repo-main);
+  outline-offset: 2px;
+}
+
+.feedbackCreateButton {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--repo-radius-pill);
+  color: var(--repo-bg-main);
+  background: var(--repo-gray-50);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  cursor: pointer;
+}
+
+.feedbackCreateButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.feedbackCreateButton:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 3px;
 }
 
 .feedbackList {
@@ -399,7 +465,7 @@
   }
 
   .viewer {
-    margin-block: -70px;
+    margin-block: 0;
   }
 
   .saveActions,
@@ -435,7 +501,7 @@
   }
 
   .viewer {
-    margin-block: -120px;
+    margin-block: 0;
   }
 
   .sheetViewport {
@@ -447,8 +513,12 @@
   }
 
   .documentSheet {
-    --resume-book-sheet-height: min(599px, calc(100dvh - var(--repo-size-header-min-height) - 172px));
-    --resume-book-sheet-width: min(423px, calc(100vw - 48px));
+    --resume-book-sheet-width: min(
+      423px,
+      calc(100vw - 48px),
+      calc((100dvh - var(--repo-size-header-min-height) - var(--review-reserved-block-size)) * 423 / 599)
+    );
+    --resume-book-sheet-height: auto;
   }
 
   .previousArrow {
@@ -485,8 +555,12 @@
   }
 
   .documentSheet {
-    --resume-book-sheet-width: min(423px, calc(100vw - 32px));
-    --resume-book-sheet-height: min(599px, calc(100dvh - var(--repo-size-header-min-height) - 180px));
+    --resume-book-sheet-width: min(
+      423px,
+      calc(100vw - 32px),
+      calc((100dvh - var(--repo-size-header-min-height) - var(--review-reserved-block-size)) * 423 / 599)
+    );
+    --resume-book-sheet-height: auto;
   }
 
   .documentEmpty {
