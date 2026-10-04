@@ -4,27 +4,36 @@ import type { LibraryBookGroup } from './libraryApi.types'
 
 const RECENT_LIBRARY_GROUPS_KEY = 'repo.library.recentGroups'
 const FIRST_COHORT_GRADUATION_YEAR = 2015
-const DEFAULT_RELEASED_LIBRARY_YEAR = 3
+const DEFAULT_RELEASED_LIBRARY_YEAR = 2
 
 function getGroupKey(group: LibraryBookGroup) {
   return `${group.date}:${group.cohort}:${group.year}`
 }
 
-function isLibraryBookGroup(value: unknown): value is LibraryBookGroup {
+function toLibraryBookGroup(value: unknown): LibraryBookGroup | undefined {
   if (!value || typeof value !== 'object') {
-    return false
+    return undefined
   }
 
   const candidate = value as Record<string, unknown>
 
-  return (
+  const isValidGroup =
     Number.isSafeInteger(candidate.cohort) &&
     Number.isSafeInteger(candidate.date) &&
     Number.isSafeInteger(candidate.year) &&
     Number(candidate.cohort) > 0 &&
     Number(candidate.date) > 0 &&
     Number(candidate.year) > 0
-  )
+
+  if (!isValidGroup) {
+    return undefined
+  }
+
+  return {
+    cohort: Number(candidate.cohort),
+    date: Number(candidate.date),
+    year: DEFAULT_RELEASED_LIBRARY_YEAR,
+  }
 }
 
 function readRecentGroups(): LibraryBookGroup[] {
@@ -41,7 +50,7 @@ function readRecentGroups(): LibraryBookGroup[] {
   try {
     const parsedValue: unknown = JSON.parse(rawValue)
 
-    return Array.isArray(parsedValue) ? parsedValue.filter(isLibraryBookGroup) : []
+    return Array.isArray(parsedValue) ? parsedValue.map(toLibraryBookGroup).filter((group) => group !== undefined) : []
   } catch {
     return []
   }

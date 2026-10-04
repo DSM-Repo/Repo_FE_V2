@@ -62,6 +62,27 @@ test.describe('public route smoke', () => {
     await expect(page.getByText('공개된 포트폴리오 책이 없습니다.')).toHaveCount(0)
   })
 
+  test('keeps a newly published library group visible while the library API catches up', async ({ page }) => {
+    await page.addInitScript(
+      ({ accessKey, groupKey, value }) => {
+        window.localStorage.setItem(accessKey, value)
+        window.localStorage.setItem(groupKey, JSON.stringify([{ cohort: 11, date: 2026, year: 2 }]))
+      },
+      { accessKey: accessTokenStorageKey, groupKey: 'repo.library.recentGroups', value: testAccessToken },
+    )
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
+      await route.fulfill({
+        json: { message: '도서관 반영 중입니다.' },
+        status: 500,
+      })
+    })
+
+    await page.goto('/library')
+
+    await expect(page.getByRole('link', { name: '2026 11기 2학년 포트폴리오 열람' })).toBeVisible()
+    await expect(page.getByText('도서관 반영 중입니다.')).toHaveCount(0)
+  })
+
   test('allows scrolling when the library API returns multiple rows on desktop', async ({ page }) => {
     const groups = Array.from({ length: 12 }, (_, index) => ({
       cohort: 12 - index,

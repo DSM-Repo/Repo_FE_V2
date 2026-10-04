@@ -152,6 +152,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
       }
 
       const result = await getLibraryBooks({ accessToken })
+      const recentLibraryBooks = getRecentLibraryBookGroups()
 
       if (ignoresResult) {
         return
@@ -160,6 +161,14 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
       if (result.kind === 'success') {
         setLoadState({
           books: mergeLibraryBookGroups(result.books, getRecentLibraryBookGroups()),
+          kind: 'success',
+        })
+        return
+      }
+
+      if (recentLibraryBooks.length > 0) {
+        setLoadState({
+          books: recentLibraryBooks,
           kind: 'success',
         })
         return
