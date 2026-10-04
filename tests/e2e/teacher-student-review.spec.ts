@@ -180,4 +180,30 @@ test.describe('teacher student portfolio review', () => {
     await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeDisabled()
     await expect(page.getByRole('switch', { name: '피드백 보기' })).toBeEnabled()
   })
+
+  test('publishes a submitted resume when the visibility API returns no body', async ({ page }) => {
+    let visibilityRequestBody = ''
+
+    await page.route(`${apiBaseUrl}/resume/students/1`, async (route) => {
+      await route.fulfill({
+        json: createResumeResponse('SUBMITTED', false),
+      })
+    })
+    await page.route(`${apiBaseUrl}/resume/students/1/visibility`, async (route) => {
+      visibilityRequestBody = route.request().postData() ?? ''
+      await route.fulfill({ status: 204 })
+    })
+    await page.route(`${apiBaseUrl}/feedback?documentId=resume-id`, async (route) => {
+      await route.fulfill({
+        json: { feedbacks: [], numberOfData: 0 },
+      })
+    })
+
+    await page.goto('/students/1')
+    await page.getByRole('switch', { name: '이력서 공개' }).click()
+
+    await expect.poll(() => visibilityRequestBody).toBe(JSON.stringify({ isPublic: true }))
+    await expect(page.getByText('이력서를 도서관에 공개했습니다.')).toBeVisible()
+    await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeChecked()
+  })
 })

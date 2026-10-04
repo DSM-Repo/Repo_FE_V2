@@ -670,6 +670,14 @@ export async function updateResumeVisibility(input: ResumeVisibilityInput): Prom
     return response
   }
 
+  if (response.value.status === 204) {
+    response.complete()
+    return {
+      isPublic: input.isPublic,
+      kind: 'success',
+    }
+  }
+
   if (response.value.ok) {
     return readVisibilityResponseBody(response)
   }
