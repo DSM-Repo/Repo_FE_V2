@@ -907,6 +907,164 @@ test.describe('student resume management', () => {
     await expect.poll(() => savedActivityContent).toBe('**안녕**')
   })
 
+  test('pastes Notion formatted content with images into free pages before the project template', async ({ page }) => {
+    let savedPages: Array<{ content: string; index: number; type: string }> = []
+    const pastedParagraphs = Array.from(
+      { length: 24 },
+      (_, index) => `<p>노션에서 붙여넣은 긴 활동 문단 ${index + 1}입니다. 문제 정의와 해결 과정을 함께 적었습니다.</p>`,
+    ).join('')
+    const pastedHtml = `
+      <h2>노션 활동 정리</h2>
+      <p><strong>강조된 성과</strong>와 <u>밑줄 메모</u>를 유지합니다.</p>
+      <ul><li>서식 있는 목록 첫 줄</li><li>서식 있는 목록 둘째 줄</li></ul>
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lb74JwAAAABJRU5ErkJggg==" alt="노션 이미지" />
+      <p><a href="https://cdn.example.test/notion-capture.png">Screenshot 2026-06-17 at 09.53.01.png</a></p>
+      ${pastedParagraphs}
+    `
+
+    await page.route(`${apiBaseUrl}/image`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({ imageUrl: new URL('/uploaded-paste.png', page.url()).href, key: 'uploaded-paste.png' }),
+        contentType: 'application/json',
+        status: 201,
+      })
+    })
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          classInfo: { classNumber: 1, grade: 2, number: 10, schoolNumber: '2110' },
+          introduce: '',
+          major: 'Frontend',
+          name: '오혜민',
+          profileImageUrl: null,
+          progress: { sections: [], totalPercent: 60 },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as { pages: Array<{ content: string; index: number; type: string }> }
+      savedPages = requestBody.pages
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.setViewportSize({ height: 1080, width: 1920 })
+    await page.goto('/resume?mode=edit')
+
+    const firstPageContent = page.getByRole('textbox', { name: '1쪽 추가 내용' })
+    await firstPageContent.evaluate((editor, html) => {
+      const clipboardData = new DataTransfer()
+      clipboardData.setData('text/html', html)
+      clipboardData.setData('text/plain', '노션 활동 정리')
+      clipboardData.items.add(new File(['png'], 'clipboard-image.png', { type: 'image/png' }))
+      editor.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
+    }, pastedHtml)
+
+    await expect(firstPageContent.locator('h2')).toHaveText('노션 활동 정리')
+    await expect(firstPageContent.locator('strong')).toHaveText('강조된 성과')
+    await expect(firstPageContent.locator('u')).toHaveText('밑줄 메모')
+    await expect(firstPageContent.locator('img[alt="노션 이미지"]')).toBeVisible()
+    await expect(firstPageContent.locator('img[alt="Screenshot 2026-06-17 at 09.53.01.png"]')).toBeVisible()
+    await expect(firstPageContent.locator('img[alt="clipboard-image.png"]')).toBeVisible()
+
+    const secondPage = page.getByRole('article', { name: '이력서 작성 2쪽' })
+    await expect(secondPage.getByLabel('프로젝트 이름')).toHaveCount(0)
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      if (await page.getByLabel('프로젝트 이름').count()) {
+        break
+      }
+
+      await page.getByRole('button', { name: '다음 페이지' }).click()
+    }
+
+    await expect(page.getByLabel('프로젝트 이름')).toBeVisible()
+
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect.poll(() => savedPages.at(-1)?.type).toBe('PROJECT')
+    expect(savedPages[0]).toMatchObject({ index: 0, type: 'PROFILE' })
+    expect(savedPages.slice(1, -1).every((savedPage, index) => savedPage.type === 'FREE' && savedPage.index === index + 1)).toBe(true)
+    expect(savedPages.at(-1)?.index).toBe(savedPages.length - 1)
+    const savedPastedContent = savedPages.map((savedPage) => savedPage.content).join('\n\n')
+    expect(savedPastedContent).toContain('## 노션 활동 정리')
+    expect(savedPastedContent).toContain('**강조된 성과**')
+    expect(savedPastedContent).toContain('<u>밑줄 메모</u>')
+    expect(savedPastedContent).toContain('![노션 이미지](data:image/png;base64')
+    expect(savedPastedContent).toContain('![Screenshot 2026-06-17 at 09.53.01.png](https://cdn.example.test/notion-capture.png)')
+    expect(savedPastedContent).toContain('![clipboard-image.png](http://localhost')
+    expect(savedPages[1]?.content).toContain('노션에서 붙여넣은 긴 활동 문단')
+
+    await expect(page.getByLabel('이력서 미리보기')).toBeVisible()
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      if (await page.getByRole('article', { name: '오혜민 이력서 2쪽' }).count()) {
+        break
+      }
+
+      await page.getByRole('button', { name: '이전 페이지' }).click()
+    }
+
+    const secondPreviewPage = page.getByRole('article', { name: '오혜민 이력서 2쪽' })
+    await expect(secondPreviewPage.locator('img, p, h1, h2, h3, h4, ul')).not.toHaveCount(0)
+    await expect(secondPreviewPage.getByText('오혜민')).toHaveCount(0)
+    await expect(secondPreviewPage.getByText('2110')).toHaveCount(0)
+    await expect(secondPreviewPage.getByLabel('프로필 이미지')).toHaveCount(0)
+  })
+
+  test('preserves plain markdown block boundaries when pasting and saving resume content', async ({ page }) => {
+    let savedPages: Array<{ content: string; index: number; type: string }> = []
+    const pastedMarkdown = `#### 비전공자와의 소통 문제
+
+- 기관 담당자와 소통하면서 개발자가 중요하게 생각하는 문제와 실제 운영자가 중요하게 생각하는 문제가 다르다는 점을 깨달았습니다.
+- 서버 장애가 발생했을 때 개발팀은 클라우드 인프라, 장애 원인, 서버 비용, 복구 방식 등을 설명했지만, 담당자가 원하는 것은 복잡한 기술 설명이 아니라 지금 서비스가 정상적으로 사용 가능한지였습니다.
+
+---
+
+## 회고
+
+프로젝트 초기에는 요구 기능을 빠짐없이 구현하고, FSD 같은 아키텍처로 코드를 잘 나누는 것에 집중했다.
+
+## Activity
+
+---
+
+- **2025 전국 5개교 S/W 아이디어톤 학생 대표** 2025.05.12
+- **학생회 임원 (전교부회장)** 2025.07 ~ 2026.08
+- **FE & AI 멘토링 (스터디)** 2025.07 ~ 현재 진행 중`
+
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as { pages: Array<{ content: string; index: number; type: string }> }
+      savedPages = requestBody.pages
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.goto('/resume?mode=edit')
+    const firstPageContent = page.getByRole('textbox', { name: '1쪽 추가 내용' })
+
+    await firstPageContent.evaluate((editor, markdown) => {
+      const clipboardData = new DataTransfer()
+      clipboardData.setData('text/plain', markdown)
+      editor.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
+    }, pastedMarkdown)
+
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect.poll(() => savedPages[0]?.content ?? '').toContain('#### 비전공자와의 소통 문제')
+
+    const savedContent = savedPages.map((savedPage) => savedPage.content).join('\n')
+    expect(savedContent).toMatch(/#### 비전공자와의 소통 문제\s*\n+- 기관 담당자와 소통하면서/)
+    expect(savedContent).toMatch(/---\s*\n+## 회고\s*\n+프로젝트 초기에는/)
+    expect(savedContent).toMatch(/## Activity\s*\n+---\s*\n+- \*\*2025 전국 5개교 S\/W 아이디어톤 학생 대표\*\* 2025\.05\.12/)
+    expect(savedContent).not.toContain('문제기관 담당자')
+    expect(savedContent).not.toContain('한다.Activity')
+  })
+
   test('renders the markdown toolbar as three icon groups', async ({ page }) => {
     await page.goto('/resume?mode=edit')
 
