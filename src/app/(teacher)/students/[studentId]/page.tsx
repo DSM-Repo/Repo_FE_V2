@@ -10,7 +10,6 @@ import {
   updateResumeVisibility,
   type Resume,
   type ResumePage,
-  type ResumeSubmissionStatus,
 } from '@/features/resume/api'
 import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
 import { AppHeader, Button, Icon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
@@ -84,10 +83,6 @@ function toSheetContent(resume: Resume, page: ResumePage | undefined): ResumeBoo
     projects: project?.name ? [project.name] : [],
     skills: page?.type === 'PROFILE' ? resume.skills : [],
   }
-}
-
-function isSubmittedResume(status: string): status is Extract<ResumeSubmissionStatus, 'RELEASED' | 'SUBMITTED'> {
-  return status === 'RELEASED' || status === 'SUBMITTED'
 }
 
 function toFeedbackSummary(content: string) {
@@ -168,12 +163,12 @@ export default function TeacherStudentReviewPage() {
   const visiblePageIndexes = pages.length <= 1 ? [0] : [spreadStartIndex, Math.min(spreadStartIndex + 1, pages.length - 1)]
   const canMovePrevious = spreadStartIndex > 0
   const canMoveNext = spreadStartIndex + 1 < pages.length - 1
-  const canUpdateVisibility = Boolean(resume && isSubmittedResume(resume.submissionStatus))
+  const canUpdateVisibility = Boolean(resume)
   const currentFeedbackPage = pages[spreadStartIndex] ?? pages[0]
 
   const handleVisibilityChange = useCallback(
     async (isPublic: boolean) => {
-      if (!studentId || !resume || visibilitySubmitState !== 'idle' || !canUpdateVisibility) {
+      if (!studentId || !resume || visibilitySubmitState !== 'idle') {
         return
       }
 
@@ -200,7 +195,7 @@ export default function TeacherStudentReviewPage() {
         tone: 'success',
       })
     },
-    [canUpdateVisibility, resume, studentId, visibilitySubmitState],
+    [resume, studentId, visibilitySubmitState],
   )
 
   const loadFeedbacks = useCallback(async () => {
