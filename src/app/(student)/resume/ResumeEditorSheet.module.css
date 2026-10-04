@@ -127,27 +127,34 @@
 
 .identity,
 .projectIdentity {
+  display: grid;
+  align-content: start;
+  gap: 3px;
   min-width: 0;
 }
 
 .nameRow {
   display: flex;
   min-width: 0;
-  align-items: baseline;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: var(--space-2);
+  row-gap: 2px;
 }
 
 .metaRow,
 .projectDateRow {
   display: flex;
   min-width: 0;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: var(--space-2);
+  row-gap: 2px;
   margin-top: 2px;
   color: var(--repo-gray-500);
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
-  line-height: var(--repo-font-body-tiny-line-height);
+  line-height: 1.35;
 }
 
 .nameInput,
@@ -217,23 +224,25 @@
 }
 
 .nameInput {
-  flex: 0 1 68px;
+  flex: 1 1 84px;
+  max-width: 100%;
   font-size: var(--resume-book-sheet-name-size, var(--repo-font-title-tiny-size));
   font-weight: var(--repo-font-title-small-weight);
-  line-height: var(--repo-font-title-tiny-line-height);
+  line-height: 1.2;
 }
 
 .majorSelect {
   display: inline-block;
-  flex: 0 0 auto;
-  max-width: min(180px, 56%);
+  flex: 1 1 120px;
+  min-width: 0;
+  max-width: 100%;
   padding: 0 22px 0 0;
   border: 0;
   color: var(--repo-gray-500);
   background: transparent;
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
-  line-height: var(--repo-font-body-tiny-line-height);
+  line-height: 1.25;
   text-overflow: ellipsis;
 }
 
@@ -244,19 +253,22 @@
 
 .majorInput {
   display: inline-block;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
-  line-height: var(--repo-font-body-tiny-line-height);
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .emailInput {
   flex: 1 1 140px;
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-body-tiny-weight);
-  line-height: var(--repo-font-body-tiny-line-height);
+  line-height: 1.35;
 }
 
 .introBox,

@@ -45,31 +45,36 @@
 .identity {
   display: grid;
   gap: 5px;
+  align-content: start;
   min-width: 0;
 }
 
 .nameRow {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 9px;
+  row-gap: 2px;
   min-width: 0;
 }
 
 .name {
+  min-width: 0;
   margin: 0;
   color: var(--repo-text-black);
   font-size: var(--resume-book-sheet-name-size, var(--repo-font-title-small-size));
   font-weight: var(--repo-font-title-small-weight);
-  line-height: var(--repo-font-title-small-line-height);
+  line-height: 1.2;
   letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
 .major {
   color: var(--repo-gray-500);
   font-size: 9px;
   font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .meta {
@@ -77,7 +82,8 @@
   color: var(--repo-text-black);
   font-size: var(--repo-font-body-very-tiny-size);
   font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .qrCode,

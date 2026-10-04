@@ -1,8 +1,26 @@
+import type { Locator } from '@playwright/test'
+
 import { apiBaseUrl, expect, test } from './test-fixtures'
 
 import { authenticateAs } from './auth-fixtures'
 
 const studentResumeIdStorageKey = 'repo.resume.id.student%40dsm.hs.kr'
+
+async function expectLocatorsDoNotOverlap(first: Locator, second: Locator) {
+  const [firstBox, secondBox] = await Promise.all([first.boundingBox(), second.boundingBox()])
+
+  expect(firstBox).not.toBeNull()
+  expect(secondBox).not.toBeNull()
+
+  if (!firstBox || !secondBox) {
+    return
+  }
+
+  const horizontalOverlap = Math.min(firstBox.x + firstBox.width, secondBox.x + secondBox.width) - Math.max(firstBox.x, secondBox.x)
+  const verticalOverlap = Math.min(firstBox.y + firstBox.height, secondBox.y + secondBox.height) - Math.max(firstBox.y, secondBox.y)
+
+  expect(horizontalOverlap > 0.5 && verticalOverlap > 0.5).toBe(false)
+}
 
 function raceResume(id: string, introduce: string) {
   return {
@@ -829,6 +847,72 @@ test.describe('student resume management', () => {
       await page.goto('/resume?mode=edit')
       await expect(page.getByLabel('학번 전공')).toHaveText(`${nextSchoolNumber} ${expectedDepartment}`)
     }
+  })
+
+  test('keeps the profile header text from overlapping on a scaled resume sheet', async ({ page }) => {
+    await page.setViewportSize({ height: 720, width: 1180 })
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          classInfo: { classNumber: 1, grade: 2, number: 10, schoolNumber: '2110' },
+          introduce: '사용자 경험을 개선하는 개발자입니다.',
+          major: 'Frontend Developer',
+          name: '오혜민',
+          profileImageUrl: null,
+          progress: { sections: [], totalPercent: 60 },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/major`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          majors: [{ majorId: 1, name: 'Frontend Developer' }],
+          numberOfData: 1,
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          email: 'student@example.com',
+          id: 'resume-id',
+          introduce: '사용자 경험을 개선하는 개발자입니다.',
+          isPublic: false,
+          majorName: 'Frontend Developer',
+          name: '오혜민',
+          pages: [
+            { content: '', id: 'page-1', index: 0, type: 'PROFILE' },
+            { content: '', id: 'page-2', index: 1, type: 'PROJECT' },
+          ],
+          portfolioUrl: '',
+          profileImageUrl: '',
+          savedAt: '2026-09-20T10:00:00.000Z',
+          skills: ['React'],
+          submissionStatus: 'ONGOING',
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+
+    const editSheet = page.getByRole('article', { name: '이력서 작성 1쪽' })
+    await expect(editSheet).toBeVisible()
+    await expectLocatorsDoNotOverlap(editSheet.getByLabel('이름'), editSheet.getByLabel('희망 전공'))
+    await expectLocatorsDoNotOverlap(editSheet.getByLabel('희망 전공'), editSheet.getByLabel('학번 전공'))
+    await expectLocatorsDoNotOverlap(editSheet.getByLabel('학번 전공'), editSheet.getByLabel('이메일'))
+
+    await page.goto('/resume?resumeId=resume-id')
+
+    const previewSheet = page.getByRole('article', { name: '오혜민 이력서 1쪽' })
+    await expect(previewSheet).toBeVisible()
+    await expectLocatorsDoNotOverlap(previewSheet.getByRole('heading', { name: '오혜민' }), previewSheet.getByLabel('희망 전공'))
+    await expectLocatorsDoNotOverlap(previewSheet.getByLabel('희망 전공'), previewSheet.getByLabel('학번 및 이메일'))
   })
 
   test('keeps the selected major beside the student name in view mode', async ({ page }) => {

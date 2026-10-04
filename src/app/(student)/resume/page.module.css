@@ -156,12 +156,12 @@
     calc((100vw - 116px) * 390 / 551)
   );
   --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 551 / 780);
-  --resume-book-sheet-padding: clamp(var(--space-4), 1.35vw, var(--space-6));
-  --resume-book-sheet-avatar-size: clamp(40px, 2.5vw, 48px);
-  --resume-book-sheet-name-size: clamp(16px, 1.25vw, 22px);
-  --resume-book-sheet-project-name-size: clamp(16px, 1.35vw, 24px);
-  --resume-book-sheet-qr-size: clamp(42px, 2.8vw, 56px);
-  --resume-book-sheet-header-gap: clamp(var(--space-2), 1.15vw, var(--space-5));
+  --resume-book-sheet-padding: clamp(14px, calc(var(--resume-book-sheet-width) * 0.043), var(--space-6));
+  --resume-book-sheet-avatar-size: clamp(34px, calc(var(--resume-book-sheet-width) * 0.09), 48px);
+  --resume-book-sheet-name-size: clamp(14px, calc(var(--resume-book-sheet-width) * 0.039), 22px);
+  --resume-book-sheet-project-name-size: clamp(14px, calc(var(--resume-book-sheet-width) * 0.043), 24px);
+  --resume-book-sheet-qr-size: clamp(34px, calc(var(--resume-book-sheet-width) * 0.095), 56px);
+  --resume-book-sheet-header-gap: clamp(8px, calc(var(--resume-book-sheet-width) * 0.028), var(--space-5));
 }
 
 .pageArrow {
