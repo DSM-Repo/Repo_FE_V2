@@ -878,6 +878,59 @@ test.describe('student resume management', () => {
     await expect(page.getByRole('button', { name: '비공개' })).toHaveCount(0)
   })
 
+  test('renders stored html paragraphs as resume text instead of visible tag text', async ({ page }) => {
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          classInfo: { classNumber: 1, grade: 2, number: 10, schoolNumber: '2110' },
+          introduce: '사용자 경험을 개선하는 개발자입니다.',
+          major: 'Frontend Developer',
+          name: '오혜민',
+          profileImageUrl: null,
+          progress: { sections: [], totalPercent: 60 },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          email: 'student@example.com',
+          id: 'resume-id',
+          introduce: '사용자 경험을 개선하는 개발자입니다.',
+          isPublic: false,
+          majorName: 'Frontend Developer',
+          name: '오혜민',
+          pages: [
+            {
+              content: '<p>첫 번째 문단입니다.</p><p><strong>강조된 두 번째 문단입니다.</strong></p>',
+              id: 'page-1',
+              index: 0,
+              type: 'PROFILE',
+            },
+            { content: '', id: 'page-2', index: 1, type: 'PROJECT' },
+          ],
+          portfolioUrl: '',
+          profileImageUrl: '',
+          savedAt: '2026-09-20T10:00:00.000Z',
+          skills: ['React'],
+          submissionStatus: 'ONGOING',
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.goto('/resume?resumeId=resume-id')
+
+    const firstSheet = page.getByRole('article', { name: '오혜민 이력서 1쪽' })
+    await expect(firstSheet.getByText('첫 번째 문단입니다.')).toBeVisible()
+    await expect(firstSheet.locator('strong')).toContainText('강조된 두 번째 문단입니다.')
+    await expect(firstSheet.getByText('<p>')).toHaveCount(0)
+    await expect(firstSheet.getByText('</p>')).toHaveCount(0)
+  })
+
   test('edits formatted content while saving markdown source', async ({ page }) => {
     let savedActivityContent = ''
 

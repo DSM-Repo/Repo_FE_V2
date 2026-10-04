@@ -205,6 +205,50 @@ function renderMarkdownInline(value: string): readonly ReactNode[] {
   return nodes
 }
 
+function decodeBasicHtmlEntities(value: string) {
+  return value
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+}
+
+function normalizeStoredMarkdown(value: string) {
+  if (!/<\/?(p|br|h[1-6]|ul|ol|li|blockquote|hr|strong|b|em|i|u|a)\b/i.test(value)) {
+    return value
+  }
+
+  return decodeBasicHtmlEntities(value)
+    .replace(/\r/g, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<hr\s*\/?>/gi, '\n---\n')
+    .replace(/<h1[^>]*>/gi, '\n# ')
+    .replace(/<h2[^>]*>/gi, '\n## ')
+    .replace(/<h3[^>]*>/gi, '\n### ')
+    .replace(/<h4[^>]*>/gi, '\n#### ')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<p[^>]*>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<blockquote[^>]*>/gi, '\n> ')
+    .replace(/<\/blockquote>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '\n- ')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/?(ul|ol)[^>]*>/gi, '\n')
+    .replace(/<(strong|b)[^>]*>/gi, '**')
+    .replace(/<\/(strong|b)>/gi, '**')
+    .replace(/<(em|i)[^>]*>/gi, '*')
+    .replace(/<\/(em|i)>/gi, '*')
+    .replace(/<u[^>]*>/gi, '<u>')
+    .replace(/<\/u>/gi, '</u>')
+    .replace(/<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+    .replace(/<[^>]+>/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function renderMarkdownBlock(block: MarkdownBlock, index: number) {
   switch (block.kind) {
     case 'heading': {
@@ -253,7 +297,7 @@ function renderMarkdownBlock(block: MarkdownBlock, index: number) {
 }
 
 export function MarkdownContent({ value }: { readonly value: string }) {
-  const blocks = value
+  const blocks = normalizeStoredMarkdown(value)
     .split('\n')
     .map(toMarkdownBlock)
     .filter((block) => block !== undefined)
