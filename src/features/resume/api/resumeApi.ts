@@ -406,26 +406,100 @@ async function readResumeResponseBody(response: ResumeHttpResponse): Promise<Res
   }
 }
 
-async function readVisibilityResponseBody(response: ResumeHttpResponse): Promise<ResumeVisibilityResult> {
-  let responseBody: unknown
+function toServerMessageFromRecord(value: JsonRecord) {
+  for (const key of ['message', 'error', 'detail', 'reason'] as const) {
+    const message = value[key]
+
+    if (typeof message === 'string' && message.trim()) {
+      return message.trim()
+    }
+  }
+
+  return JSON.stringify(value)
+}
+
+async function readServerMessage(response: ResumeHttpResponse, fallbackMessage: string) {
+  let responseText = ''
 
   try {
-    responseBody = await response.value.json()
+    responseText = await response.value.text()
+  } catch (error) {
+    response.complete()
+
+    if (error instanceof DOMException || error instanceof TypeError || error instanceof Error) {
+      return fallbackMessage
+    }
+
+    throw error
+  }
+
+  response.complete()
+
+  const trimmedText = responseText.trim()
+
+  if (!trimmedText) {
+    return fallbackMessage
+  }
+
+  try {
+    const responseBody: unknown = JSON.parse(trimmedText)
+
+    if (isJsonRecord(responseBody)) {
+      return toServerMessageFromRecord(responseBody)
+    }
+
+    if (typeof responseBody === 'string' && responseBody.trim()) {
+      return responseBody.trim()
+    }
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) {
+      throw error
+    }
+  }
+
+  return trimmedText
+}
+
+async function readVisibilitySuccessResponseBody(
+  response: ResumeHttpResponse,
+  requestedIsPublic: boolean,
+): Promise<ResumeVisibilityResult> {
+  let responseText = ''
+
+  try {
+    responseText = await response.value.text()
   } catch (error) {
     return toResponseBodyReadFailure(error, INVALID_VISIBILITY_RESPONSE)
   } finally {
     response.complete()
   }
 
-  const visibility = parseResumeVisibility(responseBody)
+  const trimmedText = responseText.trim()
 
-  if (!visibility) {
-    return INVALID_VISIBILITY_RESPONSE
+  if (!trimmedText) {
+    return {
+      isPublic: requestedIsPublic,
+      kind: 'success',
+    }
   }
 
-  return {
-    isPublic: visibility.isPublic,
-    kind: 'success',
+  try {
+    const responseBody: unknown = JSON.parse(trimmedText)
+    const visibility = parseResumeVisibility(responseBody)
+
+    return {
+      isPublic: visibility?.isPublic ?? requestedIsPublic,
+      kind: 'success',
+    }
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return {
+        isPublic: requestedIsPublic,
+        kind: 'success',
+      }
+    }
+
+    throw error
   }
 }
 
@@ -679,21 +753,14 @@ export async function updateResumeVisibility(input: ResumeVisibilityInput): Prom
   }
 
   if (response.value.ok) {
-    return readVisibilityResponseBody(response)
+    return readVisibilitySuccessResponseBody(response, input.isPublic)
   }
 
-  response.complete()
-
-  if (response.value.status === 401 || response.value.status === 403) {
-    return {
-      kind: 'forbidden',
-      message: '이력서 공개 여부를 변경할 권한이 없습니다. 다시 로그인해주세요.',
-    }
-  }
+  const serverMessage = await readServerMessage(response, '공개 여부 변경 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.')
 
   return {
-    kind: 'server-error',
-    message: '공개 여부 변경 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    kind: response.value.status === 401 || response.value.status === 403 ? 'forbidden' : 'server-error',
+    message: serverMessage,
   }
 }
 

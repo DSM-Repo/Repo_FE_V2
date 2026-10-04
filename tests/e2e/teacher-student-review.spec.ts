@@ -174,7 +174,10 @@ test.describe('teacher student portfolio review', () => {
   test('keeps the publication switch clickable and shows the server rejection for pre-submit resumes', async ({ page }) => {
     await mockTeacherResumeReview(page, { submissionStatus: 'ONGOING' })
     await page.route(`${apiBaseUrl}/resume/students/1/visibility`, async (route) => {
-      await route.fulfill({ status: 400 })
+      await route.fulfill({
+        json: { message: '제출 전 이력서는 공개할 수 없습니다.' },
+        status: 400,
+      })
     })
 
     await page.goto('/students/1')
@@ -182,7 +185,7 @@ test.describe('teacher student portfolio review', () => {
     await expect(page.getByText('김학생')).toBeVisible()
     await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeEnabled()
     await page.getByRole('switch', { name: '이력서 공개' }).click()
-    await expect(page.getByText('공개 여부 변경 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.')).toBeVisible()
+    await expect(page.getByText('제출 전 이력서는 공개할 수 없습니다.')).toBeVisible()
     await expect(page.getByRole('switch', { name: '피드백 보기' })).toBeEnabled()
   })
 
