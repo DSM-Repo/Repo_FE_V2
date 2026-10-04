@@ -7,7 +7,9 @@ import { getSavedAccessToken } from '@/features/auth/api'
 import { createFeedback, getFeedbacks, type FeedbackListItem } from '@/features/feedback/api'
 import {
   removeRecentLibraryBookGroup,
+  removeRecentLibraryStudent,
   saveRecentLibraryBookGroup,
+  saveRecentLibraryStudent,
   toReleasedLibraryBookGroup,
 } from '@/features/library/api'
 import {
@@ -204,8 +206,15 @@ export default function TeacherStudentReviewPage() {
 
       if (result.isPublic) {
         saveRecentLibraryBookGroup(libraryBookGroup)
+        saveRecentLibraryStudent({
+          date: libraryBookGroup.date,
+          major: resume.majorName || '전공미정',
+          studentId,
+          studentName: resume.name,
+        })
       } else {
         removeRecentLibraryBookGroup(libraryBookGroup)
+        removeRecentLibraryStudent({ date: libraryBookGroup.date, studentId })
       }
 
       saveResumeVisibility({ isPublic: result.isPublic, studentId })

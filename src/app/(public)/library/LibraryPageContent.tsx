@@ -8,7 +8,9 @@ import { getSavedAccessToken, getSavedAuthRole, type AuthLoginRole } from '@/fea
 import {
   getLibraryBooks,
   getRecentLibraryBookGroups,
+  getRecentLibraryStudents,
   mergeLibraryBookGroups,
+  mergeLibrarySearchStudents,
   searchLibraryStudents,
   type LibraryBookGroup,
   type LibrarySearchStudent,
@@ -193,6 +195,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     }
 
     let ignoresResult = false
+    const selectedLibraryDate = selectedDate
 
     async function loadLibraryStudents() {
       if (!accessToken) {
@@ -212,11 +215,12 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
 
       const result = await searchLibraryStudents({
         accessToken,
-        date: selectedDate,
+        date: selectedLibraryDate,
         keyword: normalizedSearchKeyword,
         page: studentSearchPage,
         size: STUDENT_SEARCH_PAGE_SIZE,
       })
+      const recentStudents = getRecentLibraryStudents({ date: selectedLibraryDate, keyword: normalizedSearchKeyword })
 
       if (ignoresResult) {
         return
@@ -229,10 +233,19 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
           kind: 'success',
           students:
             studentSearchPage === 0 || currentState.kind !== 'success'
-              ? result.students
+              ? mergeLibrarySearchStudents(result.students, recentStudents)
               : [...currentState.students, ...result.students],
-          totalElements: result.totalElements,
+          totalElements: Math.max(result.totalElements, mergeLibrarySearchStudents(result.students, recentStudents).length),
         }))
+        return
+      }
+
+      if (recentStudents.length > 0) {
+        setStudentSearchState({
+          kind: 'success',
+          students: recentStudents,
+          totalElements: recentStudents.length,
+        })
         return
       }
 

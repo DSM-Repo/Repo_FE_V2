@@ -113,6 +113,11 @@ test.describe('teacher student portfolio review', () => {
     await page.route(`${apiBaseUrl}/library`, async (route) => {
       await route.fulfill({ json: [] })
     })
+    await page.route(`${apiBaseUrl}/library/search?*`, async (route) => {
+      await route.fulfill({
+        json: { content: [], totalElements: 0 },
+      })
+    })
     await page.setViewportSize({ height: 854, width: 1528 })
 
     await page.goto('/students/1')
@@ -157,7 +162,8 @@ test.describe('teacher student portfolio review', () => {
     await page.reload()
     await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeChecked()
     await page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link', { name: '도서관' }).click()
-    await expect(page.getByRole('link', { name: '2026 11기 2학년 포트폴리오 열람' })).toBeVisible()
+    await page.getByRole('link', { name: '2026 11기 2학년 포트폴리오 열람' }).click()
+    await expect(page.getByRole('link', { name: /김학생/ })).toBeVisible()
   })
 
   test('keeps the resume sheets clear of the feedback button on short desktop viewports', async ({ page }) => {

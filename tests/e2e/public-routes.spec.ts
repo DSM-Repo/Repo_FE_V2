@@ -83,6 +83,32 @@ test.describe('public route smoke', () => {
     await expect(page.getByText('도서관 반영 중입니다.')).toHaveCount(0)
   })
 
+  test('keeps a newly published student visible in the selected library date while search catches up', async ({ page }) => {
+    await page.addInitScript(
+      ({ accessKey, studentKey, value }) => {
+        window.localStorage.setItem(accessKey, value)
+        window.localStorage.setItem(
+          studentKey,
+          JSON.stringify([{ date: 2026, major: 'Frontend Developer', studentId: 1, studentName: '김학생' }]),
+        )
+      },
+      { accessKey: accessTokenStorageKey, studentKey: 'repo.library.recentStudents', value: testAccessToken },
+    )
+    await page.route(`${apiBaseUrl}/library/search?*`, async (route) => {
+      await route.fulfill({
+        json: { content: [], totalElements: 0 },
+      })
+    })
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
+      await route.fulfill({ json: [] })
+    })
+
+    await page.goto('/library?date=2026')
+
+    await expect(page.getByRole('link', { name: /김학생/ })).toBeVisible()
+    await expect(page.getByText('공개된 학생 이력서가 없습니다.')).toHaveCount(0)
+  })
+
   test('allows scrolling when the library API returns multiple rows on desktop', async ({ page }) => {
     const groups = Array.from({ length: 12 }, (_, index) => ({
       cohort: 12 - index,
