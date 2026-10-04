@@ -28,6 +28,7 @@ export type ResumeBookSheetContent = {
   readonly majorName: string
   readonly name: string
   readonly pageContent?: string
+  readonly pageType?: 'FREE' | 'PROFILE' | 'PROJECT'
   readonly portfolioUrl?: string
   readonly profileImageUrl?: string
   readonly project?: ResumeBookSheetProject
@@ -265,6 +266,18 @@ export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookShe
   const label = ariaLabel ?? `${content.name} 포트폴리오`
   const project = content.project
   const profileImageUrl = toSafeImageSrc(content.profileImageUrl ?? '')
+
+  if (content.pageType === 'FREE') {
+    return (
+      <article className={`${sheetClassName} ${styles.freeSheet}`} aria-label={label}>
+        {content.pageContent ? (
+          <div className={styles.freePageContent}>
+            <MarkdownContent value={content.pageContent} />
+          </div>
+        ) : null}
+      </article>
+    )
+  }
 
   if (project) {
     const projectPeriod = [project.startDate, project.endDate].filter(Boolean).join(' ~ ')

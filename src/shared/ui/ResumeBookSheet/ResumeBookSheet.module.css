@@ -1,10 +1,16 @@
 .sheet {
   width: var(--resume-book-sheet-width, 423px);
   height: var(--resume-book-sheet-height, 599px);
+  aspect-ratio: 423 / 599;
+  box-sizing: border-box;
   overflow: hidden;
   padding: var(--resume-book-sheet-padding, 20px);
   color: var(--repo-text-black);
   background: var(--repo-gray-50);
+}
+
+.freeSheet {
+  padding: var(--resume-book-sheet-padding, 20px);
 }
 
 .sheetHeader,
@@ -275,24 +281,35 @@
 
 .pageContent {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   margin: 9px 0 0;
   overflow: hidden;
   color: var(--repo-gray-800);
   font-size: var(--repo-font-resume-small-size);
   font-weight: var(--repo-font-resume-small-weight);
-  line-height: var(--repo-font-resume-small-line-height);
+  line-height: 1.55;
 }
 
 .projectPageContent {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   margin: 14px 0 0;
   overflow: hidden;
   color: var(--repo-gray-800);
   font-size: var(--repo-font-resume-small-size);
   font-weight: var(--repo-font-resume-small-weight);
-  line-height: var(--repo-font-resume-small-line-height);
+  line-height: 1.55;
+}
+
+.freePageContent {
+  display: grid;
+  gap: var(--space-2);
+  margin: 9px 0 0;
+  overflow: hidden;
+  color: var(--repo-gray-800);
+  font-size: var(--repo-font-resume-small-size);
+  font-weight: var(--repo-font-resume-small-weight);
+  line-height: 1.55;
 }
 
 .pageContent h1,
@@ -311,6 +328,17 @@
 .projectPageContent blockquote,
 .projectPageContent ul,
 .projectPageContent hr {
+  margin: 0;
+}
+
+.freePageContent h1,
+.freePageContent h2,
+.freePageContent h3,
+.freePageContent h4,
+.freePageContent p,
+.freePageContent blockquote,
+.freePageContent ul,
+.freePageContent hr {
   margin: 0;
 }
 
@@ -337,7 +365,8 @@
 }
 
 .pageContent blockquote,
-.projectPageContent blockquote {
+.projectPageContent blockquote,
+.freePageContent blockquote {
   padding-left: 8px;
   border-left: 2px solid var(--repo-gray-300);
   color: var(--repo-gray-500);
@@ -360,7 +389,8 @@
 }
 
 .pageContent a,
-.projectPageContent a {
+.projectPageContent a,
+.freePageContent a {
   color: var(--repo-text-black);
   text-decoration: underline;
   text-underline-offset: 2px;

@@ -47,6 +47,8 @@ const navigationItems = [
 ] satisfies readonly AppHeaderItem[]
 
 const AUTO_SAVE_IDLE_MS = 180_000
+const PROFILE_PASTE_PAGE_UNITS = 18
+const FREE_PASTE_PAGE_UNITS = 30
 
 const defaultResumeDraft = {
   activities: [],
@@ -64,6 +66,70 @@ const defaultResumeDraft = {
   schoolNumber: '',
   skills: [],
 } satisfies ResumeDraft
+
+function estimateMarkdownLineUnits(line: string) {
+  const trimmedLine = line.trim()
+
+  if (!trimmedLine) {
+    return 0.35
+  }
+
+  if (/^!\[[^\]]*]\([^)]+\)$/.test(trimmedLine)) {
+    return 12
+  }
+
+  if (trimmedLine.startsWith('# ')) {
+    return 3.8
+  }
+
+  if (trimmedLine.startsWith('## ')) {
+    return 3
+  }
+
+  if (trimmedLine.startsWith('### ') || trimmedLine.startsWith('#### ')) {
+    return 2.3
+  }
+
+  const textLength = trimmedLine.replace(/^[->] /, '').length
+  const lineUnit = trimmedLine.startsWith('- ') || trimmedLine.startsWith('> ') ? 38 : 46
+
+  return Math.max(1, Math.ceil(textLength / lineUnit))
+}
+
+function splitMarkdownIntoPageChunks(value: string) {
+  const lines = value.replace(/\r/g, '').split('\n')
+  const chunks: string[] = []
+  let chunkLines: string[] = []
+  let chunkUnits = 0
+  let unitLimit = PROFILE_PASTE_PAGE_UNITS
+
+  for (const line of lines) {
+    const lineUnits = estimateMarkdownLineUnits(line)
+    const hasChunkContent = chunkLines.some((chunkLine) => chunkLine.trim())
+
+    if (hasChunkContent && chunkUnits + lineUnits > unitLimit) {
+      chunks.push(chunkLines.join('\n').trim())
+      chunkLines = []
+      chunkUnits = 0
+      unitLimit = FREE_PASTE_PAGE_UNITS
+    }
+
+    chunkLines.push(line)
+    chunkUnits += lineUnits
+  }
+
+  const finalChunk = chunkLines.join('\n').trim()
+
+  if (finalChunk) {
+    chunks.push(finalChunk)
+  }
+
+  return chunks.length > 0 ? chunks : ['']
+}
+
+function reindexDraftPages(pages: readonly ResumeDraftPage[]) {
+  return pages.map((page, index) => ({ ...page, index }))
+}
 
 type LoadState =
   | {
@@ -187,6 +253,7 @@ function toSheetContent(draft: ResumeDraft, pageIndex: number): ResumeBookSheetC
     majorName: draft.headline,
     name: draft.name,
     pageContent: page?.content,
+    pageType: page?.type,
     portfolioUrl: draft.portfolioUrl,
     profileImageUrl: draft.profileImageUrl,
     ...(sheetProject ? { project: sheetProject } : {}),
@@ -734,6 +801,41 @@ export function StudentResumePageContent() {
     setActionFeedback(undefined)
   }, [])
 
+  const handlePageRichPaste = useCallback(
+    ({ content, pageIndex }: { readonly content: string; readonly pageIndex: number }) => {
+      handleDraftChange((currentDraft) => {
+        const page = currentDraft.pages[pageIndex]
+
+        if (!page || page.type !== 'PROFILE' || pageIndex !== 0) {
+          return currentDraft
+        }
+
+        const chunks = splitMarkdownIntoPageChunks(content)
+
+        if (chunks.length <= 1) {
+          return currentDraft
+        }
+
+        const remainingPages = currentDraft.pages.slice(1)
+        const firstProjectOffset = remainingPages.findIndex((draftPage) => draftPage.type === 'PROJECT')
+        const pagesAfterOverflow = firstProjectOffset === -1
+          ? remainingPages.filter((draftPage) => draftPage.type !== 'FREE')
+          : remainingPages.slice(firstProjectOffset)
+        const overflowPages = chunks.slice(1).map((chunk): ResumeDraftPage => ({
+          content: chunk,
+          index: 0,
+          type: 'FREE',
+        }))
+
+        return {
+          ...currentDraft,
+          pages: reindexDraftPages([{ ...page, content: chunks[0] ?? '' }, ...overflowPages, ...pagesAfterOverflow]),
+        }
+      })
+    },
+    [handleDraftChange],
+  )
+
   const handlePortfolioUrlConfirm = useCallback(
     (value: string) => {
       const normalizedPortfolioUrl = toNormalizedPortfolioUrl(value)
@@ -1188,6 +1290,7 @@ export function StudentResumePageContent() {
                     onInlineImagePasteUpload={handleInlineImagePasteUpload}
                     onImageUpload={handleImageUpload}
                     onMajorChange={(majorId) => void handleMajorChange(majorId)}
+                    onPageRichPaste={handlePageRichPaste}
                     onPortfolioUrlClick={() => setPortfolioUrlModalState({ kind: 'open' })}
                     pageIndex={pageIndex}
                   />
