@@ -36,6 +36,8 @@ const blockShortcuts: Readonly<Record<string, EditableMarkdownBlock>> = {
   '---': { kind: 'divider' },
 }
 
+const blockTags = new Set(['ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'DIV', 'FIGURE', 'FOOTER', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HEADER', 'HR', 'LI', 'MAIN', 'OL', 'P', 'PRE', 'SECTION', 'TABLE', 'UL'])
+
 function findLineRange(value: string, selectionStart: number, selectionEnd: number) {
   const lineStart = value.lastIndexOf('\n', Math.max(0, selectionStart - 1)) + 1
   const nextLineBreak = value.indexOf('\n', selectionEnd)
@@ -93,6 +95,152 @@ function withInlineMarkdown(command: MarkdownCommand, selectedText: string) {
     case 'h4':
       return undefined
   }
+}
+
+function normalizeMarkdownText(value: string) {
+  return value.replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+function escapeMarkdownInline(value: string) {
+  return value.replace(/\[/g, '\\[').replace(/\]/g, '\\]')
+}
+
+function toMarkdownImage(src: string, alt: string) {
+  const normalizedSrc = src.trim()
+
+  if (!normalizedSrc || normalizedSrc.startsWith('blob:')) {
+    return ''
+  }
+
+  return `![${escapeMarkdownInline(alt.trim() || '이미지')}](${normalizedSrc})`
+}
+
+function isImageHref(value: string) {
+  return /\.(?:avif|gif|jpe?g|png|webp)(?:[?#].*)?$/i.test(value.trim())
+}
+
+function inlineHtmlToMarkdown(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent ?? ''
+  }
+
+  if (!(node instanceof HTMLElement)) {
+    return ''
+  }
+
+  if (node.tagName === 'BR') {
+    return '\n'
+  }
+
+  if (node.tagName === 'IMG') {
+    return toMarkdownImage(node.getAttribute('src') ?? '', node.getAttribute('alt') ?? '')
+  }
+
+  const text = Array.from(node.childNodes).map(inlineHtmlToMarkdown).join('')
+
+  if (!text.trim() && node.tagName !== 'A') {
+    return text
+  }
+
+  switch (node.tagName) {
+    case 'STRONG':
+    case 'B':
+      return `**${text}**`
+    case 'EM':
+    case 'I':
+      return `*${text}*`
+    case 'U':
+      return `<u>${text}</u>`
+    case 'A': {
+      const href = node.getAttribute('href')?.trim()
+      if (!href) {
+        return text
+      }
+
+      return isImageHref(href) ? toMarkdownImage(href, text) : `[${text || href}](${href})`
+    }
+    case 'CODE':
+      return text.includes('\n') ? text : `\`${text}\``
+    default:
+      return text
+  }
+}
+
+function htmlElementToMarkdownLines(element: HTMLElement): readonly string[] {
+  if (element.tagName === 'STYLE' || element.tagName === 'SCRIPT') {
+    return []
+  }
+
+  if (element.tagName === 'HR') {
+    return ['---']
+  }
+
+  if (element.tagName === 'IMG') {
+    const image = toMarkdownImage(element.getAttribute('src') ?? '', element.getAttribute('alt') ?? '')
+    return image ? [image] : []
+  }
+
+  if (element.tagName === 'UL' || element.tagName === 'OL') {
+    return Array.from(element.children).flatMap((child) => {
+      if (!(child instanceof HTMLElement) || child.tagName !== 'LI') {
+        return []
+      }
+
+      const text = normalizeMarkdownText(inlineHtmlToMarkdown(child)).replace(/\n+/g, ' ')
+      return text ? [`- ${text}`] : []
+    })
+  }
+
+  const childBlockLines = Array.from(element.children).flatMap((child) =>
+    child instanceof HTMLElement && blockTags.has(child.tagName) ? htmlElementToMarkdownLines(child) : [],
+  )
+
+  if (childBlockLines.length > 0 && !['BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'P'].includes(element.tagName)) {
+    return childBlockLines
+  }
+
+  const text = normalizeMarkdownText(inlineHtmlToMarkdown(element))
+
+  if (!text) {
+    return childBlockLines
+  }
+
+  switch (element.tagName) {
+    case 'H1':
+      return [`# ${text}`]
+    case 'H2':
+      return [`## ${text}`]
+    case 'H3':
+      return [`### ${text}`]
+    case 'H4':
+    case 'H5':
+    case 'H6':
+      return [`#### ${text}`]
+    case 'BLOCKQUOTE':
+      return text.split('\n').map((line) => `> ${line}`)
+    case 'LI':
+      return [`- ${text.replace(/\n+/g, ' ')}`]
+    default:
+      return text.split('\n')
+  }
+}
+
+export function clipboardHtmlToMarkdown(html: string, plainText: string) {
+  if (!html.trim()) {
+    return normalizeMarkdownText(plainText)
+  }
+
+  const document = new DOMParser().parseFromString(html, 'text/html')
+  const lines = Array.from(document.body.childNodes).flatMap((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return normalizeMarkdownText(node.textContent ?? '').split('\n').filter(Boolean)
+    }
+
+    return node instanceof HTMLElement ? htmlElementToMarkdownLines(node) : []
+  })
+  const markdown = normalizeMarkdownText(lines.join('\n'))
+
+  return markdown || normalizeMarkdownText(plainText)
 }
 
 export function applyMarkdownCommandToValue(input: {
@@ -210,11 +358,11 @@ function appendInlineNodes(parent: HTMLElement, value: string): void {
     const underlineText = match[8]
 
     if (imageAlt !== undefined && imageHref !== undefined) {
-      const link = document.createElement('a')
-      link.dataset.markdownImage = ''
-      link.setAttribute('href', imageHref)
-      link.textContent = imageAlt || '이미지'
-      parent.append(link)
+      const image = document.createElement('img')
+      image.dataset.markdownImage = ''
+      image.setAttribute('alt', imageAlt)
+      image.setAttribute('src', imageHref)
+      parent.append(image)
     } else if (linkText !== undefined && linkHref !== undefined) {
       const link = document.createElement('a')
       link.setAttribute('href', linkHref)
@@ -460,9 +608,90 @@ function serializeInlineMarkdown(node: Node): string {
       const href = node.getAttribute('href') ?? ''
       return node.hasAttribute('data-markdown-image') ? `![${text}](${href})` : `[${text}](${href})`
     }
+    case 'IMG': {
+      const src = node.getAttribute('src') ?? ''
+      const alt = node.getAttribute('alt') ?? ''
+      return src ? `![${alt}](${src})` : alt
+    }
     default:
       return text
   }
+}
+
+function createMarkdownBlockFragment(value: string, styles: EditorBlockClassNames) {
+  const fragment = document.createDocumentFragment()
+  const blocks = toEditableMarkdownBlocks(value)
+
+  for (const block of blocks) {
+    fragment.append(createBlockElement(block, styles))
+  }
+
+  return fragment
+}
+
+function insertMarkdownBlocksIntoRange(range: Range, value: string, styles: EditorBlockClassNames) {
+  const fragment = createMarkdownBlockFragment(value, styles)
+  const lastChild = fragment.lastChild
+  range.deleteContents()
+  range.insertNode(fragment)
+
+  return lastChild
+}
+
+function isEmptyEditorBlock(block: HTMLElement) {
+  return !block.textContent?.trim() && !block.querySelector('img')
+}
+
+export function insertMarkdownAtSelection(editor: HTMLElement, selection: Selection | null, value: string, styles: EditorBlockClassNames): boolean {
+  const markdown = normalizeMarkdownText(value)
+
+  if (!markdown) {
+    return false
+  }
+
+  let range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : document.createRange()
+
+  if (!editor.contains(range.commonAncestorContainer)) {
+    range.selectNodeContents(editor)
+    range.collapse(false)
+  }
+
+  const currentBlock = findEditorBlock(editor, range.startContainer)
+  const shouldInsertAsTopLevelBlocks = currentBlock !== editor && markdown.includes('\n')
+
+  if (shouldInsertAsTopLevelBlocks) {
+    const fragment = createMarkdownBlockFragment(markdown, styles)
+    const lastChild = fragment.lastChild
+
+    if (isEmptyEditorBlock(currentBlock)) {
+      currentBlock.replaceWith(fragment)
+    } else {
+      range.deleteContents()
+      currentBlock.after(fragment)
+    }
+
+    if (lastChild) {
+      range = document.createRange()
+      range.setStartAfter(lastChild)
+      range.collapse(true)
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    }
+
+    return true
+  }
+
+  const lastChild = insertMarkdownBlocksIntoRange(range, markdown, styles)
+
+  if (lastChild) {
+    range = document.createRange()
+    range.setStartAfter(lastChild)
+    range.collapse(true)
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+  }
+
+  return true
 }
 
 export function serializeEditorMarkdown(editor: HTMLElement) {

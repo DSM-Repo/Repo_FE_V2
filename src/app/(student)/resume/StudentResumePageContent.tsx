@@ -855,6 +855,30 @@ export function StudentResumePageContent() {
     [handleDraftChange, imageUploadState.kind],
   )
 
+  const handleInlineImagePasteUpload = useCallback(async (file: File) => {
+    const accessToken = getSavedAccessToken()
+
+    if (!accessToken) {
+      setActionFeedback({ message: '로그인 후 붙여넣은 이미지를 업로드할 수 있습니다.', tone: 'error' })
+      return undefined
+    }
+
+    const documentSession = documentSessionRef.current
+    const result = await uploadResumeImage({ accessToken, image: file })
+
+    if (documentSessionRef.current !== documentSession) {
+      return undefined
+    }
+
+    if (result.kind !== 'success') {
+      setActionFeedback({ message: result.message, tone: 'error' })
+      return undefined
+    }
+
+    setActionFeedback({ message: '붙여넣은 이미지를 업로드했습니다.', tone: 'success' })
+    return result.imageUrl
+  }, [])
+
   const handleMajorChange = useCallback(
     async (majorId: number) => {
       if (majorSubmitState === 'pending') {
@@ -1161,6 +1185,7 @@ export function StudentResumePageContent() {
                     key={draft.pages[pageIndex]?.index ?? pageIndex}
                     majors={majors}
                     onChange={handleDraftChange}
+                    onInlineImagePasteUpload={handleInlineImagePasteUpload}
                     onImageUpload={handleImageUpload}
                     onMajorChange={(majorId) => void handleMajorChange(majorId)}
                     onPortfolioUrlClick={() => setPortfolioUrlModalState({ kind: 'open' })}

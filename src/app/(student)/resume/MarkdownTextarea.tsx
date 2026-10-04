@@ -5,6 +5,8 @@ import styles from './ResumeEditorSheet.module.css'
 import {
   applyMarkdownBlockShortcut,
   applyMarkdownBlockCommand,
+  clipboardHtmlToMarkdown,
+  insertMarkdownAtSelection,
   markdownTools,
   renderEditorMarkdown,
   serializeEditorMarkdown,
@@ -16,12 +18,43 @@ type MarkdownTextareaProps = {
   readonly id: string
   readonly label: string
   readonly onChange: (value: string) => void
+  readonly onImagePasteUpload?: (file: File) => Promise<string | undefined>
+  readonly onRichPaste?: (value: string) => void
   readonly placeholder: string
   readonly toolbarLabel: string
   readonly value: string
 }
 
-export function MarkdownTextarea({ className, id, label, onChange, placeholder, toolbarLabel, value }: MarkdownTextareaProps) {
+function toEditorStyles() {
+  return {
+    bulletList: styles.markdownEditorBulletList,
+    divider: styles.markdownEditorDivider,
+    heading1: styles.markdownEditorHeading1,
+    heading2: styles.markdownEditorHeading2,
+    heading3: styles.markdownEditorHeading3,
+    heading4: styles.markdownEditorHeading4,
+    paragraph: styles.markdownEditorParagraph,
+    quote: styles.markdownEditorQuote,
+  }
+}
+
+function readClipboardImage(file: File, onImagePasteUpload?: (file: File) => Promise<string | undefined>) {
+  if (onImagePasteUpload) {
+    return onImagePasteUpload(file).then((imageUrl) => imageUrl ? `![${file.name || '이미지'}](${imageUrl})` : '')
+  }
+
+  return new Promise<string>((resolve) => {
+    const reader = new FileReader()
+
+    reader.addEventListener('error', () => resolve(''))
+    reader.addEventListener('load', () => {
+      resolve(typeof reader.result === 'string' ? `![${file.name || '이미지'}](${reader.result})` : '')
+    })
+    reader.readAsDataURL(file)
+  })
+}
+
+export function MarkdownTextarea({ className, id, label, onChange, onImagePasteUpload, onRichPaste, placeholder, toolbarLabel, value }: MarkdownTextareaProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const latestValueRef = useRef(value)
   const pendingValueRef = useRef<string | undefined>(undefined)
@@ -43,34 +76,28 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
       return
     }
 
-    renderEditorMarkdown(editor, value, {
-      bulletList: styles.markdownEditorBulletList,
-      divider: styles.markdownEditorDivider,
-      heading1: styles.markdownEditorHeading1,
-      heading2: styles.markdownEditorHeading2,
-      heading3: styles.markdownEditorHeading3,
-      heading4: styles.markdownEditorHeading4,
-      paragraph: styles.markdownEditorParagraph,
-      quote: styles.markdownEditorQuote,
-    })
+    renderEditorMarkdown(editor, value, toEditorStyles())
   }, [value])
 
-  const syncMarkdownValue = () => {
+  const syncMarkdownValue = (afterSync?: (nextValue: string) => void) => {
     const editor = editorRef.current
 
     if (!editor) {
+      afterSync?.(latestValueRef.current)
       return
     }
 
     const nextValue = serializeEditorMarkdown(editor)
 
     if (nextValue === latestValueRef.current) {
+      afterSync?.(nextValue)
       return
     }
 
     latestValueRef.current = nextValue
     pendingValueRef.current = nextValue
     onChange(nextValue)
+    afterSync?.(nextValue)
   }
 
   const insertMarkdownLink = (isImage: boolean) => {
@@ -130,28 +157,10 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
         document.execCommand('formatBlock', false, 'blockquote')
         break
       case 'bulletList':
-        applyMarkdownBlockCommand(editor, window.getSelection(), { kind: 'bulletList', text: '' }, {
-          bulletList: styles.markdownEditorBulletList,
-          divider: styles.markdownEditorDivider,
-          heading1: styles.markdownEditorHeading1,
-          heading2: styles.markdownEditorHeading2,
-          heading3: styles.markdownEditorHeading3,
-          heading4: styles.markdownEditorHeading4,
-          paragraph: styles.markdownEditorParagraph,
-          quote: styles.markdownEditorQuote,
-        })
+        applyMarkdownBlockCommand(editor, window.getSelection(), { kind: 'bulletList', text: '' }, toEditorStyles())
         break
       case 'divider':
-        applyMarkdownBlockCommand(editor, window.getSelection(), { kind: 'divider' }, {
-          bulletList: styles.markdownEditorBulletList,
-          divider: styles.markdownEditorDivider,
-          heading1: styles.markdownEditorHeading1,
-          heading2: styles.markdownEditorHeading2,
-          heading3: styles.markdownEditorHeading3,
-          heading4: styles.markdownEditorHeading4,
-          paragraph: styles.markdownEditorParagraph,
-          quote: styles.markdownEditorQuote,
-        })
+        applyMarkdownBlockCommand(editor, window.getSelection(), { kind: 'divider' }, toEditorStyles())
         break
       case 'link':
         insertMarkdownLink(false)
@@ -170,7 +179,29 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
 
   const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
     event.preventDefault()
-    document.execCommand('insertText', false, event.clipboardData.getData('text/plain'))
+    const editor = editorRef.current
+    const clipboardData = event.clipboardData
+
+    if (!editor) {
+      return
+    }
+
+    const htmlMarkdown = clipboardHtmlToMarkdown(clipboardData.getData('text/html'), clipboardData.getData('text/plain'))
+    const imageFiles = Array.from(clipboardData.files).filter((file) => file.type.startsWith('image/'))
+
+    void Promise.all(imageFiles.map((file) => readClipboardImage(file, onImagePasteUpload))).then((imageMarkdowns) => {
+      const markdown = [htmlMarkdown, ...imageMarkdowns].filter(Boolean).join('\n')
+
+      if (!insertMarkdownAtSelection(editor, window.getSelection(), markdown, toEditorStyles())) {
+        return
+      }
+
+      syncMarkdownValue(onRichPaste)
+    })
+  }
+
+  const handleEditorChange = () => {
+    syncMarkdownValue()
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -184,16 +215,7 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
     if (
       !editor ||
       !selection ||
-      !applyMarkdownBlockShortcut(editor, selection, {
-        bulletList: styles.markdownEditorBulletList,
-        divider: styles.markdownEditorDivider,
-        heading1: styles.markdownEditorHeading1,
-        heading2: styles.markdownEditorHeading2,
-        heading3: styles.markdownEditorHeading3,
-        heading4: styles.markdownEditorHeading4,
-        paragraph: styles.markdownEditorParagraph,
-        quote: styles.markdownEditorQuote,
-      })
+      !applyMarkdownBlockShortcut(editor, selection, toEditorStyles())
     ) {
       return
     }
@@ -231,8 +253,8 @@ export function MarkdownTextarea({ className, id, label, onChange, placeholder, 
         data-markdown-value={value}
         data-placeholder={placeholder}
         id={id}
-        onBlur={syncMarkdownValue}
-        onInput={syncMarkdownValue}
+        onBlur={handleEditorChange}
+        onInput={handleEditorChange}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         ref={editorRef}

@@ -120,6 +120,10 @@ function toSafeHref(value: string) {
 }
 
 function toSafeImageSrc(value: string) {
+  if (value.startsWith('data:image/')) {
+    return value
+  }
+
   try {
     const url = new URL(value)
 
@@ -161,12 +165,11 @@ function renderMarkdownInline(value: string): readonly ReactNode[] {
     const key = `${matchStart}-${matchText}`
 
     if (imageAlt !== undefined && imageSrc !== undefined) {
-      const safeHref = toSafeHref(imageSrc)
+      const safeImageSrc = toSafeImageSrc(imageSrc)
       nodes.push(
-        safeHref ? (
-          <a className={styles.markdownImageLink} href={safeHref} key={key} rel="noreferrer" target="_blank">
-            {imageAlt || '이미지'}
-          </a>
+        safeImageSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element -- Markdown image sources may be remote or data URLs pasted from an editor.
+          <img alt={imageAlt} className={styles.markdownImage} key={key} src={safeImageSrc} />
         ) : (
           <span key={key}>{imageAlt}</span>
         ),

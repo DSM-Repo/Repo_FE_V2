@@ -55,8 +55,10 @@ export type ResumeEditorSheetProps = {
   readonly isUploadingImage?: boolean
   readonly majors?: readonly Major[]
   readonly onChange: (nextDraft: ResumeDraft) => void
+  readonly onInlineImagePasteUpload?: (file: File) => Promise<string | undefined>
   readonly onImageUpload?: (input: { readonly file: File; readonly target: ResumeImageTarget }) => void
   readonly onMajorChange?: (majorId: number) => void
+  readonly onPageRichPaste?: (input: { readonly content: string; readonly pageIndex: number }) => void
   readonly onPortfolioUrlClick?: () => void
   readonly pageIndex: number
 }
@@ -110,8 +112,10 @@ export function ResumeEditorSheet({
   isUploadingImage = false,
   majors = [],
   onChange,
+  onInlineImagePasteUpload,
   onImageUpload,
   onMajorChange,
+  onPageRichPaste,
   onPortfolioUrlClick,
   pageIndex,
 }: ResumeEditorSheetProps) {
@@ -212,6 +216,8 @@ export function ResumeEditorSheet({
           id={`resume-page-content-${page.index}`}
           label={`${page.index + 1}쪽 추가 내용`}
           onChange={(content) => updatePage({ content })}
+          onImagePasteUpload={onInlineImagePasteUpload}
+          onRichPaste={(content) => onPageRichPaste?.({ content, pageIndex })}
           placeholder="추가 내용을 작성해주세요."
           toolbarLabel="추가 페이지 작성 도구"
           value={page.content}
@@ -310,6 +316,8 @@ export function ResumeEditorSheet({
           id={`resume-page-content-${page.index}`}
           label={`${page.index + 1}쪽 추가 내용`}
           onChange={(content) => updatePage({ content })}
+          onImagePasteUpload={onInlineImagePasteUpload}
+          onRichPaste={(content) => onPageRichPaste?.({ content, pageIndex })}
           placeholder="프로젝트에서 수행한 역할과 기여 내용, 그리고 진행 과정에 대한 회고 등을 작성해 주세요."
           toolbarLabel="프로젝트 작성 도구"
           value={page.content}
@@ -489,6 +497,8 @@ export function ResumeEditorSheet({
           id={`resume-page-content-${page.index}`}
           label={`${page.index + 1}쪽 추가 내용`}
           onChange={(content) => updatePage({ content })}
+          onImagePasteUpload={onInlineImagePasteUpload}
+          onRichPaste={(content) => onPageRichPaste?.({ content, pageIndex })}
           placeholder="활동 내용과 날짜, 상세를 입력해주세요."
           toolbarLabel="활동 작성 도구"
           value={page.content}
