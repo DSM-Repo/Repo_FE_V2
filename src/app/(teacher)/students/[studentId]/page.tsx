@@ -12,6 +12,8 @@ import {
 } from '@/features/library/api'
 import {
   getStudentResumeById,
+  getSavedResumeVisibility,
+  saveResumeVisibility,
   updateResumeVisibility,
   type Resume,
   type ResumePage,
@@ -148,7 +150,11 @@ export default function TeacherStudentReviewPage() {
         return
       }
 
-      setLoadState({ kind: 'success', resume: result.resume })
+      const savedVisibility = getSavedResumeVisibility(studentId)
+      setLoadState({
+        kind: 'success',
+        resume: savedVisibility === undefined ? result.resume : { ...result.resume, isPublic: savedVisibility },
+      })
       setSpreadStartIndex(0)
       setFeedbackLoadState({ kind: 'idle' })
       setFeedbackDraft('')
@@ -202,6 +208,7 @@ export default function TeacherStudentReviewPage() {
         removeRecentLibraryBookGroup(libraryBookGroup)
       }
 
+      saveResumeVisibility({ isPublic: result.isPublic, studentId })
       setLoadState({ kind: 'success', resume: { ...resume, isPublic: result.isPublic } })
       setActionFeedback({
         message: result.isPublic ? '이력서를 도서관에 공개했습니다.' : '이력서를 비공개로 전환했습니다.',

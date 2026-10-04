@@ -154,6 +154,8 @@ test.describe('teacher student portfolio review', () => {
 
     await expect(page.getByRole('complementary', { name: '피드백 목록' })).toBeVisible()
     await expect(page.getByText('프로젝트 성과를 숫자로 표현해보세요.')).toBeVisible()
+    await page.reload()
+    await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeChecked()
     await page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link', { name: '도서관' }).click()
     await expect(page.getByRole('link', { name: '2026 11기 3학년 포트폴리오 열람' })).toBeVisible()
   })

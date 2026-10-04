@@ -10,6 +10,7 @@ export {
   uploadResumeImage,
 } from './resumeApi'
 export { clearSavedResumeId, getSavedResumeId, saveResumeId } from './resumeIdStorage'
+export { getSavedResumeVisibility, saveResumeVisibility } from './resumeVisibilityStorage'
 export type {
   Resume,
   ResumeAutoSave,
