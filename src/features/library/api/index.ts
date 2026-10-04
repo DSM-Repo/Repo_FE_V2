@@ -1,12 +1,15 @@
 export { getLibraryBooks, getLibraryResumeByStudentId, searchLibraryStudents } from './libraryApi'
 export {
   getRecentLibraryBookGroups,
+  getRecentLibraryResume,
   getRecentLibraryStudents,
   mergeLibraryBookGroups,
   mergeLibrarySearchStudents,
   removeRecentLibraryBookGroup,
+  removeRecentLibraryResume,
   removeRecentLibraryStudent,
   saveRecentLibraryBookGroup,
+  saveRecentLibraryResume,
   saveRecentLibraryStudent,
   toReleasedLibraryBookGroup,
 } from './recentLibraryGroupsStorage'

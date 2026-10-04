@@ -286,7 +286,8 @@ test.describe('public route smoke', () => {
     await page.goto('/resume-books/1')
 
     await expect(page.getByRole('heading', { name: '김태균 이력서' })).toBeVisible()
-    await expect(page.getByText('30101 | 백엔드 | student@example.com')).toBeVisible()
+    await expect(page.getByRole('button', { name: '전체 PDF 다운로드' })).toBeVisible()
+    await expect(page.getByLabel('목록으로 돌아가기')).toHaveAttribute('href', '/library?date=2026')
     await expect(page.getByRole('heading', { level: 1, name: 'API 설계와 테스트 자동화를 좋아합니다.' })).toBeVisible()
     await expect(page.getByText('문서화')).toBeVisible()
     await expect(page.getByRole('heading', { level: 2, name: '협업 과정' })).toBeVisible()

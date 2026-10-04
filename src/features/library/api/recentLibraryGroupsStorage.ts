@@ -1,8 +1,9 @@
 'use client'
 
-import type { LibraryBookGroup, LibrarySearchStudent } from './libraryApi.types'
+import type { LibraryBookGroup, LibraryResume, LibrarySearchStudent } from './libraryApi.types'
 
 const RECENT_LIBRARY_GROUPS_KEY = 'repo.library.recentGroups'
+const RECENT_LIBRARY_RESUMES_KEY = 'repo.library.recentResumes'
 const RECENT_LIBRARY_STUDENTS_KEY = 'repo.library.recentStudents'
 const FIRST_COHORT_GRADUATION_YEAR = 2015
 const DEFAULT_RELEASED_LIBRARY_YEAR = 2
@@ -131,6 +132,104 @@ function getStudentKey(student: Pick<RecentLibraryStudent, 'date' | 'studentId'>
   return `${student.date}:${student.studentId}`
 }
 
+function toRecentLibraryResume(value: unknown): LibraryResume | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined
+  }
+
+  const candidate = value as Record<string, unknown>
+
+  if (
+    !Number.isSafeInteger(candidate.cohort) ||
+    !Number.isSafeInteger(candidate.date) ||
+    !Number.isSafeInteger(candidate.studentId) ||
+    !Number.isSafeInteger(candidate.year) ||
+    typeof candidate.email !== 'string' ||
+    typeof candidate.introduce !== 'string' ||
+    typeof candidate.majorName !== 'string' ||
+    typeof candidate.name !== 'string' ||
+    typeof candidate.portfolioUrl !== 'string' ||
+    typeof candidate.profileImageUrl !== 'string' ||
+    typeof candidate.releasedAt !== 'string' ||
+    typeof candidate.resumeId !== 'string' ||
+    typeof candidate.studentNumber !== 'string' ||
+    !Array.isArray(candidate.pages)
+  ) {
+    return undefined
+  }
+
+  const pages = candidate.pages
+    .map((page): LibraryResume['pages'][number] | undefined => {
+      if (!page || typeof page !== 'object') {
+        return undefined
+      }
+
+      const pageCandidate = page as Record<string, unknown>
+
+      if (
+        typeof pageCandidate.content !== 'string' ||
+        typeof pageCandidate.id !== 'string' ||
+        !Number.isSafeInteger(pageCandidate.index)
+      ) {
+        return undefined
+      }
+
+      return {
+        content: pageCandidate.content,
+        id: pageCandidate.id,
+        index: Number(pageCandidate.index),
+      }
+    })
+    .filter((page) => page !== undefined)
+
+  return {
+    cohort: Number(candidate.cohort),
+    date: Number(candidate.date),
+    email: candidate.email,
+    introduce: candidate.introduce,
+    majorName: candidate.majorName,
+    name: candidate.name,
+    pages,
+    portfolioUrl: candidate.portfolioUrl,
+    profileImageUrl: candidate.profileImageUrl,
+    releasedAt: candidate.releasedAt,
+    resumeId: candidate.resumeId,
+    studentId: Number(candidate.studentId),
+    studentNumber: candidate.studentNumber,
+    year: DEFAULT_RELEASED_LIBRARY_YEAR,
+  }
+}
+
+function readRecentResumes(): LibraryResume[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  const rawValue = window.localStorage.getItem(RECENT_LIBRARY_RESUMES_KEY)
+
+  if (!rawValue) {
+    return []
+  }
+
+  try {
+    const parsedValue: unknown = JSON.parse(rawValue)
+
+    return Array.isArray(parsedValue)
+      ? parsedValue.map(toRecentLibraryResume).filter((resume) => resume !== undefined)
+      : []
+  } catch {
+    return []
+  }
+}
+
+function writeRecentResumes(resumes: readonly LibraryResume[]) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(RECENT_LIBRARY_RESUMES_KEY, JSON.stringify(resumes))
+}
+
 export function toReleasedLibraryBookGroup(savedAt: string): LibraryBookGroup {
   const savedYear = new Date(savedAt).getFullYear()
   const date = Number.isSafeInteger(savedYear) ? savedYear : new Date().getFullYear()
@@ -164,6 +263,19 @@ export function saveRecentLibraryStudent(student: RecentLibraryStudent) {
 
 export function removeRecentLibraryStudent(student: Pick<RecentLibraryStudent, 'date' | 'studentId'>) {
   writeRecentStudents(readRecentStudents().filter((recentStudent) => getStudentKey(recentStudent) !== getStudentKey(student)))
+}
+
+export function getRecentLibraryResume(studentId: number): LibraryResume | undefined {
+  return readRecentResumes().find((resume) => resume.studentId === studentId)
+}
+
+export function saveRecentLibraryResume(resume: LibraryResume) {
+  const resumes = readRecentResumes().filter((recentResume) => recentResume.studentId !== resume.studentId)
+  writeRecentResumes([...resumes, resume])
+}
+
+export function removeRecentLibraryResume(studentId: number) {
+  writeRecentResumes(readRecentResumes().filter((resume) => resume.studentId !== studentId))
 }
 
 export function getRecentLibraryStudents(input: { readonly date: number; readonly keyword?: string }): readonly LibrarySearchStudent[] {

@@ -9,7 +9,7 @@
   display: flex;
   flex-direction: column;
   min-height: calc(100dvh - var(--repo-size-header-min-height));
-  padding: var(--space-8) 88px 56px;
+  padding: 56px 88px 48px;
 }
 
 .contentLayer {
@@ -32,15 +32,14 @@
 }
 
 .toolbar {
-  position: absolute;
-  top: calc(50% - 395px);
-  right: 0;
-  left: 0;
+  position: relative;
   z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 14px;
   min-height: 43px;
+  margin-bottom: 34px;
 }
 
 .searchGroup {
@@ -63,6 +62,7 @@
   color: var(--repo-gray-300);
   background: var(--repo-bg-main-point);
   cursor: pointer;
+  text-decoration: none;
 }
 
 .filterButton:focus-visible,
@@ -108,12 +108,8 @@
 }
 
 .downloadButton {
-  position: absolute;
-  top: 50%;
-  right: 0;
   min-width: 180px;
   min-height: 43px;
-  transform: translateY(-50%);
   border-radius: 12px;
   background: var(--repo-bg-main-point);
   font-size: var(--repo-font-body-small-size);
@@ -147,8 +143,18 @@
 .viewer {
   position: relative;
   display: grid;
-  gap: var(--space-6);
+  gap: 0;
   align-items: center;
+}
+
+.visuallyHidden {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .resumeHeader {

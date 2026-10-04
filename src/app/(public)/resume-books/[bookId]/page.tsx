@@ -7,11 +7,12 @@ import { useParams } from 'next/navigation'
 import { getSavedAccessToken } from '@/features/auth/api'
 import {
   getLibraryResumeByStudentId,
+  getRecentLibraryResume,
   type LibraryResume,
   type LibraryResumePage,
 } from '@/features/library/api'
 import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
-import { AppHeader, ResumeBookSheet } from '@/shared/ui'
+import { AppHeader, Button, ResumeBookSheet, SearchField } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -73,6 +74,7 @@ function toSheetContent(resume: LibraryResume, page: LibraryResumePage): ResumeB
     name: resume.name,
     pageContent: page.content,
     portfolioUrl: resume.portfolioUrl,
+    profileImageUrl: resume.profileImageUrl,
     projects: [],
     skills: [],
   }
@@ -138,6 +140,16 @@ export default function ResumeBookPage() {
         return
       }
 
+      const recentResume = getRecentLibraryResume(validStudentId)
+
+      if (recentResume) {
+        setLoadState({
+          kind: 'success',
+          resume: recentResume,
+        })
+        return
+      }
+
       setLoadState({
         kind: 'failure',
         message: result.message,
@@ -171,21 +183,20 @@ export default function ResumeBookPage() {
           ) : null}
           {pageState.kind === 'success' ? (
             <section className={styles.viewer} aria-labelledby="resume-book-title">
-              <header className={styles.resumeHeader}>
-                <Link className={styles.backLink} href={`/library?date=${pageState.resume.date}`}>
-                  {pageState.resume.date}학년도 목록
-                </Link>
-                <h1 className={styles.resumeTitle} id="resume-book-title">
-                  {pageState.resume.name} 이력서
-                </h1>
-                <p className={styles.resumeMeta}>
-                  {[pageState.resume.studentNumber, pageState.resume.majorName, pageState.resume.email]
-                    .filter(Boolean)
-                    .join(' | ')}
-                </p>
-              </header>
+              <h1 className={styles.visuallyHidden} id="resume-book-title">
+                {pageState.resume.name} 이력서
+              </h1>
               {sortedPages.length > 0 ? (
                 <>
+                  <div className={styles.toolbar}>
+                    <Link className={styles.filterButton} href={`/library?date=${pageState.resume.date}`} aria-label="목록으로 돌아가기">
+                      ←
+                    </Link>
+                    <SearchField className={styles.searchField} placeholder="이름으로 학생을 찾아보세요." readOnly />
+                    <Button className={styles.downloadButton} variant="bordered-dark">
+                      전체 PDF 다운로드
+                    </Button>
+                  </div>
                   <div className={styles.sheets}>
                     {sortedPages.map((page) => (
                       <ResumeBookSheet
@@ -196,7 +207,7 @@ export default function ResumeBookPage() {
                     ))}
                   </div>
                   <p className={styles.pageIndicator}>
-                    <strong>{sortedPages.length}</strong>쪽 공개됨
+                    <strong>1</strong> / {sortedPages.length}
                   </p>
                 </>
               ) : (
