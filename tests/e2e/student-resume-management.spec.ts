@@ -497,6 +497,62 @@ test.describe('student resume management', () => {
     await expect(page.getByLabel('학번 전공')).toHaveText('2110 소프트웨어개발과')
   })
 
+  test('stacks loading messages instead of overlapping them', async ({ page }) => {
+    const releaseUserRequest = Promise.withResolvers<void>()
+    const releaseResumeRequest = Promise.withResolvers<void>()
+
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      await releaseUserRequest.promise
+      await route.fulfill({
+        body: JSON.stringify({
+          classInfo: { classNumber: 1, grade: 2, number: 10, schoolNumber: '2110' },
+          introduce: '',
+          major: null,
+          name: '오혜민',
+          profileImageUrl: null,
+          progress: { sections: [], totalPercent: 0 },
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+      await releaseResumeRequest.promise
+      await route.fulfill({
+        body: JSON.stringify({
+          email: '',
+          id: 'resume-id',
+          introduce: '',
+          isPublic: false,
+          majorName: '',
+          name: '',
+          pages: [
+            { content: '', id: 'server-page-1', index: 0, type: 'PROFILE' },
+            { content: '', id: 'server-page-2', index: 1, type: 'PROJECT' },
+          ],
+          portfolioUrl: '',
+          profileImageUrl: '',
+          savedAt: '2026-09-20T10:00:00.000Z',
+          skills: [],
+          submissionStatus: 'ONGOING',
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+
+    const userLoadingMessage = page.getByText('학생 정보를 불러오는 중입니다.')
+    const resumeLoadingMessage = page.getByText('이력서를 불러오는 중입니다.')
+    await expect(userLoadingMessage).toBeVisible()
+    await expect(resumeLoadingMessage).toBeVisible()
+    await expectLocatorsDoNotOverlap(userLoadingMessage, resumeLoadingMessage)
+
+    releaseUserRequest.resolve()
+    releaseResumeRequest.resolve()
+  })
+
   test('renders edit controls and feedback drawer state', async ({ page }) => {
     let completeRequestCount = 0
     let applyRequestBody: unknown

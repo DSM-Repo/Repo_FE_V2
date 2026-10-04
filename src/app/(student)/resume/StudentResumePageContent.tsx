@@ -1354,25 +1354,33 @@ export function StudentResumePageContent() {
             </div>
           ) : null}
 
-          {userLoadState.kind === 'loading' ? <p className={styles.loadingMessage}>학생 정보를 불러오는 중입니다.</p> : null}
-          {loadState.kind === 'loading' ? <p className={styles.loadingMessage}>이력서를 불러오는 중입니다.</p> : null}
-          {loadState.kind === 'failure' ? (
-            <p className={styles.loadingMessage} role="alert">
-              {loadState.message}
-              <button onClick={() => void loadResume(attemptedResumeIdRef.current, !requestedResumeId)} type="button">
-                이력서 다시 불러오기
-              </button>
-            </p>
-          ) : null}
-          {userLoadState.kind === 'failure' ? (
-            <p className={styles.loadingMessage} role="alert">
-              {userLoadState.message}
-            </p>
-          ) : null}
-          {majorLoadState.kind === 'failure' ? (
-            <p className={styles.loadingMessage} role="alert">
-              {majorLoadState.message}
-            </p>
+          {userLoadState.kind === 'loading' ||
+          loadState.kind === 'loading' ||
+          loadState.kind === 'failure' ||
+          userLoadState.kind === 'failure' ||
+          majorLoadState.kind === 'failure' ? (
+            <div className={styles.loadingMessages}>
+              {userLoadState.kind === 'loading' ? <p className={styles.loadingMessage}>학생 정보를 불러오는 중입니다.</p> : null}
+              {loadState.kind === 'loading' ? <p className={styles.loadingMessage}>이력서를 불러오는 중입니다.</p> : null}
+              {loadState.kind === 'failure' ? (
+                <p className={styles.loadingMessage} role="alert">
+                  {loadState.message}
+                  <button onClick={() => void loadResume(attemptedResumeIdRef.current, !requestedResumeId)} type="button">
+                    이력서 다시 불러오기
+                  </button>
+                </p>
+              ) : null}
+              {userLoadState.kind === 'failure' ? (
+                <p className={styles.loadingMessage} role="alert">
+                  {userLoadState.message}
+                </p>
+              ) : null}
+              {majorLoadState.kind === 'failure' ? (
+                <p className={styles.loadingMessage} role="alert">
+                  {majorLoadState.message}
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
         </div>

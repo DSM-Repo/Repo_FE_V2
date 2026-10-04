@@ -276,11 +276,16 @@
   backdrop-filter: blur(6px);
 }
 
-.loadingMessage {
+.loadingMessages {
   position: absolute;
   top: 40px;
   left: 64px;
+  display: grid;
+  gap: 6px;
   max-width: min(420px, calc(100% - 128px));
+}
+
+.loadingMessage {
   margin: 0;
   color: var(--repo-gray-400);
   font-size: var(--repo-font-body-tiny-size);
@@ -510,7 +515,7 @@
     padding-left: 24px;
   }
 
-  .loadingMessage {
+  .loadingMessages {
     left: 24px;
   }
 }
@@ -566,7 +571,7 @@
     width: calc(100% - 32px);
   }
 
-  .loadingMessage {
+  .loadingMessages {
     top: 84px;
     right: 16px;
     left: 16px;
