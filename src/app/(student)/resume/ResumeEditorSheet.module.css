@@ -505,7 +505,7 @@
   padding-top: var(--space-2);
   font-size: var(--repo-font-body-very-tiny-size);
   font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
+  line-height: 1.52;
 }
 
 .projectNameInput {
@@ -564,7 +564,7 @@
   background: transparent;
   font-size: var(--repo-font-body-very-tiny-size);
   font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
+  line-height: 1.52;
   letter-spacing: 0;
   white-space: pre-wrap;
   word-break: keep-all;
@@ -625,7 +625,7 @@
   border-left: 2px solid var(--repo-gray-300);
   color: var(--repo-gray-500);
   font-size: var(--repo-font-body-very-tiny-size);
-  line-height: var(--repo-font-body-very-tiny-line-height);
+  line-height: 1.52;
 }
 
 .markdownEditor ul,
@@ -634,7 +634,7 @@
   color: var(--repo-text-black);
   font-size: var(--repo-font-body-very-tiny-size);
   font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
+  line-height: 1.52;
 }
 
 .markdownEditor li {
