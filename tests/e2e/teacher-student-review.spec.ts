@@ -110,6 +110,9 @@ test.describe('teacher student portfolio review', () => {
 
   test('loads a student resume, publishes it, and opens feedback with the student resume API', async ({ page }) => {
     const mocks = await mockTeacherResumeReview(page)
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
+      await route.fulfill({ json: [] })
+    })
     await page.setViewportSize({ height: 854, width: 1528 })
 
     await page.goto('/students/1')
@@ -151,6 +154,8 @@ test.describe('teacher student portfolio review', () => {
 
     await expect(page.getByRole('complementary', { name: '피드백 목록' })).toBeVisible()
     await expect(page.getByText('프로젝트 성과를 숫자로 표현해보세요.')).toBeVisible()
+    await page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link', { name: '도서관' }).click()
+    await expect(page.getByRole('link', { name: '2026 11기 3학년 포트폴리오 열람' })).toBeVisible()
   })
 
   test('keeps the resume sheets clear of the feedback button on short desktop viewports', async ({ page }) => {

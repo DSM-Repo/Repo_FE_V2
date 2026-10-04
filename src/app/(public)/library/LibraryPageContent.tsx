@@ -5,7 +5,14 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
 import { getSavedAccessToken, getSavedAuthRole, type AuthLoginRole } from '@/features/auth/api'
-import { getLibraryBooks, searchLibraryStudents, type LibraryBookGroup, type LibrarySearchStudent } from '@/features/library/api'
+import {
+  getLibraryBooks,
+  getRecentLibraryBookGroups,
+  mergeLibraryBookGroups,
+  searchLibraryStudents,
+  type LibraryBookGroup,
+  type LibrarySearchStudent,
+} from '@/features/library/api'
 import type { InternalHref } from '@/shared/lib/internalHref'
 import type { AppHeaderItem, LibraryBookCardProps } from '@/shared/ui'
 import { AppHeader, LibraryBookCard, LinkRow, SearchField, Toast } from '@/shared/ui'
@@ -152,7 +159,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
 
       if (result.kind === 'success') {
         setLoadState({
-          books: result.books,
+          books: mergeLibraryBookGroups(result.books, getRecentLibraryBookGroups()),
           kind: 'success',
         })
         return

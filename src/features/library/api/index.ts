@@ -1,4 +1,11 @@
 export { getLibraryBooks, getLibraryResumeByStudentId, searchLibraryStudents } from './libraryApi'
+export {
+  getRecentLibraryBookGroups,
+  mergeLibraryBookGroups,
+  removeRecentLibraryBookGroup,
+  saveRecentLibraryBookGroup,
+  toReleasedLibraryBookGroup,
+} from './recentLibraryGroupsStorage'
 export type {
   LibraryAuthInput,
   LibraryBookGroup,

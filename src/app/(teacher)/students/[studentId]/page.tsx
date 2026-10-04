@@ -6,6 +6,11 @@ import { useParams } from 'next/navigation'
 import { getSavedAccessToken } from '@/features/auth/api'
 import { createFeedback, getFeedbacks, type FeedbackListItem } from '@/features/feedback/api'
 import {
+  removeRecentLibraryBookGroup,
+  saveRecentLibraryBookGroup,
+  toReleasedLibraryBookGroup,
+} from '@/features/library/api'
+import {
   getStudentResumeById,
   updateResumeVisibility,
   type Resume,
@@ -187,6 +192,14 @@ export default function TeacherStudentReviewPage() {
       if (result.kind !== 'success') {
         setActionFeedback({ message: result.message, tone: 'error' })
         return
+      }
+
+      const libraryBookGroup = toReleasedLibraryBookGroup(resume.savedAt)
+
+      if (result.isPublic) {
+        saveRecentLibraryBookGroup(libraryBookGroup)
+      } else {
+        removeRecentLibraryBookGroup(libraryBookGroup)
       }
 
       setLoadState({ kind: 'success', resume: { ...resume, isPublic: result.isPublic } })
