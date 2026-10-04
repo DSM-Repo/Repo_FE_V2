@@ -89,7 +89,7 @@ test('renders API student statuses and filters the selected class by name', asyn
   await expect(dialog.getByText('제출 완료')).toBeVisible()
   await expect(dialog.getByRole('link', { name: /1101 김제출.*레주메 보러가기/ })).toHaveAttribute(
     'href',
-    '/students/resume-1',
+    '/students/1',
   )
   await expect(dialog.getByText('1102 이작성')).toBeVisible()
   await expect(dialog.getByText('작성 중')).toBeVisible()
@@ -113,10 +113,10 @@ test('searches all classes by name without selecting a class', async ({ page }) 
   await expect(results.getByRole('link')).toHaveCount(2)
   const firstStudent = results.getByRole('link', { name: /1101 김제출/ })
   await expect(firstStudent).toContainText('1학년 1반')
-  await expect(firstStudent).toHaveAttribute('href', '/students/resume-1')
+  await expect(firstStudent).toHaveAttribute('href', '/students/1')
   const sameNameStudent = results.getByRole('link', { name: /2203 김제출/ })
   await expect(sameNameStudent).toContainText('2학년 2반')
-  await expect(sameNameStudent).toHaveAttribute('href', '/students/resume-3')
+  await expect(sameNameStudent).toHaveAttribute('href', '/students/3')
   await expect(sameNameStudent).toContainText('공개됨')
   const missingResume = results.getByRole('button', { name: /3304 김제출연/ })
   await expect(missingResume).toBeDisabled()

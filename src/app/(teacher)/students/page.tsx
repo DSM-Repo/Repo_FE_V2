@@ -278,7 +278,7 @@ function TeacherStudentsContent() {
                       } as const;
 
                       return student.resumeId ? (
-                        <LinkRow {...rowProps} href={`/students/${student.resumeId}`} />
+                        <LinkRow {...rowProps} href={`/students/${student.studentId}`} />
                       ) : (
                         <LinkRow {...rowProps} disabled />
                       );
@@ -390,7 +390,7 @@ function TeacherStudentsContent() {
                       return student.resumeId ? (
                         <LinkRow
                           {...sharedProps}
-                          href={`/students/${student.resumeId}`}
+                          href={`/students/${student.studentId}`}
                         />
                       ) : (
                         <LinkRow {...sharedProps} disabled />
