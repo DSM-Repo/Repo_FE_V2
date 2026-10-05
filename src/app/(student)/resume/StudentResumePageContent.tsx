@@ -6,9 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { getSavedAccessToken } from '@/features/auth/api'
 import {
   applyFeedback,
-  completeFeedback,
   getFeedbacks,
-  pendingFeedback,
   type FeedbackListItem,
 } from '@/features/feedback/api'
 import { getMajors, type Major } from '@/features/major/api'
@@ -177,7 +175,6 @@ type FeedbackLoadState =
   | { readonly kind: 'failure'; readonly message: string }
 type FeedbackSubmitState =
   | { readonly kind: 'apply-all' }
-  | { readonly feedbackId: string; readonly kind: 'item' }
   | { readonly kind: 'idle' }
 type PortfolioUrlModalState =
   | { readonly kind: 'closed' }
@@ -365,10 +362,6 @@ function toFailureMessage(result: Exclude<ResumeDetailResult, { readonly kind: '
 
 function isCompletedFeedback(feedback: FeedbackListItem) {
   return feedback.status.trim().toUpperCase() === 'COMPLETED'
-}
-
-function toFeedbackStatusLabel(feedback: FeedbackListItem) {
-  return isCompletedFeedback(feedback) ? '반영 완료' : '미반영'
 }
 
 function toFeedbackSummary(content: string) {
@@ -689,56 +682,6 @@ export function StudentResumePageContent() {
       isActive = false
     }
   }, [loadState.kind, requestedResumeId, resume?.id, viewMode])
-
-  const updateFeedbackStatus = useCallback((feedbackId: string, status: string) => {
-    setFeedbackLoadState((currentState) => {
-      if (currentState.kind !== 'success') {
-        return currentState
-      }
-
-      return {
-        ...currentState,
-        feedbacks: currentState.feedbacks.map((feedback) =>
-          feedback.feedbackId === feedbackId ? { ...feedback, status } : feedback,
-        ),
-      }
-    })
-  }, [])
-
-  const handleFeedbackStatusChange = useCallback(
-    async (feedback: FeedbackListItem) => {
-      if (feedbackSubmitState.kind !== 'idle') {
-        return
-      }
-
-      const accessToken = getSavedAccessToken()
-
-      if (!accessToken) {
-        setActionFeedback({ message: '로그인 후 피드백 상태를 변경할 수 있습니다.', tone: 'error' })
-        return
-      }
-
-      const nextStatusLabel = isCompletedFeedback(feedback) ? '미반영' : '완료'
-
-      setActionFeedback(undefined)
-      setFeedbackSubmitState({ feedbackId: feedback.feedbackId, kind: 'item' })
-
-      const result = isCompletedFeedback(feedback)
-        ? await pendingFeedback({ accessToken, feedbackId: feedback.feedbackId })
-        : await completeFeedback({ accessToken, feedbackId: feedback.feedbackId })
-
-      setFeedbackSubmitState({ kind: 'idle' })
-
-      if (result.kind !== 'success') {
-        setActionFeedback({ message: result.message, tone: 'error' })
-        return
-      }
-
-      updateFeedbackStatus(feedback.feedbackId, result.status)
-      setActionFeedback({ message: `피드백을 ${nextStatusLabel} 처리했습니다.`, tone: 'success' })
-    },
-    [feedbackSubmitState.kind, updateFeedbackStatus],
-  )
 
   const handleCompleteAllFeedbacks = useCallback(async () => {
     if (feedbackLoadState.kind !== 'success' || feedbackSubmitState.kind !== 'idle') {
@@ -1294,11 +1237,13 @@ export function StudentResumePageContent() {
 
   return (
     <main className={styles.page}>
-      <AppHeader activeItem="resume" items={navigationItems} showLogout />
+      <div className={`${styles.appFrame} ${viewMode === 'feedback' ? styles.withFeedback : ''}`}>
+        <div className={styles.mainColumn}>
+          <AppHeader activeItem="resume" items={navigationItems} showLogout />
 
-      <section className={`${styles.workspace} ${viewMode === 'feedback' ? styles.withFeedback : ''}`} aria-label="이력서 관리">
-        {actionFeedback ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}
-        <div className={styles.stage} aria-live="polite">
+          <section className={styles.workspace} aria-label="이력서 관리">
+            {actionFeedback ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}
+            <div className={styles.stage} aria-live="polite">
           <div className={`${styles.topActions} ${loadState.kind === 'failure' ? styles.failureActions : ''}`}>
             {isEditing ? (
               <>
@@ -1448,6 +1393,8 @@ export function StudentResumePageContent() {
             </div>
           ) : null}
 
+            </div>
+          </section>
         </div>
 
         {viewMode === 'feedback' ? (
@@ -1459,15 +1406,7 @@ export function StudentResumePageContent() {
               </button>
             </div>
             <div className={styles.feedbackListHeader}>
-              <span>{feedbackLoadState.kind === 'success' ? `${feedbackLoadState.numberOfData}개` : '목록'}</span>
-              <button
-                className={styles.feedbackBulkAction}
-                disabled={feedbackLoadState.kind !== 'success' || pendingFeedbackCount === 0 || isFeedbackSubmitting}
-                onClick={() => void handleCompleteAllFeedbacks()}
-                type="button"
-              >
-                {feedbackSubmitState.kind === 'apply-all' ? '처리 중' : '전체 완료 처리'}
-              </button>
+              <span>{feedbackLoadState.kind === 'success' ? `${pendingFeedbackCount}개 선택됨` : '목록'}</span>
             </div>
             {feedbackLoadState.kind === 'loading' ? <p className={styles.feedbackPanelMessage}>피드백을 불러오는 중입니다.</p> : null}
             {feedbackLoadState.kind === 'failure' ? (
@@ -1482,9 +1421,6 @@ export function StudentResumePageContent() {
               <ul className={styles.feedbackList}>
                 {feedbackLoadState.feedbacks.map((item) => {
                   const isOpen = openFeedbackId === item.feedbackId
-                  const isCompleted = isCompletedFeedback(item)
-                  const isItemSubmitting =
-                    feedbackSubmitState.kind === 'item' && feedbackSubmitState.feedbackId === item.feedbackId
 
                   return (
                     <li className={`${styles.feedbackItem} ${isOpen ? styles.openFeedbackItem : ''}`} key={item.feedbackId}>
@@ -1496,29 +1432,15 @@ export function StudentResumePageContent() {
                       >
                         <span className={styles.feedbackTitle}>
                           <span className={styles.feedbackSummary}>{toFeedbackSummary(item.content)}</span>
-                          <span className={styles.feedbackMeta}>{item.teacherName || '선생님'} / {formatFeedbackDate(item.createdAt)}</span>
+                          <span className={styles.feedbackMeta}>{formatFeedbackDate(item.createdAt)}</span>
                         </span>
-                        <span className={styles.feedbackStatus} data-status={isCompleted ? 'completed' : 'pending'}>
-                          {toFeedbackStatusLabel(item)}
+                        <span className={styles.feedbackChevron} data-open={isOpen ? 'true' : 'false'}>
+                          <Icon name="chevron-right" />
                         </span>
-                        <span aria-hidden="true">{isOpen ? '⌃' : '⌄'}</span>
                       </button>
                       {isOpen ? (
                         <div className={styles.feedbackDetail}>
                           <p>{item.content || '내용 없는 피드백입니다.'}</p>
-                          <div className={styles.feedbackActions}>
-                            <span>
-                              {item.pageDeleted ? '삭제된 페이지' : `${item.pageId} 페이지`} / 좌표 {item.x}, {item.y}
-                            </span>
-                            <button
-                              className={styles.feedbackStatusAction}
-                              disabled={isFeedbackSubmitting}
-                              onClick={() => void handleFeedbackStatusChange(item)}
-                              type="button"
-                            >
-                              {isItemSubmitting ? '처리 중' : isCompleted ? '미반영으로 변경' : '완료 처리'}
-                            </button>
-                          </div>
                         </div>
                       ) : null}
                     </li>
@@ -1526,9 +1448,22 @@ export function StudentResumePageContent() {
                 })}
               </ul>
             ) : null}
+            <div className={styles.feedbackPanelActions}>
+              <button className={styles.feedbackCancelAction} onClick={() => setViewMode('edit')} type="button">
+                취소
+              </button>
+              <button
+                className={styles.feedbackBulkAction}
+                disabled={feedbackLoadState.kind !== 'success' || pendingFeedbackCount === 0 || isFeedbackSubmitting}
+                onClick={() => void handleCompleteAllFeedbacks()}
+                type="button"
+              >
+                {feedbackSubmitState.kind === 'apply-all' ? '처리 중' : '완료 처리하기'}
+              </button>
+            </div>
           </aside>
         ) : null}
-      </section>
+      </div>
     </main>
   )
 }

@@ -591,7 +591,6 @@ test.describe('student resume management', () => {
   })
 
   test('renders edit controls and feedback drawer state', async ({ page }) => {
-    let completeRequestCount = 0
     let applyRequestBody: unknown
 
     await page.route((url) => url.href === `${apiBaseUrl}/feedback?documentId=resume-id`, async (route) => {
@@ -629,18 +628,10 @@ test.describe('student resume management', () => {
         status: 200,
       })
     })
-    await page.route(`${apiBaseUrl}/feedback/feedback-1/complete`, async (route) => {
-      completeRequestCount += 1
-      await route.fulfill({
-        body: JSON.stringify({ feedbackId: 'feedback-1', status: 'COMPLETED' }),
-        contentType: 'application/json',
-        status: 200,
-      })
-    })
     await page.route(`${apiBaseUrl}/feedback/apply`, async (route) => {
       applyRequestBody = route.request().postDataJSON()
       await route.fulfill({
-        body: JSON.stringify({ failed: [], successCount: 1 }),
+        body: JSON.stringify({ failed: [], successCount: 2 }),
         contentType: 'application/json',
         status: 200,
       })
@@ -659,17 +650,20 @@ test.describe('student resume management', () => {
     await expect(feedbackPanel.getByRole('button', { name: /문장 근거를 한 줄 더 추가해보세요/ })).toBeVisible()
     await expect(feedbackPanel.getByRole('button', { name: /프로젝트 성과를 숫자로 표현해보세요/ })).toBeVisible()
 
-    await feedbackPanel.getByRole('button', { exact: true, name: '완료 처리' }).click()
+    const headerBox = await page.locator('main > div > div > header').boundingBox()
+    const feedbackPanelBox = await feedbackPanel.boundingBox()
 
-    await expect.poll(() => completeRequestCount).toBe(1)
-    await expect(page.getByRole('status')).toContainText('피드백을 완료 처리했습니다.')
-    await expect(page.getByText('반영 완료')).toHaveCount(1)
+    expect(headerBox).not.toBeNull()
+    expect(feedbackPanelBox).not.toBeNull()
+    if (headerBox && feedbackPanelBox) {
+      expect(headerBox.x + headerBox.width).toBeLessThanOrEqual(feedbackPanelBox.x + 1)
+    }
 
-    await feedbackPanel.getByRole('button', { exact: true, name: '전체 완료 처리' }).click()
+    await expect(feedbackPanel.getByText('2개 선택됨')).toBeVisible()
+    await feedbackPanel.getByRole('button', { exact: true, name: '완료 처리하기' }).click()
 
-    await expect.poll(() => applyRequestBody).toEqual({ applied: true, feedbackIds: ['feedback-2'] })
-    await expect(page.getByRole('status')).toContainText('1개 피드백을 완료 처리했습니다.')
-    await expect(page.getByText('반영 완료')).toHaveCount(2)
+    await expect.poll(() => applyRequestBody).toEqual({ applied: true, feedbackIds: ['feedback-1', 'feedback-2'] })
+    await expect(page.getByRole('status')).toContainText('2개 피드백을 완료 처리했습니다.')
   })
 
   test('allows writing a resume before opening an existing resume', async ({ page }) => {
