@@ -66,6 +66,15 @@ const defaultResumeDraft = {
   skills: [],
 } satisfies ResumeDraft
 
+function createEmptyProjectPage(index: number): ResumeDraftPage {
+  return {
+    content: '',
+    index,
+    project: { endDate: '', imageUrl: '', name: '', startDate: '', summary: '' },
+    type: 'PROJECT',
+  }
+}
+
 function estimateMarkdownLineUnits(line: string) {
   const trimmedLine = line.trim()
 
@@ -265,7 +274,11 @@ function toSheetContent(draft: ResumeDraft, pageIndex: number): ResumeBookSheetC
 
 function toResumeDraft(resume: Resume): ResumeDraft {
   const introduction = splitIntroduction(resume.introduce)
-  const pages = [...resume.pages].sort((left, right) => left.index - right.index).map(toDraftPage)
+  const savedPages = [...resume.pages].sort((left, right) => left.index - right.index).map(toDraftPage)
+  const pages = savedPages.length > 0 ? savedPages : defaultResumeDraft.pages
+  const pagesWithProjectTemplate = pages.some((page) => page.type === 'PROJECT')
+    ? pages
+    : reindexDraftPages([...pages, createEmptyProjectPage(pages.length)])
 
   return {
     ...defaultResumeDraft,
@@ -274,7 +287,7 @@ function toResumeDraft(resume: Resume): ResumeDraft {
     introduce: introduction.introduce,
     introTitle: introduction.introTitle,
     name: resume.name,
-    pages: pages.length > 0 ? pages : defaultResumeDraft.pages,
+    pages: pagesWithProjectTemplate,
     portfolioUrl: resume.portfolioUrl,
     profileImageUrl: resume.profileImageUrl,
     skills: resume.skills,
@@ -610,12 +623,13 @@ export function StudentResumePageContent() {
   const isImageUploading = imageUploadState.kind === 'uploading'
   const isResumeActionPending = saveSubmitState !== 'idle' || majorSubmitState === 'pending' || isImageUploading
   const isEditing = isResumeReady && (viewMode === 'edit' || viewMode === 'feedback')
-  const hasWrittenProject = draft.pages.some((page) => page.type === 'PROJECT' && Boolean(
-    page.project?.name.trim() || page.project?.summary.trim() || page.content.trim(),
-  ))
-  const visiblePageIndexes = [spreadStartIndex, spreadStartIndex + 1].filter((index) => index < draft.pages.length)
-  const canMovePrevious = spreadStartIndex > 0
-  const canMoveNext = isEditing ? spreadStartIndex < draft.pages.length - 1 : spreadStartIndex + 2 < draft.pages.length
+  const visiblePageSlotCount = draft.pages.length + (isEditing ? 1 : 0)
+  const maxSpreadStartIndex = Math.max(0, Math.floor((visiblePageSlotCount - 1) / 2) * 2)
+  const normalizedSpreadStartIndex = Math.min(spreadStartIndex - (spreadStartIndex % 2), maxSpreadStartIndex)
+  const visiblePageSlots = [normalizedSpreadStartIndex, normalizedSpreadStartIndex + 1].filter((index) => index < visiblePageSlotCount)
+  const canMovePrevious = normalizedSpreadStartIndex > 0
+  const canMoveNext = normalizedSpreadStartIndex < maxSpreadStartIndex
+  const visiblePageCount = Math.min(normalizedSpreadStartIndex + 2, draft.pages.length)
   const selectedFeedbackCount = selectedFeedbackIds.size
   const isFeedbackSubmitting = feedbackSubmitState.kind !== 'idle'
   const toggleFeedbackSelection = useCallback((feedbackId: string) => {
@@ -1337,14 +1351,28 @@ export function StudentResumePageContent() {
             <button
               className={styles.pageArrow}
               disabled={!canMovePrevious}
-              onClick={() => setSpreadStartIndex((currentIndex) => Math.max(0, currentIndex - 1))}
+              onClick={() => setSpreadStartIndex(Math.max(0, normalizedSpreadStartIndex - 2))}
               type="button"
               aria-label="이전 페이지"
             >
               <Icon name="chevron-left" />
             </button>
             <div className={styles.spread} aria-label={isEditing ? '이력서 작성' : '이력서 미리보기'}>
-              {visiblePageIndexes.map((pageIndex) => {
+              {visiblePageSlots.map((pageIndex) => {
+                if (isEditing && pageIndex >= draft.pages.length) {
+                  return (
+                    <button
+                      className={`${styles.documentSheet} ${styles.addPageSheet}`}
+                      onClick={addProjectPage}
+                      type="button"
+                      aria-label="프로젝트 페이지 추가"
+                      key="add-project-page"
+                    >
+                      <Icon name="plus" />
+                    </button>
+                  )
+                }
+
                 const page = draft.pages[pageIndex]
                 const feedbackMarkers = toPageFeedbackMarkers(page)
 
@@ -1377,21 +1405,11 @@ export function StudentResumePageContent() {
                   />
                 )
               })}
-              {isEditing && hasWrittenProject && spreadStartIndex + 1 >= draft.pages.length ? (
-                <button
-                  className={`${styles.documentSheet} ${styles.addPageSheet}`}
-                  onClick={addProjectPage}
-                  type="button"
-                  aria-label="프로젝트 페이지 추가"
-                >
-                  <Icon name="plus" />
-                </button>
-              ) : null}
             </div>
             <button
               className={styles.pageArrow}
               disabled={!canMoveNext}
-              onClick={() => setSpreadStartIndex((currentIndex) => Math.min(draft.pages.length - 1, currentIndex + 1))}
+              onClick={() => setSpreadStartIndex(Math.min(maxSpreadStartIndex, normalizedSpreadStartIndex + 2))}
               type="button"
               aria-label="다음 페이지"
             >
@@ -1400,7 +1418,7 @@ export function StudentResumePageContent() {
           </div>
 
           <p className={styles.pageCount}>
-            {Math.min(spreadStartIndex + 2, draft.pages.length)} / {draft.pages.length}
+            {visiblePageCount} / {draft.pages.length}
           </p>
 
           {isEditing ? (
