@@ -253,27 +253,28 @@
 }
 
 .majorDropdown {
-  --dropdown-width: 150px;
-  --dropdown-min-width: 120px;
+  --dropdown-width: 104px;
+  --dropdown-min-width: 96px;
   --dropdown-min-height: 24px;
-  --dropdown-padding: 0 0 0 var(--space-2);
-  --dropdown-gap: var(--space-2);
+  --dropdown-padding: 0 6px;
+  --dropdown-gap: 4px;
   --dropdown-color: var(--repo-gray-500);
   --dropdown-background: transparent;
   --dropdown-border: 0;
-  --dropdown-radius: 0;
+  --dropdown-radius: 6px;
   --dropdown-open-border: 0;
-  --dropdown-open-border-bottom: 1px solid var(--repo-gray-300);
-  --dropdown-open-radius: 0;
+  --dropdown-open-border-bottom: 1px solid var(--repo-gray-100);
+  --dropdown-open-radius: 6px 6px 0 0;
   --dropdown-panel-background: var(--repo-gray-50);
   --dropdown-panel-border: 1px solid var(--repo-gray-300);
-  --dropdown-panel-radius: 10px;
+  --dropdown-panel-radius: 6px;
   --dropdown-panel-position: absolute;
-  --dropdown-panel-top: 100%;
+  --dropdown-panel-top: 0;
   --dropdown-panel-left: 0;
   --dropdown-panel-z-index: 20;
   --dropdown-option-separator: 1px solid var(--repo-gray-100);
   --dropdown-hover-background: var(--repo-gray-100);
+  --dropdown-chevron-size: 12px;
   --dropdown-chevron-color: var(--repo-gray-500);
   --dropdown-font-size: var(--resume-book-sheet-major-size, var(--repo-font-body-tiny-size));
   --dropdown-font-weight: var(--repo-font-body-tiny-weight);
@@ -281,7 +282,7 @@
 
   position: relative;
   z-index: 9;
-  flex: 0 1 150px;
+  flex: 0 1 104px;
   min-width: 0;
   max-width: 48%;
 }
