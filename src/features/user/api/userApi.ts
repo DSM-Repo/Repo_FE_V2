@@ -198,7 +198,7 @@ export async function updateUserMajor(input: UserMajorUpdateInput): Promise<User
 
   response.complete()
 
-  if (response.value.status === 204) {
+  if (response.value.ok) {
     return {
       kind: 'success',
     }

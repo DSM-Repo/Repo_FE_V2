@@ -154,8 +154,8 @@
 .nameRow {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  align-items: baseline;
+  flex-wrap: nowrap;
   gap: var(--space-2);
   row-gap: 2px;
 }
@@ -164,13 +164,13 @@
 .projectDateRow {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  align-items: baseline;
+  flex-wrap: nowrap;
   gap: var(--space-2);
   row-gap: 2px;
   margin-top: 2px;
   color: var(--repo-gray-500);
-  font-size: var(--repo-font-body-tiny-size);
+  font-size: var(--resume-book-sheet-meta-size, var(--repo-font-body-tiny-size));
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: 1.35;
 }
@@ -242,15 +242,18 @@
 }
 
 .nameInput {
-  flex: 1 1 84px;
-  max-width: 100%;
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 52px;
+  max-width: 48%;
   font-size: var(--resume-book-sheet-name-size, var(--repo-font-title-tiny-size));
   font-weight: var(--repo-font-title-small-weight);
   line-height: 1.2;
+  field-sizing: content;
 }
 
 .majorDropdown {
-  --dropdown-width: 100%;
+  --dropdown-width: 150px;
   --dropdown-min-width: 120px;
   --dropdown-min-height: 24px;
   --dropdown-padding: 0 0 0 var(--space-2);
@@ -265,18 +268,22 @@
   --dropdown-panel-background: var(--repo-gray-50);
   --dropdown-panel-border: 1px solid var(--repo-gray-300);
   --dropdown-panel-radius: 10px;
+  --dropdown-panel-position: absolute;
+  --dropdown-panel-top: 100%;
+  --dropdown-panel-left: 0;
+  --dropdown-panel-z-index: 20;
   --dropdown-option-separator: 1px solid var(--repo-gray-100);
   --dropdown-hover-background: var(--repo-gray-100);
   --dropdown-chevron-color: var(--repo-gray-500);
-  --dropdown-font-size: var(--repo-font-body-tiny-size);
+  --dropdown-font-size: var(--resume-book-sheet-major-size, var(--repo-font-body-tiny-size));
   --dropdown-font-weight: var(--repo-font-body-tiny-weight);
   --dropdown-line-height: 1.25;
 
   position: relative;
   z-index: 9;
-  flex: 1 1 120px;
+  flex: 0 1 150px;
   min-width: 0;
-  max-width: 100%;
+  max-width: 48%;
 }
 
 .majorDropdown button {
@@ -291,20 +298,22 @@
 
 .majorInput {
   display: inline-block;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  width: auto;
   min-width: 0;
   max-width: 100%;
   margin: 0;
-  font-size: var(--repo-font-body-tiny-size);
-  font-weight: var(--repo-font-title-tiny-weight);
+  font-size: var(--resume-book-sheet-meta-size, var(--repo-font-body-tiny-size));
+  font-weight: var(--repo-font-body-tiny-weight);
   line-height: 1.35;
   overflow-wrap: anywhere;
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .emailInput {
   flex: 1 1 140px;
-  font-size: var(--repo-font-body-tiny-size);
+  width: auto;
+  font-size: var(--resume-book-sheet-meta-size, var(--repo-font-body-tiny-size));
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: 1.35;
 }
@@ -774,7 +783,10 @@
   }
 
   .majorDropdown {
+    --dropdown-width: 100%;
+
     padding-left: 0;
+    max-width: 100%;
   }
 
   .metaRow {

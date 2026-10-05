@@ -1,4 +1,5 @@
 .dropdown {
+  position: relative;
   display: grid;
   width: var(--dropdown-width, max-content);
   min-width: var(--dropdown-min-width, 89px);
@@ -49,6 +50,10 @@
 }
 
 .panel {
+  position: var(--dropdown-panel-position, static);
+  top: var(--dropdown-panel-top, auto);
+  left: var(--dropdown-panel-left, auto);
+  z-index: var(--dropdown-panel-z-index, auto);
   width: 100%;
   overflow: hidden;
   background: var(--dropdown-panel-background, var(--repo-bg-main-point));

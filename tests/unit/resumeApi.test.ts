@@ -45,6 +45,23 @@ test('updateUserMajor sends the selected major id with bearer auth', async () =>
   assert.deepEqual(result, { kind: 'success' })
 })
 
+test('updateUserMajor accepts successful server responses with a body', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ message: '전공이 변경되었습니다.' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 200,
+    })
+
+  const result = await userApi.updateUserMajor({
+    accessToken: 'student-access-token',
+    majorId: 2,
+  })
+
+  assert.deepEqual(result, { kind: 'success' })
+})
+
 test('getStudentResumeStatuses sends class filters and returns parsed submission statuses', async () => {
   let requestedUrl = ''
   let requestedMethod = ''
