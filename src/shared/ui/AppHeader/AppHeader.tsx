@@ -51,8 +51,9 @@ export function AppHeader({ activeItem, items, loginHref = '/login', showLogout 
             <span>로그인</span>
           </Link>
         ) : showLogout ? (
-          <button className={styles.iconButton} onClick={handleLogout} type="button" aria-label="로그아웃" title="로그아웃">
+          <button className={styles.logoutButton} onClick={handleLogout} type="button">
             <Icon name="logout" />
+            <span>로그아웃</span>
           </button>
         ) : (
           <Link className={styles.iconButton} href={loginHref} aria-label="로그인" title="로그인">

@@ -1,23 +1,28 @@
 'use client'
 
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
 import { getSavedAccessToken, getSavedAuthRole, type AuthLoginRole } from '@/features/auth/api'
+import { getDepartmentFromSchoolNumber } from '@/app/(student)/resume/ResumeEditorSheet'
 import {
   getLibraryBooks,
   getRecentLibraryBookGroups,
   getRecentLibraryStudents,
   mergeLibraryBookGroups,
   mergeLibrarySearchStudents,
+  getLibraryResumeByStudentId,
+  getRecentLibraryResume,
   searchLibraryStudents,
   type LibraryBookGroup,
+  type LibraryResume,
+  type LibraryResumePage,
   type LibrarySearchStudent,
 } from '@/features/library/api'
 import type { InternalHref } from '@/shared/lib/internalHref'
-import type { AppHeaderItem, LibraryBookCardProps } from '@/shared/ui'
-import { AppHeader, LibraryBookCard, LinkRow, SearchField, Toast } from '@/shared/ui'
+import type { AppHeaderItem, LibraryBookCardProps, ResumeBookSheetContent } from '@/shared/ui'
+import { AppHeader, Button, LibraryBookCard, ResumeBookSheet, SearchField, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -71,6 +76,19 @@ type StudentSearchState =
       readonly totalElements: number
     }
 
+type ResumeLoadState =
+  | {
+      readonly kind: 'failure'
+      readonly message: string
+    }
+  | {
+      readonly kind: 'loading'
+    }
+  | {
+      readonly kind: 'success'
+      readonly resume: LibraryResume
+    }
+
 function subscribeToSavedAuthRole(onStoreChange: () => void) {
   window.addEventListener('storage', onStoreChange)
 
@@ -119,6 +137,31 @@ function parseSelectedDate(value: string | null): number | undefined {
   return parsedDate
 }
 
+function toHeadline(resume: LibraryResume) {
+  return [resume.studentNumber, getDepartmentFromSchoolNumber(resume.studentNumber)].filter(Boolean).join(' ')
+}
+
+function toSheetContent(resume: LibraryResume, page: LibraryResumePage): ResumeBookSheetContent {
+  return {
+    activities: [],
+    contests: [],
+    email: resume.email,
+    headline: toHeadline(resume),
+    introduce: resume.introduce,
+    majorName: resume.majorName,
+    name: resume.name,
+    pageContent: page.content,
+    portfolioUrl: resume.portfolioUrl,
+    profileImageUrl: resume.profileImageUrl,
+    projects: [],
+    skills: [],
+  }
+}
+
+function sortResumePages(pages: readonly LibraryResumePage[]) {
+  return [...pages].sort((leftPage, rightPage) => leftPage.index - rightPage.index)
+}
+
 export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) {
   const searchParams = useSearchParams()
   const role = useSyncExternalStore(subscribeToSavedAuthRole, getSavedAuthRoleSnapshot, getServerAuthRoleSnapshot)
@@ -131,6 +174,8 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
   const [searchKeyword, setSearchKeyword] = useState('')
   const [studentSearchState, setStudentSearchState] = useState<StudentSearchState>({ kind: 'loading' })
   const [studentSearchCursor, setStudentSearchCursor] = useState<StudentSearchCursor>({ key: '', page: 0 })
+  const [resumeLoadState, setResumeLoadState] = useState<ResumeLoadState>({ kind: 'loading' })
+  const [visiblePageIndex, setVisiblePageIndex] = useState(0)
   const [isLoadingMoreStudents, setIsLoadingMoreStudents] = useState(false)
   const selectedDate = parseSelectedDate(searchParams.get('date'))
   const navigationItems = role === 'teacher' ? teacherNavigationItems : studentNavigationItems
@@ -140,6 +185,13 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
   const studentSearchPage = studentSearchCursor.key === studentSearchKey ? studentSearchCursor.page : 0
   const canLoadMoreStudents =
     studentSearchState.kind === 'success' && studentSearchState.students.length < studentSearchState.totalElements
+  const activeStudentId = studentSearchState.kind === 'success' ? studentSearchState.students[0]?.studentId : undefined
+  const sortedResumePages = useMemo(
+    () => (resumeLoadState.kind === 'success' ? sortResumePages(resumeLoadState.resume.pages) : []),
+    [resumeLoadState],
+  )
+  const visibleResumePages = sortedResumePages.slice(visiblePageIndex, visiblePageIndex + 2)
+  const displayedPageNumber = Math.min(sortedResumePages.length, visiblePageIndex + visibleResumePages.length)
 
   useEffect(() => {
     let ignoresResult = false
@@ -262,6 +314,65 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     }
   }, [accessToken, normalizedSearchKeyword, selectedDate, studentSearchPage])
 
+  useEffect(() => {
+    if (selectedDate === undefined) {
+      return
+    }
+
+    if (activeStudentId === undefined) {
+      return
+    }
+
+    let ignoresResult = false
+    const studentId = activeStudentId
+
+    async function loadActiveResume() {
+      if (!accessToken) {
+        setResumeLoadState({
+          kind: 'failure',
+          message: '로그인 후 도서관을 이용할 수 있습니다.',
+        })
+        return
+      }
+
+      setResumeLoadState({ kind: 'loading' })
+      const result = await getLibraryResumeByStudentId({ accessToken, studentId })
+
+      if (ignoresResult) {
+        return
+      }
+
+      if (result.kind === 'success') {
+        setResumeLoadState({
+          kind: 'success',
+          resume: result.resume,
+        })
+        return
+      }
+
+      const recentResume = getRecentLibraryResume(studentId)
+
+      if (recentResume) {
+        setResumeLoadState({
+          kind: 'success',
+          resume: recentResume,
+        })
+        return
+      }
+
+      setResumeLoadState({
+        kind: 'failure',
+        message: result.message,
+      })
+    }
+
+    void loadActiveResume()
+
+    return () => {
+      ignoresResult = true
+    }
+  }, [accessToken, activeStudentId, normalizedSearchKeyword, selectedDate])
+
   return (
     <main className={styles.page}>
       <AppHeader activeItem="library" items={navigationItems} showLogout={Boolean(accessToken)} />
@@ -271,16 +382,18 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
         </div>
       ) : null}
       <section className={styles.content} aria-labelledby="library-title">
-        <div className={styles.hero}>
-          <h1 className={styles.title} id="library-title">
-            도서관
+        {selectedDate === undefined ? (
+          <div className={styles.hero}>
+            <h1 className={styles.title} id="library-title">
+              도서관
+            </h1>
+            <p className={styles.description}>다양한 학생들의 포트폴리오를 둘러보세요.</p>
+          </div>
+        ) : (
+          <h1 className={styles.visuallyHidden} id="library-title">
+            {selectedDate}학년도 도서관
           </h1>
-          <p className={styles.description}>
-            {selectedDate === undefined
-              ? '다양한 학생들의 포트폴리오를 둘러보세요.'
-              : `${selectedDate}학년도 공개 이력서를 둘러보세요.`}
-          </p>
-        </div>
+        )}
         {selectedDate === undefined ? (
           <div className={styles.books} aria-label="포트폴리오 책 목록">
             {loadState.kind === 'loading' ? <p className={styles.emptyMessage}>도서관을 불러오는 중입니다.</p> : null}
@@ -297,10 +410,10 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
             ) : null}
           </div>
         ) : (
-          <section className={styles.studentSearch} aria-label={`${selectedDate}학년도 학생 이력서 목록`}>
-            <div className={styles.studentSearchHeader}>
-              <Link className={styles.backLink} href="/library">
-                전체 학년도 보기
+          <section className={styles.resumeLibrary} aria-label={`${selectedDate}학년도 학생 이력서 목록`}>
+            <div className={styles.viewerToolbar}>
+              <Link className={styles.filterButton} href="/library" aria-label="전체 학년도 보기">
+                <span aria-hidden="true" />
               </Link>
               <SearchField
                 aria-label="학생 이름 검색"
@@ -308,10 +421,16 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                 placeholder="이름으로 학생을 찾아보세요."
                 spellCheck={false}
                 value={searchKeyword}
-                onChange={(event) => setSearchKeyword(event.target.value)}
+                onChange={(event) => {
+                  setSearchKeyword(event.target.value)
+                  setVisiblePageIndex(0)
+                }}
               />
+              <Button className={styles.downloadButton} disabled variant="filled">
+                전체 PDF 다운로드
+              </Button>
             </div>
-            <div className={styles.studentRows} aria-live="polite">
+            <div className={styles.resumeViewer} aria-live="polite">
               {studentSearchState.kind === 'loading' ? (
                 <p className={styles.emptyMessage}>학생 이력서를 불러오는 중입니다.</p>
               ) : null}
@@ -325,34 +444,72 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                   {normalizedSearchKeyword ? '검색어와 일치하는 학생이 없습니다.' : '공개된 학생 이력서가 없습니다.'}
                 </p>
               ) : null}
-              {studentSearchState.kind === 'success'
-                ? studentSearchState.students.map((student) => (
-                    <LinkRow
-                      actionLabel="이력서 보기"
-                      href={`/resume-books/${student.studentId}`}
-                      key={student.studentId}
-                      status={student.major}
-                      surface="muted"
-                      title={student.studentName}
-                    />
-                  ))
-                : null}
-              {canLoadMoreStudents ? (
-                <button
-                  className={styles.loadMoreButton}
-                  disabled={isLoadingMoreStudents}
-                  type="button"
-                  onClick={() =>
-                    setStudentSearchCursor({
-                      key: studentSearchKey,
-                      page: studentSearchPage + 1,
-                    })
-                  }
-                >
-                  {isLoadingMoreStudents ? '불러오는 중' : '더 보기'}
-                </button>
+              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'loading' ? (
+                <p className={styles.emptyMessage}>공개 이력서를 불러오는 중입니다.</p>
+              ) : null}
+              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'failure' ? (
+                <p className={styles.emptyMessage} role="alert">
+                  {resumeLoadState.message}
+                </p>
+              ) : null}
+              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'success' && sortedResumePages.length === 0 ? (
+                <p className={styles.emptyMessage}>공개된 포트폴리오 문서가 없습니다.</p>
+              ) : null}
+              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'success' && sortedResumePages.length > 0 ? (
+                <>
+                  <button
+                    aria-label="이전 페이지"
+                    className={`${styles.pageArrow} ${styles.previousArrow}`}
+                    disabled={visiblePageIndex === 0}
+                    type="button"
+                    onClick={() => setVisiblePageIndex((currentIndex) => Math.max(0, currentIndex - 2))}
+                  >
+                    ‹
+                  </button>
+                  <div className={styles.sheets}>
+                    {visibleResumePages.map((page) => (
+                      <ResumeBookSheet
+                        ariaLabel={`${resumeLoadState.resume.name} 이력서 ${page.index + 1}쪽`}
+                        className={styles.documentSheet}
+                        content={toSheetContent(resumeLoadState.resume, page)}
+                        key={page.id}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    aria-label="다음 페이지"
+                    className={`${styles.pageArrow} ${styles.nextArrow}`}
+                    disabled={visiblePageIndex + 2 >= sortedResumePages.length}
+                    type="button"
+                    onClick={() =>
+                      setVisiblePageIndex((currentIndex) =>
+                        Math.min(Math.max(0, sortedResumePages.length - 1), currentIndex + 2),
+                      )
+                    }
+                  >
+                    ›
+                  </button>
+                  <p className={styles.pageIndicator}>
+                    {displayedPageNumber} / {sortedResumePages.length}
+                  </p>
+                </>
               ) : null}
             </div>
+            {canLoadMoreStudents ? (
+              <button
+                className={styles.loadMoreButton}
+                disabled={isLoadingMoreStudents}
+                type="button"
+                onClick={() =>
+                  setStudentSearchCursor({
+                    key: studentSearchKey,
+                    page: studentSearchPage + 1,
+                  })
+                }
+              >
+                {isLoadingMoreStudents ? '불러오는 중' : '더 보기'}
+              </button>
+            ) : null}
           </section>
         )}
       </section>

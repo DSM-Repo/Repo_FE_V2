@@ -18,7 +18,8 @@
 }
 
 .navItem,
-.loginButton {
+.loginButton,
+.logoutButton {
   display: inline-flex;
   min-height: 36px;
   align-items: center;
@@ -45,7 +46,8 @@
 }
 
 .navItem:focus-visible,
-.iconButton:focus-visible {
+.iconButton:focus-visible,
+.logoutButton:focus-visible {
   outline: 2px solid var(--repo-main);
   outline-offset: 2px;
 }
@@ -89,6 +91,33 @@
 
 .loginButton:hover {
   background: var(--repo-bg-main-lighter);
+}
+
+.logoutButton {
+  gap: var(--space-2);
+  min-width: 132px;
+  border: 0;
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main-lighter);
+  cursor: pointer;
+  transition:
+    background 120ms ease-out,
+    color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.logoutButton svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.logoutButton:hover {
+  background: var(--repo-gray-800);
+}
+
+.logoutButton:active {
+  transform: scale(0.97);
 }
 
 @media (max-width: 860px) {

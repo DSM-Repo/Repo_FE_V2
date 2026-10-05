@@ -6,7 +6,7 @@
 }
 
 .content {
-  width: min(100%, 1008px);
+  width: min(100%, 1440px);
   margin: 0 auto;
   padding: 77px 29px 36px;
 }
@@ -54,46 +54,198 @@
   text-align: center;
 }
 
-.studentSearch {
+.resumeLibrary {
   display: grid;
-  gap: var(--space-6);
-  width: min(100%, 720px);
-  margin: var(--space-10) auto 0;
+  gap: 34px;
+  width: min(100%, 1280px);
+  margin: 0 auto;
 }
 
-.studentSearchHeader {
+.viewerToolbar {
+  position: relative;
   display: flex;
+  min-height: 50px;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
+  justify-content: center;
+  gap: 14px;
+  padding-right: 0;
 }
 
-.backLink {
+.filterButton {
+  display: inline-flex;
+  width: 43px;
+  height: 43px;
   flex: 0 0 auto;
-  color: var(--repo-gray-400);
-  font-size: var(--repo-font-body-small-size);
-  font-weight: var(--repo-font-body-small-weight);
-  line-height: var(--repo-font-body-small-line-height);
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--repo-radius-pill);
+  color: var(--repo-gray-300);
+  background: var(--repo-bg-main-point);
   text-decoration: none;
 }
 
-.backLink:hover {
-  color: var(--repo-gray-50);
+.filterButton span {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-radius: 2px;
 }
 
-.backLink:focus-visible {
+.filterButton span::before,
+.filterButton span::after {
+  position: absolute;
+  left: 50%;
+  width: 7px;
+  height: 2px;
+  border-radius: var(--repo-radius-pill);
+  background: currentColor;
+  content: '';
+  transform: translateX(-50%);
+}
+
+.filterButton span::before {
+  top: 4px;
+}
+
+.filterButton span::after {
+  bottom: 4px;
+}
+
+.filterButton:hover {
+  background: var(--repo-bg-main-lighter);
+}
+
+.filterButton:focus-visible,
+.pageArrow:focus-visible {
   outline: 2px solid var(--repo-main);
   outline-offset: 3px;
 }
 
 .searchField.searchField {
-  width: min(100%, 360px);
+  flex: 0 1 468px;
+  width: min(100%, 468px);
   min-height: 50px;
+  padding: 9px 20px;
 }
 
-.studentRows {
+.searchField.searchField:focus-within {
+  outline: 2px solid var(--repo-bg-main-point);
+  outline-offset: 2px;
+}
+
+.searchField.searchField input {
+  font-size: var(--repo-font-body-small-size);
+  line-height: var(--repo-font-body-small-line-height);
+}
+
+.searchField.searchField svg {
+  width: 20px;
+  height: 20px;
+}
+
+.downloadButton {
+  position: absolute;
+  right: 0;
+  min-width: 180px;
+  min-height: 43px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--repo-bg-main-point);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+}
+
+.downloadButton:disabled {
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main-point);
+  cursor: default;
+  opacity: 1;
+}
+
+.resumeViewer {
+  position: relative;
   display: grid;
-  gap: var(--space-3);
+  width: min(100%, 1240px);
+  min-height: auto;
+  grid-template-columns: 24px minmax(0, auto) 24px;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheets {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+}
+
+.documentSheet {
+  --resume-book-sheet-height: min(
+    864px,
+    calc(100dvh - var(--repo-size-header-min-height) - 180px),
+    calc((100vw - 116px) * 390 / 551)
+  );
+  --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 551 / 780);
+  --resume-book-sheet-padding: clamp(14px, calc(var(--resume-book-sheet-width) * 0.043), var(--space-6));
+  --resume-book-sheet-avatar-size: clamp(34px, calc(var(--resume-book-sheet-width) * 0.09), 48px);
+  --resume-book-sheet-name-size: clamp(14px, calc(var(--resume-book-sheet-width) * 0.039), 22px);
+  --resume-book-sheet-major-size: clamp(9px, calc(var(--resume-book-sheet-width) * 0.024), var(--repo-font-body-tiny-size));
+  --resume-book-sheet-meta-size: clamp(9px, calc(var(--resume-book-sheet-width) * 0.025), var(--repo-font-body-tiny-size));
+  --resume-book-sheet-project-name-size: clamp(14px, calc(var(--resume-book-sheet-width) * 0.043), 24px);
+  --resume-book-sheet-qr-size: clamp(34px, calc(var(--resume-book-sheet-width) * 0.095), 56px);
+  --resume-book-sheet-header-gap: clamp(8px, calc(var(--resume-book-sheet-width) * 0.028), var(--space-5));
+}
+
+.pageArrow {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  color: var(--repo-gray-50);
+  background: transparent;
+  font-size: 41px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pageArrow:disabled {
+  cursor: default;
+  opacity: 0.28;
+}
+
+.pageArrow:hover:not(:disabled) {
+  color: var(--repo-gray-400);
+}
+
+.pageIndicator {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  margin: 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.visuallyHidden {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .loadMoreButton {
@@ -170,13 +322,39 @@
     margin-top: 47px;
   }
 
-  .studentSearchHeader {
+  .viewerToolbar {
+    position: static;
     align-items: stretch;
     flex-direction: column;
   }
 
+  .downloadButton {
+    position: static;
+  }
+
   .searchField.searchField {
     width: 100%;
+  }
+
+  .resumeViewer {
+    grid-template-columns: 24px minmax(0, 1fr) 24px;
+  }
+
+  .sheets {
+    overflow-x: auto;
+    justify-content: start;
+    scroll-snap-type: x mandatory;
+  }
+
+  .documentSheet {
+    --resume-book-sheet-width: min(551px, calc(100vw - 96px));
+    --resume-book-sheet-height: min(
+      calc(var(--resume-book-sheet-width) * 780 / 551),
+      calc(100dvh - var(--repo-size-header-min-height) - 220px)
+    );
+    --resume-book-sheet-min-height: 0;
+
+    scroll-snap-align: center;
   }
 
   .toastLayer {
