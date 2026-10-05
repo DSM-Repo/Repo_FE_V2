@@ -4,6 +4,37 @@ const accessTokenStorageKey = 'repo.auth.accessToken'
 
 const testAccessToken = 'e2e-access-token'
 
+function createLibraryResume(input: {
+  readonly major?: string
+  readonly name: string
+  readonly pageCount?: number
+  readonly studentId: number
+  readonly studentNumber?: string
+}) {
+  const majorName = input.major ?? '백엔드'
+
+  return {
+    cohort: 9,
+    date: 2026,
+    email: `student${input.studentId}@example.test`,
+    introduce: `${input.name} 자기소개입니다.`,
+    majorName,
+    name: input.name,
+    pages: Array.from({ length: input.pageCount ?? 1 }, (_, index) => ({
+      content: `# ${input.name} ${index + 1}쪽\n${majorName} 포트폴리오입니다.`,
+      id: `page-${input.studentId}-${index + 1}`,
+      index,
+    })),
+    portfolioUrl: `https://portfolio.example.test/${input.studentId}`,
+    profileImageUrl: '',
+    releasedAt: '2026-09-15T14:54:37.468Z',
+    resumeId: `resume-${input.studentId}`,
+    studentId: input.studentId,
+    studentNumber: input.studentNumber ?? `301${String(input.studentId).padStart(2, '0')}`,
+    year: 3,
+  }
+}
+
 test.describe('public route smoke', () => {
   test('renders the public landing page', async ({ page }) => {
     await page.goto('/')
@@ -85,14 +116,40 @@ test.describe('public route smoke', () => {
 
   test('keeps a newly published student visible in the selected library date while search catches up', async ({ page }) => {
     await page.addInitScript(
-      ({ accessKey, studentKey, value }) => {
+      ({ accessKey, resumeKey, studentKey, value }) => {
         window.localStorage.setItem(accessKey, value)
         window.localStorage.setItem(
           studentKey,
           JSON.stringify([{ date: 2026, major: 'Frontend Developer', studentId: 1, studentName: '김학생' }]),
         )
+        window.localStorage.setItem(
+          resumeKey,
+          JSON.stringify([
+            {
+              cohort: 9,
+              date: 2026,
+              email: 'student1@example.test',
+              introduce: '김학생 자기소개입니다.',
+              majorName: 'Frontend Developer',
+              name: '김학생',
+              pages: [{ content: '# 김학생 1쪽', id: 'page-1-1', index: 0 }],
+              portfolioUrl: 'https://portfolio.example.test/1',
+              profileImageUrl: '',
+              releasedAt: '2026-09-15T14:54:37.468Z',
+              resumeId: 'resume-1',
+              studentId: 1,
+              studentNumber: '30101',
+              year: 3,
+            },
+          ]),
+        )
       },
-      { accessKey: accessTokenStorageKey, studentKey: 'repo.library.recentStudents', value: testAccessToken },
+      {
+        accessKey: accessTokenStorageKey,
+        resumeKey: 'repo.library.recentResumes',
+        studentKey: 'repo.library.recentStudents',
+        value: testAccessToken,
+      },
     )
     await page.route(`${apiBaseUrl}/library/search?*`, async (route) => {
       await route.fulfill({
@@ -102,10 +159,16 @@ test.describe('public route smoke', () => {
     await page.route(`${apiBaseUrl}/library`, async (route) => {
       await route.fulfill({ json: [] })
     })
+    await page.route(`${apiBaseUrl}/library/1`, async (route) => {
+      await route.fulfill({
+        json: { message: '공개 상세 반영 중입니다.' },
+        status: 404,
+      })
+    })
 
     await page.goto('/library?date=2026')
 
-    await expect(page.getByRole('link', { name: /김학생/ })).toBeVisible()
+    await expect(page.getByLabel('김학생 이력서 1쪽')).toBeVisible()
     await expect(page.getByText('공개된 학생 이력서가 없습니다.')).toHaveCount(0)
   })
 
@@ -167,13 +230,13 @@ test.describe('public route smoke', () => {
       expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
       expect(url.searchParams.get('date')).toBe('2026')
       expect(url.searchParams.get('page')).toBe('0')
-      expect(url.searchParams.get('size')).toBe('20')
+      expect(url.searchParams.get('size')).toBe('100')
 
       await route.fulfill({
         body: JSON.stringify({
           content: [
-            { major: '백엔드', studentId: 1, studentName: '김태균' },
-            { major: '프론트엔드', studentId: 2, studentName: '오혜민' },
+            { major: '백엔드', studentId: 1, studentName: '김태균', studentNumber: '30102' },
+            { major: '프론트엔드', studentId: 2, studentName: '오혜민', studentNumber: '30101' },
           ],
           totalElements: 2,
         }),
@@ -184,20 +247,30 @@ test.describe('public route smoke', () => {
         status: 200,
       })
     })
+    await page.route(`${apiBaseUrl}/library/1`, async (route) => {
+      await route.fulfill({ json: createLibraryResume({ major: '백엔드', name: '김태균', studentId: 1, studentNumber: '30102' }) })
+    })
+    await page.route(`${apiBaseUrl}/library/2`, async (route) => {
+      await route.fulfill({
+        json: createLibraryResume({ major: '프론트엔드', name: '오혜민', studentId: 2, studentNumber: '30101' }),
+      })
+    })
 
     await page.goto('/library?date=2026')
 
     await expect(page.getByRole('heading', { name: '도서관' })).toBeVisible()
-    await expect(page.getByRole('link', { name: /김태균/ })).toHaveAttribute('href', '/resume-books/1')
-    await expect(page.getByRole('link', { name: /오혜민/ })).toBeVisible()
+    await expect(page.getByLabel('오혜민 이력서 1쪽')).toBeVisible()
+    await expect(page.getByLabel('김태균 이력서 1쪽')).toBeVisible()
   })
 
-  test('loads the next public student search page when more students exist', async ({ page }) => {
-    const firstPageStudents = Array.from({ length: 20 }, (_, index) => ({
+  test('loads every public student search page when more students exist', async ({ page }) => {
+    const firstPageStudents = Array.from({ length: 100 }, (_, index) => ({
       major: '백엔드',
       studentId: index + 1,
+      studentNumber: `301${String(index + 1).padStart(2, '0')}`,
       studentName: `학생${index + 1}`,
     }))
+    const requestedPages: string[] = []
 
     await page.addInitScript(
       ({ key, value }) => window.localStorage.setItem(key, value),
@@ -216,18 +289,19 @@ test.describe('public route smoke', () => {
     await page.route(`${apiBaseUrl}/library/search?*`, async (route) => {
       const url = new URL(route.request().url())
       const pageNumber = url.searchParams.get('page')
+      requestedPages.push(pageNumber ?? '')
 
       expect(route.request().headers()['authorization']).toBe(`Bearer ${testAccessToken}`)
       expect(url.searchParams.get('date')).toBe('2026')
-      expect(url.searchParams.get('size')).toBe('20')
+      expect(url.searchParams.get('size')).toBe('100')
 
       await route.fulfill({
         body: JSON.stringify({
           content:
             pageNumber === '1'
-              ? [{ major: '백엔드', studentId: 21, studentName: '학생21' }]
+              ? [{ major: '백엔드', studentId: 101, studentName: '학생101', studentNumber: '30201' }]
               : firstPageStudents,
-          totalElements: 21,
+          totalElements: 101,
         }),
         contentType: 'application/json',
         headers: {
@@ -236,14 +310,23 @@ test.describe('public route smoke', () => {
         status: 200,
       })
     })
+    await page.route(new RegExp(`${apiBaseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/library/\\d+$`), async (route) => {
+      const studentId = Number(new URL(route.request().url()).pathname.split('/').at(-1))
+      const studentName = studentId === 101 ? '학생101' : `학생${studentId}`
+
+      await route.fulfill({
+        json: createLibraryResume({
+          name: studentName,
+          studentId,
+          studentNumber: studentId === 101 ? '30201' : `301${String(studentId).padStart(2, '0')}`,
+        }),
+      })
+    })
 
     await page.goto('/library?date=2026')
 
-    await expect(page.getByRole('link', { name: '학생1 백엔드 이력서 보기' })).toBeVisible()
-    await expect(page.getByRole('link', { name: /학생21/ })).toHaveCount(0)
-    await page.getByRole('button', { name: '더 보기' }).click()
-
-    await expect(page.getByRole('link', { name: /학생21/ })).toBeVisible()
+    await expect(page.getByLabel('학생1 이력서 1쪽')).toBeVisible()
+    await expect.poll(() => requestedPages).toEqual(['0', '1'])
     await expect(page.getByRole('button', { name: '더 보기' })).toHaveCount(0)
   })
 

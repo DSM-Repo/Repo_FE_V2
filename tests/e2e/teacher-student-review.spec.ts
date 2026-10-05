@@ -169,7 +169,6 @@ test.describe('teacher student portfolio review', () => {
     await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeChecked()
     await page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link', { name: '도서관' }).click()
     await page.getByRole('link', { name: '2026 11기 2학년 포트폴리오 열람' }).click()
-    await page.getByRole('link', { name: /김학생/ }).click()
     await expect(page.getByLabel('김학생 이력서 1쪽')).toBeVisible()
     await expect(page.getByText('기술스택과 활동을 정리했습니다.')).toBeVisible()
   })
