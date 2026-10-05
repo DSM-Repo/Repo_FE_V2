@@ -108,7 +108,7 @@ function parseLibrarySearchStudent(value: unknown): LibrarySearchStudent | undef
     major: value['major'],
     studentId: value['studentId'],
     studentName: value['studentName'],
-    studentNumber,
+    ...(studentNumber === undefined ? {} : { studentNumber }),
   }
 }
 

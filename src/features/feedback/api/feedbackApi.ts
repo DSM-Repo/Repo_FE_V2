@@ -197,7 +197,7 @@ function parseFeedbackApplyFailures(value: unknown): readonly FeedbackApplyFailu
   return failures.filter((failure) => failure !== undefined)
 }
 
-function parseFeedbackApply(value: unknown, requestedCount: number): FeedbackApply {
+function parseFeedbackApply(value: unknown, requestedCount: number): FeedbackApply | undefined {
   if (Array.isArray(value)) {
     return {
       failed: [],
@@ -206,28 +206,32 @@ function parseFeedbackApply(value: unknown, requestedCount: number): FeedbackApp
   }
 
   if (!isJsonRecord(value)) {
-    return {
-      failed: [],
-      successCount: requestedCount,
-    }
+    return undefined
   }
 
   const nestedValue = value['data'] ?? value['result'] ?? value['response']
+  const failedValue = value['failed'] ?? value['failures'] ?? value['failedFeedbacks']
   const hasDirectApplyShape =
-    typeof value['successCount'] === 'number' ||
-    typeof value['appliedCount'] === 'number' ||
-    typeof value['completeCount'] === 'number' ||
-    typeof value['completedCount'] === 'number' ||
-    typeof value['count'] === 'number' ||
-    Array.isArray(value['failed']) ||
-    Array.isArray(value['failures']) ||
-    Array.isArray(value['failedFeedbacks'])
+    (Array.isArray(failedValue) &&
+      (typeof value['successCount'] === 'number' ||
+        typeof value['appliedCount'] === 'number' ||
+        typeof value['completeCount'] === 'number' ||
+        typeof value['completedCount'] === 'number' ||
+        typeof value['count'] === 'number'))
 
   if (!hasDirectApplyShape && nestedValue !== undefined) {
     return parseFeedbackApply(nestedValue, requestedCount)
   }
 
-  const failed = parseFeedbackApplyFailures(value['failed'] ?? value['failures'] ?? value['failedFeedbacks']) ?? []
+  if (!hasDirectApplyShape) {
+    return undefined
+  }
+
+  const failed = parseFeedbackApplyFailures(failedValue)
+
+  if (!failed) {
+    return undefined
+  }
 
   return {
     failed,
@@ -442,6 +446,10 @@ async function readApplyResponseBody(response: FeedbackHttpResponse, requestedCo
   }
 
   const appliedFeedback = parseFeedbackApply(responseBody, requestedCount)
+
+  if (!appliedFeedback) {
+    return INVALID_APPLY_RESPONSE
+  }
 
   return {
     failed: appliedFeedback.failed,

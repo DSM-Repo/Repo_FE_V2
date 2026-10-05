@@ -94,7 +94,7 @@ function toRecentLibraryStudent(value: unknown): RecentLibraryStudent | undefine
     major: candidate.major,
     studentId: Number(candidate.studentId),
     studentName: candidate.studentName,
-    studentNumber,
+    ...(studentNumber === undefined ? {} : { studentNumber }),
   }
 }
 
@@ -288,7 +288,12 @@ export function getRecentLibraryStudents(input: { readonly date: number; readonl
   return readRecentStudents()
     .filter((student) => student.date === input.date)
     .filter((student) => (keyword ? student.studentName.toLowerCase().includes(keyword) : true))
-    .map(({ major, studentId, studentName, studentNumber }) => ({ major, studentId, studentName, studentNumber }))
+    .map(({ major, studentId, studentName, studentNumber }) => ({
+      major,
+      studentId,
+      studentName,
+      ...(studentNumber === undefined ? {} : { studentNumber }),
+    }))
 }
 
 export function mergeLibrarySearchStudents(
