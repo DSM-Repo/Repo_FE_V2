@@ -514,6 +514,10 @@
   background: var(--repo-gray-300);
 }
 
+.markdownImageInput {
+  display: none;
+}
+
 .markdownToolHeadingIcon,
 .markdownToolTextIcon,
 .markdownToolSvgIcon {

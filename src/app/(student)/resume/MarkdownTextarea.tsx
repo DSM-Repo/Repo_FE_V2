@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react'
+import { Fragment, useId, useEffect, useRef, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react'
 
 import { MarkdownToolbarIcon } from './MarkdownToolbarIcon'
 import styles from './ResumeEditorSheet.module.css'
@@ -56,8 +56,11 @@ function readClipboardImage(file: File, onImagePasteUpload?: (file: File) => Pro
 
 export function MarkdownTextarea({ className, id, label, onChange, onImagePasteUpload, onRichPaste, placeholder, toolbarLabel, value }: MarkdownTextareaProps) {
   const editorRef = useRef<HTMLDivElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const imageInputId = useId()
   const latestValueRef = useRef(value)
   const pendingValueRef = useRef<string | undefined>(undefined)
+  const savedSelectionRangeRef = useRef<Range | undefined>(undefined)
 
   useEffect(() => {
     const editor = editorRef.current
@@ -100,28 +103,61 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
     afterSync?.(nextValue)
   }
 
-  const insertMarkdownLink = (isImage: boolean) => {
+  const saveEditorSelection = () => {
+    const editor = editorRef.current
+    const selection = window.getSelection()
+
+    if (!editor || !selection || selection.rangeCount === 0) {
+      return
+    }
+
+    const range = selection.getRangeAt(0)
+
+    if (!editor.contains(range.commonAncestorContainer)) {
+      return
+    }
+
+    savedSelectionRangeRef.current = range.cloneRange()
+  }
+
+  const restoreEditorSelection = () => {
     const editor = editorRef.current
     const selection = window.getSelection()
 
     if (!editor || !selection) {
-      return
+      return undefined
     }
 
-    let range = selection.rangeCount > 0 ? selection.getRangeAt(0) : document.createRange()
+    const range = savedSelectionRangeRef.current?.cloneRange() ?? (selection.rangeCount > 0 ? selection.getRangeAt(0) : document.createRange())
 
     if (!editor.contains(range.commonAncestorContainer)) {
       range.selectNodeContents(editor)
       range.collapse(false)
     }
 
-    const link = document.createElement('a')
-    link.setAttribute('href', 'https://')
-    link.textContent = range.toString() || (isImage ? '이미지' : '링크')
+    selection.removeAllRanges()
+    selection.addRange(range)
 
-    if (isImage) {
-      link.dataset.markdownImage = ''
+    return selection
+  }
+
+  const insertMarkdownLink = (href: string) => {
+    const selection = restoreEditorSelection()
+
+    if (!selection) {
+      return false
     }
+
+    let range = selection.rangeCount > 0 ? selection.getRangeAt(0) : document.createRange()
+    const normalizedHref = href.trim()
+
+    if (!normalizedHref) {
+      return false
+    }
+
+    const link = document.createElement('a')
+    link.setAttribute('href', normalizedHref)
+    link.textContent = range.toString() || normalizedHref
 
     range.deleteContents()
     range.insertNode(link)
@@ -130,6 +166,24 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
     range.collapse(true)
     selection.removeAllRanges()
     selection.addRange(range)
+
+    return true
+  }
+
+  const insertImageMarkdown = (markdown: string) => {
+    const editor = editorRef.current
+    const selection = restoreEditorSelection()
+
+    if (!editor || !selection || !insertMarkdownAtSelection(editor, selection, markdown, toEditorStyles())) {
+      return false
+    }
+
+    return true
+  }
+
+  const openImageUpload = () => {
+    saveEditorSelection()
+    imageInputRef.current?.click()
   }
 
   const applyCommand = (command: MarkdownCommand) => {
@@ -163,11 +217,13 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
         applyMarkdownBlockCommand(editor, window.getSelection(), { kind: 'divider' }, toEditorStyles())
         break
       case 'link':
-        insertMarkdownLink(false)
+        saveEditorSelection()
+        if (!insertMarkdownLink(window.prompt('링크 URL을 입력해주세요.', 'https://') ?? '')) {
+          return
+        }
         break
       case 'image':
-        insertMarkdownLink(true)
-        break
+        return
     }
 
     syncMarkdownValue()
@@ -175,6 +231,37 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
 
   const keepEditorSelection = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
+    saveEditorSelection()
+  }
+
+  const keepImageToolSelection = () => {
+    saveEditorSelection()
+  }
+
+  const handleImageToolKeyDown = (event: KeyboardEvent<HTMLLabelElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return
+    }
+
+    event.preventDefault()
+    openImageUpload()
+  }
+
+  const handleImageFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    void readClipboardImage(file, onImagePasteUpload).then((imageMarkdown) => {
+      if (!imageMarkdown || !insertImageMarkdown(imageMarkdown)) {
+        return
+      }
+
+      syncMarkdownValue(onRichPaste)
+    })
   }
 
   const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
@@ -229,22 +316,47 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
       <div className={styles.richTextToolbar} aria-label={toolbarLabel}>
         {markdownTools.map((tool) => (
           <Fragment key={tool.command}>
-            <button
-              className={styles.richTextTool}
-              aria-label={tool.title}
-              onMouseDown={keepEditorSelection}
-              onClick={() => applyCommand(tool.command)}
-              title={tool.title}
-              type="button"
-            >
-              <MarkdownToolbarIcon command={tool.command} />
-            </button>
+            {tool.command === 'image' ? (
+              <label
+                aria-label={tool.title}
+                className={styles.richTextTool}
+                htmlFor={imageInputId}
+                onClick={keepImageToolSelection}
+                onKeyDown={handleImageToolKeyDown}
+                onMouseDown={keepImageToolSelection}
+                role="button"
+                tabIndex={0}
+                title={tool.title}
+              >
+                <MarkdownToolbarIcon command={tool.command} />
+              </label>
+            ) : (
+              <button
+                className={styles.richTextTool}
+                aria-label={tool.title}
+                onMouseDown={keepEditorSelection}
+                onClick={() => applyCommand(tool.command)}
+                title={tool.title}
+                type="button"
+              >
+                <MarkdownToolbarIcon command={tool.command} />
+              </button>
+            )}
             {(tool.command === 'h4' || tool.command === 'underline') && (
               <span aria-hidden="true" className={styles.richTextToolSeparator} data-markdown-tool-separator="" />
             )}
           </Fragment>
         ))}
       </div>
+      <input
+        ref={imageInputRef}
+        id={imageInputId}
+        className={styles.markdownImageInput}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleImageFileChange}
+        tabIndex={-1}
+      />
       <div
         aria-label={label}
         aria-multiline="true"
