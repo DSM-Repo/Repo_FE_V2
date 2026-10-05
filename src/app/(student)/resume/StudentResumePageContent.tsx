@@ -19,6 +19,7 @@ import {
   getSavedResumeId,
   saveResume,
   saveResumeId,
+  submitResume,
   uploadResumeImage,
   type Resume,
   type ResumeDetailResult,
@@ -148,8 +149,11 @@ type LoadState =
     }
 
 type ViewMode = 'view' | 'edit' | 'feedback'
-type SaveSubmitState = 'auto-save' | 'idle' | 'save' | 'temporary-save'
+type SaveSubmitState = 'auto-save' | 'idle' | 'save' | 'submit' | 'temporary-save'
 type SaveMode = 'auto' | 'manual' | 'temporary'
+type SaveOptions = {
+  readonly stayEditing?: boolean
+}
 type ActionFeedback = {
   readonly message: string
   readonly tone: 'error' | 'success'
@@ -1030,13 +1034,13 @@ export function StudentResumePageContent() {
   )
 
   const handleSave = useCallback(
-    async (mode: SaveMode) => {
+    async (mode: SaveMode, options: SaveOptions = {}) => {
       if (mode === 'auto' && (manualSaveRequestedRef.current || pendingSaveModeRef.current === 'manual')) {
-        return
+        return undefined
       }
 
       if (!isResumeReady || isResumeActionPending || savePendingRef.current) {
-        return
+        return undefined
       }
 
       if (mode === 'manual') {
@@ -1055,7 +1059,7 @@ export function StudentResumePageContent() {
           manualSaveRequestedRef.current = false
         }
         setActionFeedback({ message: '로그인 후 이력서를 저장할 수 있습니다.', tone: 'error' })
-        return
+        return undefined
       }
 
       const activeResume = loadState.kind === 'success' ? loadState.resume : undefined
@@ -1091,7 +1095,7 @@ export function StudentResumePageContent() {
           }
           setSaveSubmitState('idle')
         }
-        return
+        return undefined
       }
 
       if (result.kind !== 'success') {
@@ -1102,7 +1106,7 @@ export function StudentResumePageContent() {
         }
         setSaveSubmitState('idle')
         setActionFeedback({ message: result.message, tone: 'error' })
-        return
+        return undefined
       }
 
       const syncedResumeResult = pages.some((page) => !page.id.trim())
@@ -1122,7 +1126,7 @@ export function StudentResumePageContent() {
           }
           setSaveSubmitState('idle')
         }
-        return
+        return undefined
       }
 
       savePendingRef.current = false
@@ -1136,7 +1140,7 @@ export function StudentResumePageContent() {
       saveResumeId(result.resumeId)
 
       const hasNewChanges = draftRevisionRef.current !== saveRevision
-      const shouldEnterView = (mode === 'manual' && !hasNewChanges) || viewMode === 'view'
+      const shouldEnterView = !options.stayEditing && ((mode === 'manual' && !hasNewChanges) || viewMode === 'view')
       const nextMode = shouldEnterView ? null : 'edit'
       const nextUrl =
         nextMode === 'edit'
@@ -1203,9 +1207,54 @@ export function StudentResumePageContent() {
               : '이력서를 저장했습니다.',
         tone: syncedResumeResult && syncedResumeResult.kind !== 'success' ? 'error' : 'success',
       })
+
+      return result.resumeId
     },
     [draft, isResumeActionPending, isResumeReady, loadState, viewMode],
   )
+
+  const handleSubmitResume = useCallback(async () => {
+    if (!isResumeReady || isResumeActionPending || savePendingRef.current) {
+      return
+    }
+
+    manualSaveRequestedRef.current = true
+    const savedResumeId = await handleSave('manual', { stayEditing: true })
+
+    if (!savedResumeId) {
+      return
+    }
+
+    const accessToken = getSavedAccessToken()
+
+    if (!accessToken) {
+      setActionFeedback({ message: '로그인 후 이력서를 제출할 수 있습니다.', tone: 'error' })
+      return
+    }
+
+    setActionFeedback(undefined)
+    setSaveSubmitState('submit')
+
+    const result = await submitResume({ accessToken })
+
+    setSaveSubmitState('idle')
+
+    if (result.kind !== 'success') {
+      setActionFeedback({ message: result.message, tone: 'error' })
+      return
+    }
+
+    setLoadState((currentState) =>
+      currentState.kind === 'success' && currentState.resume.id === result.resumeId
+        ? { kind: 'success', resume: { ...currentState.resume, submissionStatus: result.submissionStatus } }
+        : currentState,
+    )
+    setFeedbackLoadState({ kind: 'idle' })
+    setOpenFeedbackId(undefined)
+    setViewMode('view')
+    window.history.replaceState(null, '', `/resume?resumeId=${encodeURIComponent(result.resumeId)}`)
+    setActionFeedback({ message: '이력서를 제출했습니다.', tone: 'success' })
+  }, [handleSave, isResumeActionPending, isResumeReady])
 
   useEffect(() => {
     if (!isDraftDirty || !isEditing || isResumeActionPending || savePendingRef.current) {
@@ -1251,17 +1300,33 @@ export function StudentResumePageContent() {
         {actionFeedback ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}
         <div className={styles.stage} aria-live="polite">
           <div className={`${styles.topActions} ${loadState.kind === 'failure' ? styles.failureActions : ''}`}>
+            {isEditing ? (
+              <>
               <button
                 className={styles.secondaryAction}
                 disabled={!isResumeReady || (isEditing && (saveSubmitState !== 'idle' || majorSubmitState === 'pending'))}
-                onClick={isEditing ? handleCancelEditing : () => setViewMode('edit')}
+                onClick={handleCancelEditing}
                 type="button"
               >
-                {isEditing ? '작성 취소' : '이력서 수정하기'}
+                작성 취소
               </button>
               <button className={styles.primaryAction} disabled={!isResumeReady || isResumeActionPending} onClick={() => { manualSaveRequestedRef.current = true; void handleSave('manual') }} type="button">
                 {saveSubmitState === 'save' ? '저장 중' : '저장'}
               </button>
+              <button className={styles.primaryAction} disabled={!isResumeReady || isResumeActionPending} onClick={() => void handleSubmitResume()} type="button">
+                {saveSubmitState === 'submit' ? '제출 중' : '제출'}
+              </button>
+              </>
+            ) : (
+              <button
+                className={styles.secondaryAction}
+                disabled={!isResumeReady}
+                onClick={() => setViewMode('edit')}
+                type="button"
+              >
+                이력서 수정하기
+              </button>
+            )}
           </div>
 
           <div className={styles.sheetViewport}>

@@ -444,13 +444,16 @@ test.describe('student resume management', () => {
       'page',
     )
     await expect(page.getByRole('button', { name: '이력서 수정하기' })).toBeVisible()
-    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeVisible()
+    await expect(page.getByRole('button', { exact: true, name: '저장' })).toHaveCount(0)
+    await expect(page.getByRole('button', { exact: true, name: '제출' })).toHaveCount(0)
     await expect(page.getByLabel('이력서 미리보기')).toBeVisible()
     await expect(page.getByLabel('이력서 페이지 도구')).toHaveCount(0)
 
     await page.getByRole('button', { name: '이력서 수정하기' }).click()
 
     await expect(page.getByRole('button', { name: '작성 취소' })).toBeVisible()
+    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeVisible()
+    await expect(page.getByRole('button', { exact: true, name: '제출' })).toBeVisible()
     await expect(page.getByLabel('이름').first()).toHaveValue('')
     await expect(page.getByLabel('학번 전공')).toHaveText('')
     await expect(page.getByLabel('자기소개 제목')).toHaveValue('')
@@ -459,6 +462,40 @@ test.describe('student resume management', () => {
 
     await expect(page.getByRole('button', { name: '이력서 수정하기' })).toBeVisible()
     await expect(page.getByLabel('이력서 페이지 도구')).toHaveCount(0)
+  })
+
+  test('submits the resume after saving from edit mode', async ({ page }) => {
+    let saveRequestBody: unknown
+    let submitRequestBody: string | null | undefined
+
+    await page.route('**/resume/save', async (route) => {
+      saveRequestBody = route.request().postDataJSON()
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route(`${apiBaseUrl}/resume/submit`, async (route) => {
+      submitRequestBody = route.request().postData()
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', submissionStatus: 'SUBMITTED' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.goto('/resume')
+    await page.getByRole('button', { name: '이력서 수정하기' }).click()
+    await page.getByLabel('자기소개 제목').fill('제출할 이력서')
+    await page.getByRole('button', { exact: true, name: '제출' }).click()
+
+    await expect.poll(() => saveRequestBody).toMatchObject({ introduce: '제출할 이력서' })
+    await expect.poll(() => submitRequestBody).toBe(null)
+    await expect(page.getByRole('status')).toContainText('이력서를 제출했습니다.')
+    await expect(page.getByRole('button', { name: '이력서 수정하기' })).toBeVisible()
+    await expect(page.getByRole('button', { exact: true, name: '저장' })).toHaveCount(0)
+    await expect(page).toHaveURL('/resume?resumeId=resume-id')
   })
 
   test('waits for the student response instead of flashing sample identity data', async ({ page }) => {
