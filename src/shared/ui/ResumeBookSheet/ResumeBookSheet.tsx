@@ -1,6 +1,7 @@
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, type MouseEvent, type ReactNode } from 'react'
 import Image from 'next/image'
 
+import { FeedbackBalloon } from '@/shared/ui/FeedbackBalloon'
 import { QrCode } from '@/shared/ui/QrCode'
 
 import styles from './ResumeBookSheet.module.css'
@@ -40,6 +41,25 @@ export type ResumeBookSheetProps = {
   readonly ariaLabel?: string
   readonly className?: string
   readonly content: ResumeBookSheetContent
+  readonly feedbackMarkers?: readonly ResumeBookSheetFeedbackMarker[]
+  readonly onFeedbackPointSelect?: (point: ResumeBookSheetFeedbackPoint) => void
+}
+
+export type ResumeBookSheetFeedbackMarker = {
+  readonly active?: boolean
+  readonly avatarAlt?: string
+  readonly avatarSrc?: string
+  readonly checked?: boolean
+  readonly id: string
+  readonly onSelect?: () => void
+  readonly title: string
+  readonly x: number
+  readonly y: number
+}
+
+export type ResumeBookSheetFeedbackPoint = {
+  readonly x: number
+  readonly y: number
 }
 
 type MarkdownBlock =
@@ -305,20 +325,82 @@ export function MarkdownContent({ value }: { readonly value: string }) {
   return <>{blocks.map((block, index) => <Fragment key={`${block.kind}-${index}`}>{renderMarkdownBlock(block, index)}</Fragment>)}</>
 }
 
-export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookSheetProps) {
+function toFeedbackPosition(value: number, axis: 'x' | 'y') {
+  const normalizedValue = value <= 1 ? value : value <= 100 ? value / 100 : value / (axis === 'x' ? 423 : 599)
+  const clampedValue = Math.min(1, Math.max(0, normalizedValue))
+
+  return `${clampedValue * 100}%`
+}
+
+function renderFeedbackMarkers(feedbackMarkers: readonly ResumeBookSheetFeedbackMarker[]) {
+  if (feedbackMarkers.length === 0) {
+    return null
+  }
+
+  return (
+    <div aria-label="피드백 위치" className={styles.feedbackLayer}>
+      {feedbackMarkers.map((marker) => (
+        <FeedbackBalloon
+          avatarAlt={marker.avatarAlt}
+          avatarSrc={marker.avatarSrc}
+          buttonAriaLabel={`피드백 위치: ${marker.title}`}
+          checked={marker.checked}
+          className={styles.feedbackMarker}
+          data-active={marker.active ? 'true' : undefined}
+          key={marker.id}
+          onActivate={marker.onSelect}
+          style={{
+            left: toFeedbackPosition(marker.x, 'x'),
+            top: toFeedbackPosition(marker.y, 'y'),
+          }}
+          title={marker.title}
+        />
+      ))}
+    </div>
+  )
+}
+
+function shouldIgnoreFeedbackPointSelection(target: EventTarget | null) {
+  return target instanceof Element && Boolean(target.closest('a,button,input,textarea,select,[contenteditable="true"]'))
+}
+
+export function ResumeBookSheet({
+  ariaLabel,
+  className,
+  content,
+  feedbackMarkers = [],
+  onFeedbackPointSelect,
+}: ResumeBookSheetProps) {
   const sheetClassName = [styles.sheet, className].filter(Boolean).join(' ')
   const label = ariaLabel ?? `${content.name} 포트폴리오`
   const project = content.project
   const profileImageUrl = toSafeImageSrc(content.profileImageUrl ?? '')
+  const handleFeedbackPointClick = (event: MouseEvent<HTMLElement>) => {
+    if (!onFeedbackPointSelect || shouldIgnoreFeedbackPointSelection(event.target)) {
+      return
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect()
+
+    if (rect.width <= 0 || rect.height <= 0) {
+      return
+    }
+
+    onFeedbackPointSelect({
+      x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
+    })
+  }
 
   if (content.pageType === 'FREE') {
     return (
-      <article className={`${sheetClassName} ${styles.freeSheet}`} aria-label={label}>
+      <article className={`${sheetClassName} ${styles.freeSheet}`} aria-label={label} onClick={handleFeedbackPointClick}>
         {content.pageContent ? (
           <div className={styles.freePageContent}>
             <MarkdownContent value={content.pageContent} />
           </div>
         ) : null}
+        {renderFeedbackMarkers(feedbackMarkers)}
       </article>
     )
   }
@@ -328,7 +410,7 @@ export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookShe
     const projectImageUrl = toSafeImageSrc(project.imageUrl)
 
     return (
-      <article className={sheetClassName} aria-label={label}>
+      <article className={sheetClassName} aria-label={label} onClick={handleFeedbackPointClick}>
         <header className={styles.projectHeader}>
           {projectImageUrl ? (
             <Image
@@ -359,12 +441,13 @@ export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookShe
             <MarkdownContent value={content.pageContent} />
           </div>
         ) : null}
+        {renderFeedbackMarkers(feedbackMarkers)}
       </article>
     )
   }
 
   return (
-    <article className={sheetClassName} aria-label={label}>
+    <article className={sheetClassName} aria-label={label} onClick={handleFeedbackPointClick}>
       <header className={styles.sheetHeader}>
         {profileImageUrl ? (
           <Image
@@ -454,6 +537,7 @@ export function ResumeBookSheet({ ariaLabel, className, content }: ResumeBookShe
           <MarkdownContent value={content.pageContent} />
         </div>
       ) : null}
+      {renderFeedbackMarkers(feedbackMarkers)}
     </article>
   )
 }

@@ -35,6 +35,12 @@
     0 0 0 2px var(--repo-gray-50);
 }
 
+.balloon[data-active='true'] .avatar {
+  box-shadow:
+    0 3px 4px 1px rgba(0, 0, 0, 0.25),
+    0 0 0 3px var(--repo-gray-50);
+}
+
 .avatarImage {
   width: 32px;
   height: 32px;

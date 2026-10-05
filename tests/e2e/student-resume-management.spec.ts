@@ -606,8 +606,8 @@ test.describe('student resume management', () => {
               pageId: 'server-page-1',
               status: 'PENDING',
               teacherName: '김선생',
-              x: 120,
-              y: 160,
+              x: 0.38,
+              y: 0.42,
             },
             {
               completedAt: '',
@@ -618,8 +618,8 @@ test.describe('student resume management', () => {
               pageId: 'server-page-2',
               status: 'PENDING',
               teacherName: '이선생',
-              x: 80,
-              y: 220,
+              x: 0.58,
+              y: 0.36,
             },
           ],
           numberOfData: 2,
@@ -649,6 +649,15 @@ test.describe('student resume management', () => {
     await expect(page.getByRole('heading', { name: '피드백 목록' })).toBeVisible()
     await expect(feedbackPanel.getByRole('button', { name: /문장 근거를 한 줄 더 추가해보세요/ })).toBeVisible()
     await expect(feedbackPanel.getByRole('button', { name: /프로젝트 성과를 숫자로 표현해보세요/ })).toBeVisible()
+    await expect(
+      page.locator('article[aria-label="이력서 작성 1쪽"]').getByRole('button', { name: /피드백 위치: 문장 근거를 한 줄 더 추가해보세요/ }),
+    ).toBeVisible()
+    const secondPageFeedbackMarker = page
+      .locator('article[aria-label="이력서 작성 2쪽"]')
+      .getByRole('button', { name: /피드백 위치: 프로젝트 성과를 숫자로 표현해보세요/ })
+    await expect(secondPageFeedbackMarker).toBeVisible()
+    await secondPageFeedbackMarker.click()
+    await expect(feedbackPanel.getByRole('paragraph').filter({ hasText: '프로젝트 성과를 숫자로 표현해보세요.' })).toBeVisible()
 
     const headerBox = await page.locator('main > div > div > header').boundingBox()
     const feedbackPanelBox = await feedbackPanel.boundingBox()

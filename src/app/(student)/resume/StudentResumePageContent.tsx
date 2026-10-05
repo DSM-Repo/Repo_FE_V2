@@ -26,7 +26,7 @@ import {
   type ResumeSaveProject,
 } from '@/features/resume/api'
 import { getUserMe, updateUserMajor, type UserMe, type UserMeResult } from '@/features/user/api'
-import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
+import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 import { AppHeader, Icon, PortfolioUrlModal, ResumeBookSheet, Toast } from '@/shared/ui'
 
 import {
@@ -618,6 +618,30 @@ export function StudentResumePageContent() {
   const feedbacks = feedbackLoadState.kind === 'success' ? feedbackLoadState.feedbacks : []
   const pendingFeedbackCount = feedbacks.filter((feedback) => !isCompletedFeedback(feedback)).length
   const isFeedbackSubmitting = feedbackSubmitState.kind !== 'idle'
+  const toPageFeedbackMarkers = useCallback(
+    (page: ResumeDraftPage | undefined): readonly ResumeBookSheetFeedbackMarker[] => {
+      if (viewMode !== 'feedback' || feedbackLoadState.kind !== 'success' || !page?.id) {
+        return []
+      }
+
+      return feedbackLoadState.feedbacks
+        .filter((feedback) => feedback.pageId === page.id)
+        .map((feedback) => {
+          const title = toFeedbackSummary(feedback.content)
+
+          return {
+            active: openFeedbackId === feedback.feedbackId,
+            checked: isCompletedFeedback(feedback),
+            id: feedback.feedbackId,
+            onSelect: () => setOpenFeedbackId(feedback.feedbackId),
+            title,
+            x: feedback.x,
+            y: feedback.y,
+          }
+        })
+    },
+    [feedbackLoadState, openFeedbackId, viewMode],
+  )
 
   useEffect(() => {
     if (viewMode !== 'feedback') {
@@ -1285,16 +1309,20 @@ export function StudentResumePageContent() {
               <Icon name="chevron-left" />
             </button>
             <div className={styles.spread} aria-label={isEditing ? '이력서 작성' : '이력서 미리보기'}>
-              {visiblePageIndexes.map((pageIndex) =>
-                isEditing ? (
+              {visiblePageIndexes.map((pageIndex) => {
+                const page = draft.pages[pageIndex]
+                const feedbackMarkers = toPageFeedbackMarkers(page)
+
+                return isEditing ? (
                   <ResumeEditorSheet
                     className={styles.documentSheet}
                     draft={draft}
+                    feedbackMarkers={feedbackMarkers}
                     imageUploadTarget={imageUploadState.kind === 'uploading' ? imageUploadState.target : undefined}
                     isMajorLoading={majorLoadState.kind === 'loading'}
                     isMajorPending={majorSubmitState === 'pending'}
                     isUploadingImage={isImageUploading}
-                    key={draft.pages[pageIndex]?.index ?? pageIndex}
+                    key={page?.index ?? pageIndex}
                     majors={majors}
                     onChange={handleDraftChange}
                     onInlineImagePasteUpload={handleInlineImagePasteUpload}
@@ -1306,13 +1334,14 @@ export function StudentResumePageContent() {
                   />
                 ) : (
                   <ResumeBookSheet
-                    ariaLabel={`${draft.name} 이력서 ${(draft.pages[pageIndex]?.index ?? pageIndex) + 1}쪽`}
+                    ariaLabel={`${draft.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
                     className={styles.documentSheet}
                     content={toSheetContent(draft, pageIndex)}
-                    key={draft.pages[pageIndex]?.index ?? pageIndex}
+                    feedbackMarkers={feedbackMarkers}
+                    key={page?.index ?? pageIndex}
                   />
-                ),
-              )}
+                )
+              })}
               {isEditing && hasWrittenProject && spreadStartIndex + 1 >= draft.pages.length ? (
                 <button
                   className={`${styles.documentSheet} ${styles.addPageSheet}`}

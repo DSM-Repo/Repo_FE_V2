@@ -22,7 +22,7 @@ import {
   type Resume,
   type ResumePage,
 } from '@/features/resume/api'
-import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
+import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 import { AppHeader, Button, Icon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
@@ -47,6 +47,11 @@ type ActionFeedback = {
   readonly tone: 'error' | 'success'
 }
 type FeedbackSubmitState = 'idle' | 'pending'
+type FeedbackTarget = {
+  readonly pageId: string
+  readonly x: number
+  readonly y: number
+}
 
 function toStudentId(value: string | string[] | undefined) {
   const rawValue = Array.isArray(value) ? value[0] : value
@@ -113,6 +118,10 @@ function formatFeedbackDate(value: string) {
   }).format(date)
 }
 
+function isCompletedFeedback(feedback: FeedbackListItem) {
+  return feedback.status.toUpperCase() === 'COMPLETED' || Boolean(feedback.completedAt)
+}
+
 export default function TeacherStudentReviewPage() {
   const params = useParams<{ readonly studentId?: string }>()
   const studentId = toStudentId(params.studentId)
@@ -120,6 +129,7 @@ export default function TeacherStudentReviewPage() {
   const [feedbackLoadState, setFeedbackLoadState] = useState<FeedbackLoadState>({ kind: 'idle' })
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
   const [feedbackDraft, setFeedbackDraft] = useState('')
+  const [feedbackTarget, setFeedbackTarget] = useState<FeedbackTarget>()
   const [feedbackSubmitState, setFeedbackSubmitState] = useState<FeedbackSubmitState>('idle')
   const [spreadStartIndex, setSpreadStartIndex] = useState(0)
   const [visibilitySubmitState, setVisibilitySubmitState] = useState<'idle' | 'pending'>('idle')
@@ -162,6 +172,7 @@ export default function TeacherStudentReviewPage() {
       setSpreadStartIndex(0)
       setFeedbackLoadState({ kind: 'idle' })
       setFeedbackDraft('')
+      setFeedbackTarget(undefined)
       setFeedbackSubmitState('idle')
       setIsFeedbackOpen(false)
     }
@@ -179,7 +190,7 @@ export default function TeacherStudentReviewPage() {
   const canMovePrevious = spreadStartIndex > 0
   const canMoveNext = spreadStartIndex + 1 < pages.length - 1
   const canUpdateVisibility = Boolean(resume)
-  const currentFeedbackPage = pages[spreadStartIndex] ?? pages[0]
+  const currentFeedbackPage = pages.find((page) => page.id === feedbackTarget?.pageId) ?? pages[spreadStartIndex] ?? pages[0]
 
   const handleVisibilityChange = useCallback(
     async (isPublic: boolean) => {
@@ -311,6 +322,66 @@ export default function TeacherStudentReviewPage() {
     window.setTimeout(() => feedbackTextareaRef.current?.focus(), 0)
   }, [feedbackLoadState.kind, loadFeedbacks])
 
+  const handleFeedbackPointSelect = useCallback(
+    (page: ResumePage | undefined, point: { readonly x: number; readonly y: number }) => {
+      if (!page) {
+        return
+      }
+
+      setFeedbackTarget({ pageId: page.id, x: point.x, y: point.y })
+      setIsFeedbackOpen(true)
+
+      if (feedbackLoadState.kind !== 'loading' && feedbackLoadState.kind !== 'success') {
+        void loadFeedbacks()
+      }
+
+      window.setTimeout(() => feedbackTextareaRef.current?.focus(), 0)
+    },
+    [feedbackLoadState.kind, loadFeedbacks],
+  )
+
+  const toPageFeedbackMarkers = useCallback(
+    (page: ResumePage | undefined): readonly ResumeBookSheetFeedbackMarker[] => {
+      if (!page) {
+        return []
+      }
+
+      const savedMarkers =
+        feedbackLoadState.kind === 'success'
+          ? feedbackLoadState.feedbacks
+              .filter((feedback) => feedback.pageId === page.id)
+              .map((feedback) => {
+                const title = toFeedbackSummary(feedback.content)
+
+                return {
+                  checked: isCompletedFeedback(feedback),
+                  id: feedback.feedbackId,
+                  title,
+                  x: feedback.x,
+                  y: feedback.y,
+                }
+              })
+          : []
+
+      if (feedbackTarget?.pageId !== page.id) {
+        return savedMarkers
+      }
+
+      return [
+        {
+          active: true,
+          checked: false,
+          id: 'draft-feedback-target',
+          title: feedbackDraft.trim() ? toFeedbackSummary(feedbackDraft) : '새 피드백 위치',
+          x: feedbackTarget.x,
+          y: feedbackTarget.y,
+        },
+        ...savedMarkers,
+      ]
+    },
+    [feedbackDraft, feedbackLoadState, feedbackTarget],
+  )
+
   const handleFeedbackCreate = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault()
@@ -341,8 +412,8 @@ export default function TeacherStudentReviewPage() {
         comment,
         documentId: resume.id,
         pageId: currentFeedbackPage.id,
-        x: 0.5,
-        y: 0.5,
+        x: feedbackTarget?.pageId === currentFeedbackPage.id ? feedbackTarget.x : 0.5,
+        y: feedbackTarget?.pageId === currentFeedbackPage.id ? feedbackTarget.y : 0.5,
       })
       setFeedbackSubmitState('idle')
 
@@ -380,9 +451,10 @@ export default function TeacherStudentReviewPage() {
         }
       })
       setFeedbackDraft('')
+      setFeedbackTarget(undefined)
       setActionFeedback({ message: '피드백을 추가했습니다.', tone: 'success' })
     },
-    [currentFeedbackPage, feedbackDraft, feedbackSubmitState, resume],
+    [currentFeedbackPage, feedbackDraft, feedbackSubmitState, feedbackTarget, resume],
   )
 
   return (
@@ -427,7 +499,9 @@ export default function TeacherStudentReviewPage() {
                       ariaLabel={`${resume.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
                       className={styles.documentSheet}
                       content={toSheetContent(resume, page)}
+                      feedbackMarkers={toPageFeedbackMarkers(page)}
                       key={page?.id ?? pageIndex}
+                      onFeedbackPointSelect={(point) => handleFeedbackPointSelect(page, point)}
                     />
                   )
                 })}

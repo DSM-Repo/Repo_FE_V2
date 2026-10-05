@@ -6,15 +6,19 @@ import styles from './FeedbackBalloon.module.css'
 export interface FeedbackBalloonProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   avatarAlt?: string
   avatarSrc?: string
+  buttonAriaLabel?: string
   checked?: boolean
+  onActivate?: () => void
   title: ReactNode
 }
 
 export function FeedbackBalloon({
   avatarAlt = '피드백 작성자 프로필',
   avatarSrc = '/person.svg',
+  buttonAriaLabel = '피드백 내용 보기',
   checked = true,
   className,
+  onActivate,
   title,
   ...props
 }: FeedbackBalloonProps) {
@@ -22,7 +26,7 @@ export function FeedbackBalloon({
 
   return (
     <div className={balloonClassName} {...props}>
-      <button aria-label="피드백 내용 보기" className={styles.avatar} type="button">
+      <button aria-label={buttonAriaLabel} className={styles.avatar} onClick={onActivate} type="button">
         <Image alt={avatarAlt} className={styles.avatarImage} height={32} src={avatarSrc} width={32} />
       </button>
 

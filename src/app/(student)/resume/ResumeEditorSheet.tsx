@@ -4,7 +4,7 @@ import { useId, useRef, useState, type ChangeEvent, type ClipboardEvent, type Ke
 
 import type { Major } from '@/features/major/api'
 import type { ResumePageType } from '@/features/resume/api'
-import { Icon, QrCode } from '@/shared/ui'
+import { FeedbackBalloon, Icon, QrCode, type ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 
 import { MarkdownTextarea } from './MarkdownTextarea'
 import styles from './ResumeEditorSheet.module.css'
@@ -49,6 +49,7 @@ export type ResumeImageTarget = 'profile' | { readonly pageIndex: number; readon
 export type ResumeEditorSheetProps = {
   readonly className?: string
   readonly draft: ResumeDraft
+  readonly feedbackMarkers?: readonly ResumeBookSheetFeedbackMarker[]
   readonly imageUploadTarget?: ResumeImageTarget
   readonly isMajorLoading?: boolean
   readonly isMajorPending?: boolean
@@ -69,6 +70,41 @@ const emptyProject: ResumeDraftProject = {
   name: '',
   startDate: '',
   summary: '',
+}
+
+function toFeedbackPosition(value: number, axis: 'x' | 'y') {
+  const normalizedValue = value <= 1 ? value : value <= 100 ? value / 100 : value / (axis === 'x' ? 551 : 780)
+  const clampedValue = Math.min(1, Math.max(0, normalizedValue))
+
+  return `${clampedValue * 100}%`
+}
+
+function renderFeedbackMarkers(feedbackMarkers: readonly ResumeBookSheetFeedbackMarker[]) {
+  if (feedbackMarkers.length === 0) {
+    return null
+  }
+
+  return (
+    <div aria-label="피드백 위치" className={styles.feedbackLayer}>
+      {feedbackMarkers.map((marker) => (
+        <FeedbackBalloon
+          avatarAlt={marker.avatarAlt}
+          avatarSrc={marker.avatarSrc}
+          buttonAriaLabel={`피드백 위치: ${marker.title}`}
+          checked={marker.checked}
+          className={styles.feedbackMarker}
+          data-active={marker.active ? 'true' : undefined}
+          key={marker.id}
+          onActivate={marker.onSelect}
+          style={{
+            left: toFeedbackPosition(marker.x, 'x'),
+            top: toFeedbackPosition(marker.y, 'y'),
+          }}
+          title={marker.title}
+        />
+      ))}
+    </div>
+  )
 }
 
 export function getDepartmentFromSchoolNumber(schoolNumber: string) {
@@ -106,6 +142,7 @@ function toStudentMeta(schoolNumber: string) {
 export function ResumeEditorSheet({
   className,
   draft,
+  feedbackMarkers = [],
   imageUploadTarget,
   isMajorLoading = false,
   isMajorPending = false,
@@ -222,6 +259,7 @@ export function ResumeEditorSheet({
           toolbarLabel="추가 페이지 작성 도구"
           value={page.content}
         />
+        {renderFeedbackMarkers(feedbackMarkers)}
       </article>
     )
   }
@@ -322,6 +360,7 @@ export function ResumeEditorSheet({
           toolbarLabel="프로젝트 작성 도구"
           value={page.content}
         />
+        {renderFeedbackMarkers(feedbackMarkers)}
       </article>
     )
   }
@@ -504,6 +543,7 @@ export function ResumeEditorSheet({
           value={page.content}
         />
       </section>
+      {renderFeedbackMarkers(feedbackMarkers)}
     </article>
   )
 }

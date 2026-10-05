@@ -156,14 +156,15 @@ test.describe('teacher student portfolio review', () => {
       y: 0.5,
     })
     await expect(page.getByText('피드백을 추가했습니다.')).toBeVisible()
-    await expect(page.getByText('프로젝트 성과를 구체적으로 적어주세요.')).toBeVisible()
+    const feedbackPanel = page.getByRole('complementary', { name: '피드백 목록' })
+    await expect(feedbackPanel.getByRole('button', { name: /프로젝트 성과를 구체적으로 적어주세요/ })).toBeVisible()
 
     await page.getByRole('switch', { name: '이력서 공개' }).click()
     await expect.poll(() => mocks.getVisibilityRequestBody()).toBe(JSON.stringify({ isPublic: true }))
     await expect(page.getByText('이력서를 도서관에 공개했습니다.')).toBeVisible()
 
-    await expect(page.getByRole('complementary', { name: '피드백 목록' })).toBeVisible()
-    await expect(page.getByText('프로젝트 성과를 숫자로 표현해보세요.')).toBeVisible()
+    await expect(feedbackPanel).toBeVisible()
+    await expect(feedbackPanel.getByRole('button', { name: /프로젝트 성과를 숫자로 표현해보세요/ })).toBeVisible()
     await page.reload()
     await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeChecked()
     await page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link', { name: '도서관' }).click()
