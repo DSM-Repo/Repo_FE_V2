@@ -442,6 +442,7 @@ export function StudentResumePageContent() {
   const [feedbackSubmitState, setFeedbackSubmitState] = useState<FeedbackSubmitState>({ kind: 'idle' })
   const [portfolioUrlModalState, setPortfolioUrlModalState] = useState<PortfolioUrlModalState>({ kind: 'closed' })
   const [openFeedbackId, setOpenFeedbackId] = useState<string>()
+  const [selectedFeedbackIds, setSelectedFeedbackIds] = useState<ReadonlySet<string>>(() => new Set())
   const [spreadStartIndex, setSpreadStartIndex] = useState(0)
   const userRef = useRef<UserMe | undefined>(undefined)
   const viewedResumeIdRef = useRef<string | undefined>(undefined)
@@ -615,9 +616,31 @@ export function StudentResumePageContent() {
   const visiblePageIndexes = [spreadStartIndex, spreadStartIndex + 1].filter((index) => index < draft.pages.length)
   const canMovePrevious = spreadStartIndex > 0
   const canMoveNext = isEditing ? spreadStartIndex < draft.pages.length - 1 : spreadStartIndex + 2 < draft.pages.length
-  const feedbacks = feedbackLoadState.kind === 'success' ? feedbackLoadState.feedbacks : []
-  const pendingFeedbackCount = feedbacks.filter((feedback) => !isCompletedFeedback(feedback)).length
+  const selectedFeedbackCount = selectedFeedbackIds.size
   const isFeedbackSubmitting = feedbackSubmitState.kind !== 'idle'
+  const toggleFeedbackSelection = useCallback((feedbackId: string) => {
+    setSelectedFeedbackIds((currentFeedbackIds) => {
+      const nextFeedbackIds = new Set(currentFeedbackIds)
+
+      if (nextFeedbackIds.has(feedbackId)) {
+        nextFeedbackIds.delete(feedbackId)
+      } else {
+        nextFeedbackIds.add(feedbackId)
+      }
+
+      return nextFeedbackIds
+    })
+  }, [])
+  const selectFeedback = useCallback((feedbackId: string) => {
+    setOpenFeedbackId(feedbackId)
+    setSelectedFeedbackIds((currentFeedbackIds) => {
+      if (currentFeedbackIds.has(feedbackId)) {
+        return currentFeedbackIds
+      }
+
+      return new Set(currentFeedbackIds).add(feedbackId)
+    })
+  }, [])
   const toPageFeedbackMarkers = useCallback(
     (page: ResumeDraftPage | undefined): readonly ResumeBookSheetFeedbackMarker[] => {
       if (viewMode !== 'feedback' || feedbackLoadState.kind !== 'success' || !page?.id) {
@@ -633,14 +656,14 @@ export function StudentResumePageContent() {
             active: openFeedbackId === feedback.feedbackId,
             checked: isCompletedFeedback(feedback),
             id: feedback.feedbackId,
-            onSelect: () => setOpenFeedbackId(feedback.feedbackId),
+            onSelect: () => selectFeedback(feedback.feedbackId),
             title,
             x: feedback.x,
             y: feedback.y,
           }
         })
     },
-    [feedbackLoadState, openFeedbackId, viewMode],
+    [feedbackLoadState, openFeedbackId, selectFeedback, viewMode],
   )
 
   useEffect(() => {
@@ -697,6 +720,7 @@ export function StudentResumePageContent() {
         kind: 'success',
         numberOfData: result.numberOfData,
       })
+      setSelectedFeedbackIds(new Set())
       setOpenFeedbackId((currentFeedbackId) => currentFeedbackId ?? result.feedbacks[0]?.feedbackId)
     }
 
@@ -713,7 +737,7 @@ export function StudentResumePageContent() {
     }
 
     const targetFeedbackIds = feedbackLoadState.feedbacks
-      .filter((feedback) => !isCompletedFeedback(feedback))
+      .filter((feedback) => selectedFeedbackIds.has(feedback.feedbackId) && !isCompletedFeedback(feedback))
       .map((feedback) => feedback.feedbackId)
 
     if (targetFeedbackIds.length === 0) {
@@ -760,8 +784,19 @@ export function StudentResumePageContent() {
         ),
       }
     })
+    setSelectedFeedbackIds((currentFeedbackIds) => {
+      const nextFeedbackIds = new Set(currentFeedbackIds)
+
+      for (const feedbackId of targetFeedbackIds) {
+        if (!failedFeedbackIds.has(feedbackId)) {
+          nextFeedbackIds.delete(feedbackId)
+        }
+      }
+
+      return nextFeedbackIds
+    })
     setActionFeedback({ message: `${result.successCount}개 피드백을 완료 처리했습니다.`, tone: 'success' })
-  }, [feedbackLoadState, feedbackSubmitState.kind])
+  }, [feedbackLoadState, feedbackSubmitState.kind, selectedFeedbackIds])
 
   const handleDraftChange = useCallback((nextDraft: ResumeDraft | ((currentDraft: ResumeDraft) => ResumeDraft)) => {
     draftRevisionRef.current += 1
@@ -1435,7 +1470,7 @@ export function StudentResumePageContent() {
               </button>
             </div>
             <div className={styles.feedbackListHeader}>
-              <span>{feedbackLoadState.kind === 'success' ? `${pendingFeedbackCount}개 선택됨` : '목록'}</span>
+              <span>{feedbackLoadState.kind === 'success' ? `${selectedFeedbackCount}개 선택됨` : '목록'}</span>
             </div>
             {feedbackLoadState.kind === 'loading' ? <p className={styles.feedbackPanelMessage}>피드백을 불러오는 중입니다.</p> : null}
             {feedbackLoadState.kind === 'failure' ? (
@@ -1450,13 +1485,21 @@ export function StudentResumePageContent() {
               <ul className={styles.feedbackList}>
                 {feedbackLoadState.feedbacks.map((item) => {
                   const isOpen = openFeedbackId === item.feedbackId
+                  const isSelected = selectedFeedbackIds.has(item.feedbackId)
 
                   return (
-                    <li className={`${styles.feedbackItem} ${isOpen ? styles.openFeedbackItem : ''}`} key={item.feedbackId}>
+                    <li
+                      className={`${styles.feedbackItem} ${isOpen ? styles.openFeedbackItem : ''} ${isSelected ? styles.selectedFeedbackItem : ''}`}
+                      key={item.feedbackId}
+                    >
                       <button
                         aria-expanded={isOpen}
+                        aria-pressed={isSelected}
                         className={styles.feedbackItemButton}
-                        onClick={() => setOpenFeedbackId(isOpen ? undefined : item.feedbackId)}
+                        onClick={() => {
+                          toggleFeedbackSelection(item.feedbackId)
+                          setOpenFeedbackId(item.feedbackId)
+                        }}
                         type="button"
                       >
                         <span className={styles.feedbackTitle}>
@@ -1483,7 +1526,7 @@ export function StudentResumePageContent() {
               </button>
               <button
                 className={styles.feedbackBulkAction}
-                disabled={feedbackLoadState.kind !== 'success' || pendingFeedbackCount === 0 || isFeedbackSubmitting}
+                disabled={feedbackLoadState.kind !== 'success' || selectedFeedbackCount === 0 || isFeedbackSubmitting}
                 onClick={() => void handleCompleteAllFeedbacks()}
                 type="button"
               >

@@ -649,6 +649,7 @@ test.describe('student resume management', () => {
     await expect(page.getByRole('heading', { name: '피드백 목록' })).toBeVisible()
     await expect(feedbackPanel.getByRole('button', { name: /문장 근거를 한 줄 더 추가해보세요/ })).toBeVisible()
     await expect(feedbackPanel.getByRole('button', { name: /프로젝트 성과를 숫자로 표현해보세요/ })).toBeVisible()
+    await expect(feedbackPanel.getByText('0개 선택됨')).toBeVisible()
     await expect(
       page.locator('article[aria-label="이력서 작성 1쪽"]').getByRole('button', { name: /피드백 위치: 문장 근거를 한 줄 더 추가해보세요/ }),
     ).toBeVisible()
@@ -657,7 +658,9 @@ test.describe('student resume management', () => {
       .getByRole('button', { name: /피드백 위치: 프로젝트 성과를 숫자로 표현해보세요/ })
     await expect(secondPageFeedbackMarker).toBeVisible()
     await secondPageFeedbackMarker.click()
+    await expect(feedbackPanel.getByText('1개 선택됨')).toBeVisible()
     await expect(feedbackPanel.getByRole('paragraph').filter({ hasText: '프로젝트 성과를 숫자로 표현해보세요.' })).toBeVisible()
+    await feedbackPanel.getByRole('button', { name: /문장 근거를 한 줄 더 추가해보세요/ }).click()
 
     const headerBox = await page.locator('main > div > div > header').boundingBox()
     const feedbackPanelBox = await feedbackPanel.boundingBox()
