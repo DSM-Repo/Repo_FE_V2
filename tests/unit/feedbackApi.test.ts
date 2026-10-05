@@ -530,6 +530,58 @@ test('getFeedbacks sends document and page query with bearer auth and returns pa
   })
 })
 
+test('getFeedbacks accepts the current server feedback list shape', async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        content: [
+          {
+            comment: '피드백에 대한 상세 내용',
+            completedAt: null,
+            createdAt: '2026-10-05T10:21:30.455Z',
+            id: 'feedback-id',
+            pageId: 'page-id',
+            status: 'PENDING',
+            teacher: { name: '김선생' },
+            x: 0.1,
+            y: 0.2,
+          },
+        ],
+        totalElements: 1,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+
+  const result = await feedbackApi.getFeedbacks({
+    accessToken: 'access-token',
+    documentId: '66c73ec4c92f1d2d087e9012',
+  })
+
+  assert.deepEqual(result, {
+    feedbacks: [
+      {
+        completedAt: '',
+        content: '피드백에 대한 상세 내용',
+        createdAt: '2026-10-05T10:21:30.455Z',
+        feedbackId: 'feedback-id',
+        pageDeleted: false,
+        pageId: 'page-id',
+        status: 'PENDING',
+        teacherName: '김선생',
+        x: 0.1,
+        y: 0.2,
+      },
+    ],
+    kind: 'success',
+    numberOfData: 1,
+  })
+})
+
 test('getFeedbacks omits page query when page id is not provided', async () => {
   let requestedUrl = ''
 
@@ -559,7 +611,7 @@ test('getFeedbacks omits page query when page id is not provided', async () => {
 
 test('getFeedbacks returns server-error when the response body is not feedback list', async () => {
   globalThis.fetch = async () =>
-    new Response(JSON.stringify({ feedbacks: [] }), {
+    new Response(JSON.stringify({ feedbacks: [{ feedbackId: 'feedback-id' }], numberOfData: 1 }), {
       headers: {
         'Content-Type': 'application/json',
       },

@@ -54,21 +54,20 @@ async function mockTeacherResumeReview(
   await page.route(`${apiBaseUrl}/feedback?documentId=resume-id`, async (route) => {
     await route.fulfill({
       json: {
-        feedbacks: [
+        content: [
           {
-            completedAt: '',
-            content: '프로젝트 성과를 숫자로 표현해보세요.',
+            comment: '프로젝트 성과를 숫자로 표현해보세요.',
+            completedAt: null,
             createdAt: '2026-10-01T07:00:00.000Z',
-            feedbackId: 'feedback-1',
-            pageDeleted: false,
+            id: 'feedback-1',
             pageId: 'project-page',
             status: 'PENDING',
-            teacherName: '담임 선생님',
+            teacher: { name: '담임 선생님' },
             x: 0.42,
             y: 0.36,
           },
         ],
-        numberOfData: 1,
+        totalElements: 1,
       },
     })
   })

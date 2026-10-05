@@ -87,6 +87,70 @@ function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function getStringField(value: JsonRecord, fieldNames: readonly string[]): string | undefined {
+  for (const fieldName of fieldNames) {
+    const fieldValue = value[fieldName]
+
+    if (typeof fieldValue === 'string') {
+      return fieldValue
+    }
+  }
+
+  return undefined
+}
+
+function getOptionalStringField(value: JsonRecord, fieldNames: readonly string[]): string {
+  return getStringField(value, fieldNames) ?? ''
+}
+
+function getNestedStringField(value: JsonRecord, fieldNames: readonly string[], nestedFieldNames: readonly string[]): string | undefined {
+  const directValue = getStringField(value, fieldNames)
+
+  if (directValue) {
+    return directValue
+  }
+
+  for (const fieldName of fieldNames) {
+    const fieldValue = value[fieldName]
+
+    if (!isJsonRecord(fieldValue)) {
+      continue
+    }
+
+    const nestedValue = getStringField(fieldValue, nestedFieldNames)
+
+    if (nestedValue) {
+      return nestedValue
+    }
+  }
+
+  return undefined
+}
+
+function getNumberField(value: JsonRecord, fieldNames: readonly string[]): number | undefined {
+  for (const fieldName of fieldNames) {
+    const fieldValue = value[fieldName]
+
+    if (typeof fieldValue === 'number') {
+      return fieldValue
+    }
+  }
+
+  return undefined
+}
+
+function getBooleanField(value: JsonRecord, fieldNames: readonly string[], fallback = false): boolean {
+  for (const fieldName of fieldNames) {
+    const fieldValue = value[fieldName]
+
+    if (typeof fieldValue === 'boolean') {
+      return fieldValue
+    }
+  }
+
+  return fallback
+}
+
 function parseFeedbackCreate(value: unknown): FeedbackCreate | undefined {
   if (
     !isJsonRecord(value) ||
@@ -187,43 +251,45 @@ function parseFeedbackUpdate(value: unknown): FeedbackUpdate | undefined {
 }
 
 function parseFeedbackDetail(value: unknown): FeedbackDetail | undefined {
-  if (
-    !isJsonRecord(value) ||
-    typeof value['content'] !== 'string' ||
-    typeof value['createdAt'] !== 'string' ||
-    typeof value['feedbackId'] !== 'string' ||
-    typeof value['pageDeleted'] !== 'boolean' ||
-    typeof value['pageId'] !== 'string' ||
-    typeof value['status'] !== 'string' ||
-    typeof value['x'] !== 'number' ||
-    typeof value['y'] !== 'number'
-  ) {
+  if (!isJsonRecord(value)) {
+    return undefined
+  }
+
+  const content = getStringField(value, ['content', 'comment'])
+  const createdAt = getStringField(value, ['createdAt', 'createdDate', 'createdDateTime'])
+  const feedbackId = getStringField(value, ['feedbackId', 'id'])
+  const pageId = getStringField(value, ['pageId', 'resumePageId', 'documentPageId'])
+  const status = getStringField(value, ['status', 'feedbackStatus']) ?? 'PENDING'
+  const x = getNumberField(value, ['x', 'positionX'])
+  const y = getNumberField(value, ['y', 'positionY'])
+
+  if (content === undefined || createdAt === undefined || feedbackId === undefined || pageId === undefined || x === undefined || y === undefined) {
     return undefined
   }
 
   return {
-    content: value['content'],
-    createdAt: value['createdAt'],
-    feedbackId: value['feedbackId'],
-    pageDeleted: value['pageDeleted'],
-    pageId: value['pageId'],
-    status: value['status'],
-    x: value['x'],
-    y: value['y'],
+    content,
+    createdAt,
+    feedbackId,
+    pageDeleted: getBooleanField(value, ['pageDeleted', 'isPageDeleted']),
+    pageId,
+    status,
+    x,
+    y,
   }
 }
 
 function parseFeedbackListItem(value: unknown): FeedbackListItem | undefined {
   const detail = parseFeedbackDetail(value)
 
-  if (!detail || !isJsonRecord(value) || typeof value['completedAt'] !== 'string' || typeof value['teacherName'] !== 'string') {
+  if (!detail || !isJsonRecord(value)) {
     return undefined
   }
 
   return {
     ...detail,
-    completedAt: value['completedAt'],
-    teacherName: value['teacherName'],
+    completedAt: getOptionalStringField(value, ['completedAt', 'completedDate', 'completedDateTime']),
+    teacherName: getNestedStringField(value, ['teacherName', 'teacher', 'writerName'], ['name', 'teacherName']) ?? '',
   }
 }
 
@@ -242,11 +308,24 @@ function parseFeedbackListItems(value: unknown): readonly FeedbackListItem[] | u
 }
 
 function parseFeedbackList(value: unknown): FeedbackList | undefined {
-  if (!isJsonRecord(value) || typeof value['numberOfData'] !== 'number') {
+  if (Array.isArray(value)) {
+    const feedbacks = parseFeedbackListItems(value)
+
+    if (!feedbacks) {
+      return undefined
+    }
+
+    return {
+      feedbacks,
+      numberOfData: feedbacks.length,
+    }
+  }
+
+  if (!isJsonRecord(value)) {
     return undefined
   }
 
-  const feedbacks = parseFeedbackListItems(value['feedbacks'])
+  const feedbacks = parseFeedbackListItems(value['feedbacks'] ?? value['content'] ?? value['data'])
 
   if (!feedbacks) {
     return undefined
@@ -254,7 +333,7 @@ function parseFeedbackList(value: unknown): FeedbackList | undefined {
 
   return {
     feedbacks,
-    numberOfData: value['numberOfData'],
+    numberOfData: getNumberField(value, ['numberOfData', 'totalElements', 'totalCount', 'count']) ?? feedbacks.length,
   }
 }
 
