@@ -32,6 +32,7 @@ export type LibrarySearchStudent = {
   readonly major: string
   readonly studentId: number
   readonly studentName: string
+  readonly studentNumber?: string
 }
 
 export type LibrarySearchResult =

@@ -89,10 +89,26 @@ function parseLibrarySearchStudent(value: unknown): LibrarySearchStudent | undef
     return undefined
   }
 
+  const studentNumber =
+    typeof value['studentNumber'] === 'string'
+      ? value['studentNumber']
+      : typeof value['studentNumber'] === 'number'
+        ? String(value['studentNumber'])
+      : typeof value['schoolNumber'] === 'string'
+        ? value['schoolNumber']
+        : typeof value['schoolNumber'] === 'number'
+          ? String(value['schoolNumber'])
+        : typeof value['number'] === 'string'
+          ? value['number']
+          : typeof value['number'] === 'number'
+            ? String(value['number'])
+          : undefined
+
   return {
     major: value['major'],
     studentId: value['studentId'],
     studentName: value['studentName'],
+    studentNumber,
   }
 }
 

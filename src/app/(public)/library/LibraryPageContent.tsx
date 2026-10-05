@@ -38,15 +38,10 @@ const teacherNavigationItems = [
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
 
-const STUDENT_SEARCH_PAGE_SIZE = 20
+const LIBRARY_STUDENT_FETCH_SIZE = 100
 
 type LibraryPageContentProps = {
   readonly showsLoadError: boolean
-}
-
-type StudentSearchCursor = {
-  readonly key: string
-  readonly page: number
 }
 
 type LibraryLoadState =
@@ -86,8 +81,14 @@ type ResumeLoadState =
     }
   | {
       readonly kind: 'success'
-      readonly resume: LibraryResume
+      readonly resumes: readonly LibraryResume[]
     }
+
+type LibrarySheetPage = {
+  readonly key: string
+  readonly page: LibraryResumePage
+  readonly resume: LibraryResume
+}
 
 function subscribeToSavedAuthRole(onStoreChange: () => void) {
   window.addEventListener('storage', onStoreChange)
@@ -162,6 +163,58 @@ function sortResumePages(pages: readonly LibraryResumePage[]) {
   return [...pages].sort((leftPage, rightPage) => leftPage.index - rightPage.index)
 }
 
+function getComparableStudentNumber(value: string | undefined) {
+  const digits = value?.match(/\d+/g)?.join('')
+
+  return digits ? Number(digits) : Number.POSITIVE_INFINITY
+}
+
+function sortLibraryResumes(resumes: readonly LibraryResume[], students: readonly LibrarySearchStudent[]) {
+  const studentNumberById = new Map(students.map((student) => [student.studentId, student.studentNumber]))
+
+  return [...resumes].sort((leftResume, rightResume) => {
+    const leftStudentNumber = studentNumberById.get(leftResume.studentId) ?? leftResume.studentNumber
+    const rightStudentNumber = studentNumberById.get(rightResume.studentId) ?? rightResume.studentNumber
+    const leftComparableStudentNumber = getComparableStudentNumber(leftStudentNumber)
+    const rightComparableStudentNumber = getComparableStudentNumber(rightStudentNumber)
+    const hasLeftComparableStudentNumber = Number.isFinite(leftComparableStudentNumber)
+    const hasRightComparableStudentNumber = Number.isFinite(rightComparableStudentNumber)
+
+    if (hasLeftComparableStudentNumber !== hasRightComparableStudentNumber) {
+      return hasLeftComparableStudentNumber ? -1 : 1
+    }
+
+    const hasComparableStudentNumbers =
+      hasLeftComparableStudentNumber && hasRightComparableStudentNumber
+    const studentNumberOrder = hasComparableStudentNumbers ? leftComparableStudentNumber - rightComparableStudentNumber : 0
+
+    if (studentNumberOrder !== 0) {
+      return studentNumberOrder
+    }
+
+    const textStudentNumberOrder = leftStudentNumber.localeCompare(rightStudentNumber, 'ko-KR', {
+      numeric: true,
+      sensitivity: 'base',
+    })
+
+    if (textStudentNumberOrder !== 0) {
+      return textStudentNumberOrder
+    }
+
+    return rightResume.name.localeCompare(leftResume.name, 'ko-KR') || leftResume.studentId - rightResume.studentId
+  })
+}
+
+function toLibrarySheetPages(resumes: readonly LibraryResume[], students: readonly LibrarySearchStudent[]): readonly LibrarySheetPage[] {
+  return sortLibraryResumes(resumes, students).flatMap((resume) =>
+    sortResumePages(resume.pages).map((page) => ({
+      key: `${resume.studentId}:${page.id}`,
+      page,
+      resume,
+    })),
+  )
+}
+
 export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) {
   const searchParams = useSearchParams()
   const role = useSyncExternalStore(subscribeToSavedAuthRole, getSavedAuthRoleSnapshot, getServerAuthRoleSnapshot)
@@ -173,25 +226,22 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
   const [loadState, setLoadState] = useState<LibraryLoadState>({ kind: 'loading' })
   const [searchKeyword, setSearchKeyword] = useState('')
   const [studentSearchState, setStudentSearchState] = useState<StudentSearchState>({ kind: 'loading' })
-  const [studentSearchCursor, setStudentSearchCursor] = useState<StudentSearchCursor>({ key: '', page: 0 })
   const [resumeLoadState, setResumeLoadState] = useState<ResumeLoadState>({ kind: 'loading' })
   const [visiblePageIndex, setVisiblePageIndex] = useState(0)
-  const [isLoadingMoreStudents, setIsLoadingMoreStudents] = useState(false)
   const selectedDate = parseSelectedDate(searchParams.get('date'))
   const navigationItems = role === 'teacher' ? teacherNavigationItems : studentNavigationItems
   const libraryBooks = loadState.kind === 'success' ? loadState.books.map(toLibraryBookCard) : []
   const normalizedSearchKeyword = searchKeyword.trim()
-  const studentSearchKey = selectedDate === undefined ? '' : `${selectedDate}:${normalizedSearchKeyword}`
-  const studentSearchPage = studentSearchCursor.key === studentSearchKey ? studentSearchCursor.page : 0
-  const canLoadMoreStudents =
-    studentSearchState.kind === 'success' && studentSearchState.students.length < studentSearchState.totalElements
-  const activeStudentId = studentSearchState.kind === 'success' ? studentSearchState.students[0]?.studentId : undefined
-  const sortedResumePages = useMemo(
-    () => (resumeLoadState.kind === 'success' ? sortResumePages(resumeLoadState.resume.pages) : []),
-    [resumeLoadState],
+  const searchedStudents = useMemo(
+    () => (studentSearchState.kind === 'success' ? studentSearchState.students : []),
+    [studentSearchState],
   )
-  const visibleResumePages = sortedResumePages.slice(visiblePageIndex, visiblePageIndex + 2)
-  const displayedPageNumber = Math.min(sortedResumePages.length, visiblePageIndex + visibleResumePages.length)
+  const librarySheetPages = useMemo(
+    () => (resumeLoadState.kind === 'success' ? toLibrarySheetPages(resumeLoadState.resumes, searchedStudents) : []),
+    [resumeLoadState, searchedStudents],
+  )
+  const visibleResumePages = librarySheetPages.slice(visiblePageIndex, visiblePageIndex + 2)
+  const displayedPageNumber = Math.min(librarySheetPages.length, visiblePageIndex + visibleResumePages.length)
 
   useEffect(() => {
     let ignoresResult = false
@@ -258,19 +308,14 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
         return
       }
 
-      if (studentSearchPage === 0) {
-        setIsLoadingMoreStudents(false)
-        setStudentSearchState({ kind: 'loading' })
-      } else {
-        setIsLoadingMoreStudents(true)
-      }
+      setStudentSearchState({ kind: 'loading' })
 
       const result = await searchLibraryStudents({
         accessToken,
         date: selectedLibraryDate,
         keyword: normalizedSearchKeyword,
-        page: studentSearchPage,
-        size: STUDENT_SEARCH_PAGE_SIZE,
+        page: 0,
+        size: LIBRARY_STUDENT_FETCH_SIZE,
       })
       const recentStudents = getRecentLibraryStudents({ date: selectedLibraryDate, keyword: normalizedSearchKeyword })
 
@@ -278,17 +323,40 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
         return
       }
 
-      setIsLoadingMoreStudents(false)
-
       if (result.kind === 'success') {
-        setStudentSearchState((currentState) => ({
+        let searchedStudents = result.students
+        let loadedStudentCount = result.students.length
+        let nextPage = 1
+
+        while (loadedStudentCount < result.totalElements) {
+          const nextResult = await searchLibraryStudents({
+            accessToken,
+            date: selectedLibraryDate,
+            keyword: normalizedSearchKeyword,
+            page: nextPage,
+            size: LIBRARY_STUDENT_FETCH_SIZE,
+          })
+
+          if (ignoresResult || nextResult.kind !== 'success' || nextResult.students.length === 0) {
+            break
+          }
+
+          searchedStudents = [...searchedStudents, ...nextResult.students]
+          loadedStudentCount += nextResult.students.length
+          nextPage += 1
+        }
+
+        if (ignoresResult) {
+          return
+        }
+
+        const mergedStudents = mergeLibrarySearchStudents(searchedStudents, recentStudents)
+
+        setStudentSearchState({
           kind: 'success',
-          students:
-            studentSearchPage === 0 || currentState.kind !== 'success'
-              ? mergeLibrarySearchStudents(result.students, recentStudents)
-              : [...currentState.students, ...result.students],
-          totalElements: Math.max(result.totalElements, mergeLibrarySearchStudents(result.students, recentStudents).length),
-        }))
+          students: mergedStudents,
+          totalElements: Math.max(result.totalElements, mergedStudents.length),
+        })
         return
       }
 
@@ -312,21 +380,25 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     return () => {
       ignoresResult = true
     }
-  }, [accessToken, normalizedSearchKeyword, selectedDate, studentSearchPage])
+  }, [accessToken, normalizedSearchKeyword, selectedDate])
 
   useEffect(() => {
     if (selectedDate === undefined) {
       return
     }
 
-    if (activeStudentId === undefined) {
+    if (studentSearchState.kind !== 'success') {
+      return
+    }
+
+    if (searchedStudents.length === 0) {
       return
     }
 
     let ignoresResult = false
-    const studentId = activeStudentId
+    const students = searchedStudents
 
-    async function loadActiveResume() {
+    async function loadLibraryResumes() {
       if (!accessToken) {
         setResumeLoadState({
           kind: 'failure',
@@ -336,42 +408,44 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
       }
 
       setResumeLoadState({ kind: 'loading' })
-      const result = await getLibraryResumeByStudentId({ accessToken, studentId })
+      const resumeResults = await Promise.all(
+        students.map(async (student) => {
+          const result = await getLibraryResumeByStudentId({ accessToken, studentId: student.studentId })
+
+          if (result.kind === 'success') {
+            return result.resume
+          }
+
+          return getRecentLibraryResume(student.studentId)
+        }),
+      )
 
       if (ignoresResult) {
         return
       }
 
-      if (result.kind === 'success') {
+      const resumes = resumeResults.filter((resume) => resume !== undefined)
+
+      if (resumes.length > 0) {
         setResumeLoadState({
           kind: 'success',
-          resume: result.resume,
-        })
-        return
-      }
-
-      const recentResume = getRecentLibraryResume(studentId)
-
-      if (recentResume) {
-        setResumeLoadState({
-          kind: 'success',
-          resume: recentResume,
+          resumes,
         })
         return
       }
 
       setResumeLoadState({
         kind: 'failure',
-        message: result.message,
+        message: '공개된 이력서를 찾을 수 없습니다.',
       })
     }
 
-    void loadActiveResume()
+    void loadLibraryResumes()
 
     return () => {
       ignoresResult = true
     }
-  }, [accessToken, activeStudentId, normalizedSearchKeyword, selectedDate])
+  }, [accessToken, normalizedSearchKeyword, searchedStudents, selectedDate, studentSearchState.kind])
 
   return (
     <main className={styles.page}>
@@ -452,10 +526,10 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                   {resumeLoadState.message}
                 </p>
               ) : null}
-              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'success' && sortedResumePages.length === 0 ? (
+              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'success' && librarySheetPages.length === 0 ? (
                 <p className={styles.emptyMessage}>공개된 포트폴리오 문서가 없습니다.</p>
               ) : null}
-              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'success' && sortedResumePages.length > 0 ? (
+              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'success' && librarySheetPages.length > 0 ? (
                 <>
                   <button
                     aria-label="이전 페이지"
@@ -467,49 +541,34 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                     ‹
                   </button>
                   <div className={styles.sheets}>
-                    {visibleResumePages.map((page) => (
+                    {visibleResumePages.map(({ key, page, resume }) => (
                       <ResumeBookSheet
-                        ariaLabel={`${resumeLoadState.resume.name} 이력서 ${page.index + 1}쪽`}
+                        ariaLabel={`${resume.name} 이력서 ${page.index + 1}쪽`}
                         className={styles.documentSheet}
-                        content={toSheetContent(resumeLoadState.resume, page)}
-                        key={page.id}
+                        content={toSheetContent(resume, page)}
+                        key={key}
                       />
                     ))}
                   </div>
                   <button
                     aria-label="다음 페이지"
                     className={`${styles.pageArrow} ${styles.nextArrow}`}
-                    disabled={visiblePageIndex + 2 >= sortedResumePages.length}
+                    disabled={visiblePageIndex + 2 >= librarySheetPages.length}
                     type="button"
                     onClick={() =>
                       setVisiblePageIndex((currentIndex) =>
-                        Math.min(Math.max(0, sortedResumePages.length - 1), currentIndex + 2),
+                        Math.min(Math.max(0, librarySheetPages.length - 1), currentIndex + 2),
                       )
                     }
                   >
                     ›
                   </button>
                   <p className={styles.pageIndicator}>
-                    {displayedPageNumber} / {sortedResumePages.length}
+                    {displayedPageNumber} / {librarySheetPages.length}
                   </p>
                 </>
               ) : null}
             </div>
-            {canLoadMoreStudents ? (
-              <button
-                className={styles.loadMoreButton}
-                disabled={isLoadingMoreStudents}
-                type="button"
-                onClick={() =>
-                  setStudentSearchCursor({
-                    key: studentSearchKey,
-                    page: studentSearchPage + 1,
-                  })
-                }
-              >
-                {isLoadingMoreStudents ? '불러오는 중' : '더 보기'}
-              </button>
-            ) : null}
           </section>
         )}
       </section>

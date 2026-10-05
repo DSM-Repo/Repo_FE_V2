@@ -81,16 +81,20 @@ function toRecentLibraryStudent(value: unknown): RecentLibraryStudent | undefine
     !Number.isSafeInteger(candidate.date) ||
     !Number.isSafeInteger(candidate.studentId) ||
     typeof candidate.major !== 'string' ||
-    typeof candidate.studentName !== 'string'
+    typeof candidate.studentName !== 'string' ||
+    ('studentNumber' in candidate && typeof candidate.studentNumber !== 'string')
   ) {
     return undefined
   }
+
+  const studentNumber = typeof candidate.studentNumber === 'string' ? candidate.studentNumber : undefined
 
   return {
     date: Number(candidate.date),
     major: candidate.major,
     studentId: Number(candidate.studentId),
     studentName: candidate.studentName,
+    studentNumber,
   }
 }
 
@@ -284,7 +288,7 @@ export function getRecentLibraryStudents(input: { readonly date: number; readonl
   return readRecentStudents()
     .filter((student) => student.date === input.date)
     .filter((student) => (keyword ? student.studentName.toLowerCase().includes(keyword) : true))
-    .map(({ major, studentId, studentName }) => ({ major, studentId, studentName }))
+    .map(({ major, studentId, studentName, studentNumber }) => ({ major, studentId, studentName, studentNumber }))
 }
 
 export function mergeLibrarySearchStudents(
