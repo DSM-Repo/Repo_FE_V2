@@ -71,7 +71,7 @@
 }
 
 .iconButton:hover {
-  color: var(--repo-main);
+  color: var(--repo-gray-50);
   background: var(--repo-gray-800);
 }
 

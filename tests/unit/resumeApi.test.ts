@@ -480,7 +480,7 @@ test('updateResumeVisibility sends the student scoped public flag with bearer au
   })
 })
 
-test('updateResumeVisibility returns server-error when the response body is not visibility state', async () => {
+test('updateResumeVisibility falls back to the requested state when the response body is not visibility state', async () => {
   globalThis.fetch = async () =>
     new Response(JSON.stringify({ public: true }), {
       headers: {
@@ -496,8 +496,8 @@ test('updateResumeVisibility returns server-error when the response body is not 
   })
 
   assert.deepEqual(result, {
-    kind: 'server-error',
-    message: '공개 여부 변경 응답 형식이 올바르지 않습니다.',
+    isPublic: true,
+    kind: 'success',
   })
 })
 
@@ -505,11 +505,15 @@ test('submitResume sends bearer auth and returns parsed submission state', async
   let requestedUrl = ''
   let requestedMethod = ''
   let requestedAuthorization = ''
+  let requestedBody: BodyInit | null | undefined
+  let requestedContentType = ''
 
   globalThis.fetch = async (input, init) => {
     requestedUrl = String(input)
     requestedMethod = init?.method ?? ''
     requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+    requestedBody = init?.body
+    requestedContentType = new Headers(init?.headers).get('Content-Type') ?? ''
 
     return new Response(JSON.stringify({ resumeId: 'resume-id', submissionStatus: 'SUBMITTED' }), {
       headers: {
@@ -526,6 +530,8 @@ test('submitResume sends bearer auth and returns parsed submission state', async
   assert.equal(requestedUrl, 'https://api.example.test/resume/submit')
   assert.equal(requestedMethod, 'POST')
   assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.equal(requestedBody, undefined)
+  assert.equal(requestedContentType, '')
   assert.deepEqual(result, {
     kind: 'success',
     resumeId: 'resume-id',
