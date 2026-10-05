@@ -614,8 +614,11 @@
 }
 
 .markdownEditor {
+  display: grid;
   width: 100%;
   min-height: 96px;
+  align-content: start;
+  gap: var(--space-2);
   padding: 0;
   overflow: auto;
   border: 0;
