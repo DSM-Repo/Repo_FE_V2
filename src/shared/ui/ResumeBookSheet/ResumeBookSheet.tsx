@@ -2,6 +2,7 @@ import { Fragment, type MouseEvent, type ReactNode } from 'react'
 import Image from 'next/image'
 
 import { FeedbackBalloon } from '@/shared/ui/FeedbackBalloon'
+import { Icon } from '@/shared/ui/Icon'
 import { QrCode } from '@/shared/ui/QrCode'
 
 import styles from './ResumeBookSheet.module.css'
@@ -459,7 +460,9 @@ export function ResumeBookSheet({
             unoptimized
           />
         ) : (
-          <div className={styles.profileImage} aria-label="프로필 이미지" />
+          <div className={`${styles.profileImage} ${styles.profileImagePlaceholder}`} aria-label="프로필 이미지">
+            <Icon name="plus" />
+          </div>
         )}
         <div className={styles.identity}>
           <div className={styles.nameRow}>

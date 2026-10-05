@@ -621,9 +621,9 @@
   border: 0;
   color: var(--repo-text-black);
   background: transparent;
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: 1.52;
+  font-size: var(--repo-font-resume-small-size);
+  font-weight: var(--repo-font-resume-small-weight);
+  line-height: 1.55;
   letter-spacing: 0;
   white-space: pre-wrap;
   word-break: keep-all;
@@ -659,41 +659,41 @@
 
 .markdownEditor h2,
 .markdownEditorHeading2 {
-  font-size: var(--repo-font-body-large-size);
-  font-weight: var(--repo-font-title-small-weight);
-  line-height: var(--repo-font-body-large-line-height);
-}
-
-.markdownEditor h3,
-.markdownEditorHeading3 {
-  font-size: var(--repo-font-body-medium-2-size);
-  font-weight: var(--repo-font-body-medium-2-weight);
-  line-height: var(--repo-font-body-medium-2-line-height);
-}
-
-.markdownEditor h4,
-.markdownEditorHeading4 {
   font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
 }
 
+.markdownEditor h3,
+.markdownEditorHeading3 {
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.markdownEditor h4,
+.markdownEditorHeading4 {
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
 .markdownEditor blockquote,
 .markdownEditorQuote {
-  padding-left: 10px;
+  padding-left: 8px;
   border-left: 2px solid var(--repo-gray-300);
   color: var(--repo-gray-500);
-  font-size: var(--repo-font-body-very-tiny-size);
-  line-height: 1.52;
+  font-size: var(--repo-font-resume-small-size);
+  line-height: 1.55;
 }
 
 .markdownEditor ul,
 .markdownEditorBulletList {
-  padding-left: var(--space-4);
-  color: var(--repo-text-black);
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: 1.52;
+  padding-left: 14px;
+  color: var(--repo-gray-800);
+  font-size: var(--repo-font-resume-small-size);
+  font-weight: var(--repo-font-resume-small-weight);
+  line-height: 1.55;
 }
 
 .markdownEditor li {

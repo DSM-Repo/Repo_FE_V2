@@ -52,12 +52,21 @@
   width: var(--resume-book-sheet-avatar-size, 47px);
   height: var(--resume-book-sheet-avatar-size, 47px);
   border-radius: var(--repo-radius-pill);
-  background:
-    radial-gradient(circle at 58% 42%, #ffffff 0 8px, #d7d7d7 9px 10px, transparent 11px),
-    radial-gradient(circle at 37% 41%, #f7f7f7 0 12px, #d8d8d8 13px 15px, transparent 16px),
-    radial-gradient(circle at 40% 38%, #323232 0 2px, transparent 3px),
-    radial-gradient(circle at 61% 37%, #323232 0 2px, transparent 3px),
-    linear-gradient(135deg, #e8e4de, #c8c1b7 46%, #f1eee9);
+  object-fit: cover;
+}
+
+.profileImagePlaceholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--repo-gray-300);
+  color: var(--repo-gray-400);
+  background: var(--repo-gray-50);
+}
+
+.profileImagePlaceholder svg {
+  width: var(--space-4);
+  height: var(--space-4);
 }
 
 .identity {
