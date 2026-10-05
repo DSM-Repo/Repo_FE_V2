@@ -18,6 +18,7 @@ export interface DropdownProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onC
   onValueChange: (value: string) => void
   open?: boolean
   options: DropdownOption[]
+  triggerAriaLabel?: string
   value: string
 }
 
@@ -30,6 +31,7 @@ export function Dropdown({
   onValueChange,
   open,
   options,
+  triggerAriaLabel,
   value,
   ...props
 }: DropdownProps) {
@@ -65,6 +67,7 @@ export function Dropdown({
       aria-controls={isOpen ? listboxId : undefined}
       aria-expanded={isOpen}
       aria-haspopup="listbox"
+      aria-label={triggerAriaLabel}
       className={`${styles.trigger} ${isOpen ? styles.triggerOpen : ''}`}
       disabled={disabled}
       type="button"

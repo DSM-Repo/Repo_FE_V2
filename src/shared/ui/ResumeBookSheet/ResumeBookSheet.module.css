@@ -69,7 +69,7 @@
 
 .nameRow {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   flex-wrap: wrap;
   gap: 9px;
   row-gap: 2px;
@@ -89,18 +89,18 @@
 
 .major {
   color: var(--repo-gray-500);
-  font-size: 9px;
-  font-weight: 500;
-  line-height: 1.25;
+  font-size: var(--resume-book-sheet-major-size, var(--repo-font-body-tiny-size));
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
   overflow-wrap: anywhere;
 }
 
 .meta {
   margin: 0;
   color: var(--repo-text-black);
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-body-very-tiny-weight);
-  line-height: 1.35;
+  font-size: var(--resume-book-sheet-meta-size, var(--repo-font-body-tiny-size));
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
   overflow-wrap: anywhere;
 }
 

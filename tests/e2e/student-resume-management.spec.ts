@@ -907,14 +907,15 @@ test.describe('student resume management', () => {
     })
     await page.goto('/resume?mode=edit')
 
-    const majorSelect = page.getByLabel('희망 전공')
-    await expect(majorSelect).toContainText('Frontend Developer')
-    await expect(majorSelect).toContainText('Backend Developer')
+    const majorSelect = page.getByRole('button', { name: '희망 전공' })
+    await expect(majorSelect).toContainText('전공미정')
 
-    await majorSelect.selectOption({ label: 'Backend Developer' })
+    await majorSelect.click()
+    await expect(page.getByRole('option', { name: 'Frontend Developer' })).toBeVisible()
+    await page.getByRole('option', { name: 'Backend Developer' }).click()
 
     await expect.poll(() => updatedMajorId).toBe(2)
-    await expect(majorSelect).toHaveValue('2')
+    await expect(majorSelect).toContainText('Backend Developer')
     await expect(page.getByText('전공을 변경했습니다.')).toBeVisible()
   })
 

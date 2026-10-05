@@ -51,6 +51,12 @@
   justify-content: flex-end;
 }
 
+.withFeedback .topActions {
+  width: auto;
+  justify-self: end;
+  margin-right: 50px;
+}
+
 .failureActions {
   pointer-events: none;
 }
@@ -168,6 +174,8 @@
   --resume-book-sheet-padding: clamp(14px, calc(var(--resume-book-sheet-width) * 0.043), var(--space-6));
   --resume-book-sheet-avatar-size: clamp(34px, calc(var(--resume-book-sheet-width) * 0.09), 48px);
   --resume-book-sheet-name-size: clamp(14px, calc(var(--resume-book-sheet-width) * 0.039), 22px);
+  --resume-book-sheet-major-size: clamp(9px, calc(var(--resume-book-sheet-width) * 0.024), var(--repo-font-body-tiny-size));
+  --resume-book-sheet-meta-size: clamp(9px, calc(var(--resume-book-sheet-width) * 0.025), var(--repo-font-body-tiny-size));
   --resume-book-sheet-project-name-size: clamp(14px, calc(var(--resume-book-sheet-width) * 0.043), 24px);
   --resume-book-sheet-qr-size: clamp(34px, calc(var(--resume-book-sheet-width) * 0.095), 56px);
   --resume-book-sheet-header-gap: clamp(8px, calc(var(--resume-book-sheet-width) * 0.028), var(--space-5));

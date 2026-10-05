@@ -4,7 +4,7 @@ import { useId, useRef, useState, type ChangeEvent, type ClipboardEvent, type Ke
 
 import type { Major } from '@/features/major/api'
 import type { ResumePageType } from '@/features/resume/api'
-import { FeedbackBalloon, Icon, QrCode, type ResumeBookSheetFeedbackMarker } from '@/shared/ui'
+import { Dropdown, FeedbackBalloon, Icon, QrCode, type DropdownOption, type ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 
 import { MarkdownTextarea } from './MarkdownTextarea'
 import styles from './ResumeEditorSheet.module.css'
@@ -164,6 +164,21 @@ export function ResumeEditorSheet({
   const isSkillComposingRef = useRef(false)
   const sheetClassName = [styles.sheet, className].filter(Boolean).join(' ')
   const selectedMajor = majors.find((major) => major.name === draft.headline)
+  const majorOptions: DropdownOption[] = [
+    ...(!selectedMajor
+      ? [
+          {
+            disabled: true,
+            label: isMajorLoading ? '전공 불러오는 중' : draft.headline || '전공미정',
+            value: '',
+          },
+        ]
+      : []),
+    ...majors.map((major) => ({
+      label: major.name,
+      value: String(major.majorId),
+    })),
+  ]
   const page = draft.pages[pageIndex]
   const hasPortfolioUrl = Boolean(draft.portfolioUrl)
 
@@ -408,27 +423,23 @@ export function ResumeEditorSheet({
             <label className={styles.srOnly} htmlFor="resume-major-selection">
               희망 전공
             </label>
-            <select
+            <Dropdown
               aria-busy={isMajorLoading || isMajorPending}
-              className={styles.majorSelect}
+              aria-labelledby="resume-major-selection"
+              className={styles.majorDropdown}
               disabled={isMajorLoading || isMajorPending || majors.length === 0}
               id="resume-major-selection"
-              onChange={(event) => {
-                const majorId = Number(event.target.value)
+              onValueChange={(value) => {
+                const majorId = Number(value)
 
                 if (Number.isInteger(majorId) && majorId > 0) {
                   onMajorChange?.(majorId)
                 }
               }}
+              options={majorOptions}
+              triggerAriaLabel="희망 전공"
               value={selectedMajor ? String(selectedMajor.majorId) : ''}
-            >
-              <option value="">{isMajorLoading ? '전공 불러오는 중' : '전공미정'}</option>
-              {majors.map((major) => (
-                <option key={major.majorId} value={major.majorId}>
-                  {major.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <div className={styles.metaRow}>
             <span aria-label="학번 전공" className={styles.majorInput}>
