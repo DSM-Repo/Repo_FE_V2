@@ -197,20 +197,43 @@ function parseFeedbackApplyFailures(value: unknown): readonly FeedbackApplyFailu
   return failures.filter((failure) => failure !== undefined)
 }
 
-function parseFeedbackApply(value: unknown): FeedbackApply | undefined {
-  if (!isJsonRecord(value) || typeof value['successCount'] !== 'number') {
-    return undefined
+function parseFeedbackApply(value: unknown, requestedCount: number): FeedbackApply {
+  if (Array.isArray(value)) {
+    return {
+      failed: [],
+      successCount: requestedCount,
+    }
   }
 
-  const failed = parseFeedbackApplyFailures(value['failed'])
-
-  if (!failed) {
-    return undefined
+  if (!isJsonRecord(value)) {
+    return {
+      failed: [],
+      successCount: requestedCount,
+    }
   }
+
+  const nestedValue = value['data'] ?? value['result'] ?? value['response']
+  const hasDirectApplyShape =
+    typeof value['successCount'] === 'number' ||
+    typeof value['appliedCount'] === 'number' ||
+    typeof value['completeCount'] === 'number' ||
+    typeof value['completedCount'] === 'number' ||
+    typeof value['count'] === 'number' ||
+    Array.isArray(value['failed']) ||
+    Array.isArray(value['failures']) ||
+    Array.isArray(value['failedFeedbacks'])
+
+  if (!hasDirectApplyShape && nestedValue !== undefined) {
+    return parseFeedbackApply(nestedValue, requestedCount)
+  }
+
+  const failed = parseFeedbackApplyFailures(value['failed'] ?? value['failures'] ?? value['failedFeedbacks']) ?? []
 
   return {
     failed,
-    successCount: value['successCount'],
+    successCount:
+      getNumberField(value, ['successCount', 'appliedCount', 'completeCount', 'completedCount', 'count']) ??
+      Math.max(0, requestedCount - failed.length),
   }
 }
 
@@ -389,22 +412,36 @@ async function readCreateResponseBody(response: FeedbackHttpResponse): Promise<F
   }
 }
 
-async function readApplyResponseBody(response: FeedbackHttpResponse): Promise<FeedbackApplyResult> {
+async function readApplyResponseBody(response: FeedbackHttpResponse, requestedCount: number): Promise<FeedbackApplyResult> {
   let responseBody: unknown
+
+  if (response.value.status === 204) {
+    response.complete()
+
+    return {
+      failed: [],
+      kind: 'success',
+      successCount: requestedCount,
+    }
+  }
 
   try {
     responseBody = await response.value.json()
   } catch (error) {
+    if (error instanceof SyntaxError) {
+      return {
+        failed: [],
+        kind: 'success',
+        successCount: requestedCount,
+      }
+    }
+
     return toResponseBodyReadFailure(error, INVALID_APPLY_RESPONSE)
   } finally {
     response.complete()
   }
 
-  const appliedFeedback = parseFeedbackApply(responseBody)
-
-  if (!appliedFeedback) {
-    return INVALID_APPLY_RESPONSE
-  }
+  const appliedFeedback = parseFeedbackApply(responseBody, requestedCount)
 
   return {
     failed: appliedFeedback.failed,
@@ -580,7 +617,7 @@ export async function applyFeedback(input: FeedbackApplyInput): Promise<Feedback
   }
 
   if (response.value.ok) {
-    return readApplyResponseBody(response)
+    return readApplyResponseBody(response, input.feedbackIds.length)
   }
 
   response.complete()

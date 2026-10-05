@@ -27,7 +27,7 @@ export function FeedbackBalloon({
   return (
     <div className={balloonClassName} {...props}>
       <button aria-label={buttonAriaLabel} className={styles.avatar} onClick={onActivate} type="button">
-        <Image alt={avatarAlt} className={styles.avatarImage} height={32} src={avatarSrc} width={32} />
+        <Image alt={avatarAlt} className={styles.avatarImage} height={48} src={avatarSrc} width={48} />
       </button>
 
       <div className={styles.message}>
@@ -48,9 +48,9 @@ function CheckCircleIcon({ className }: CheckCircleIconProps) {
       aria-hidden="true"
       className={className}
       fill="none"
-      height="24"
+      height="32"
       viewBox="0 0 24 24"
-      width="24"
+      width="32"
       xmlns="http://www.w3.org/2000/svg"
     >
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.4" />

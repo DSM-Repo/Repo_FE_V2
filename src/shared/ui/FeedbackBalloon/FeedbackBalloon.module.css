@@ -2,25 +2,25 @@
   position: relative;
   display: inline-flex;
   align-items: flex-start;
-  width: 42px;
-  min-height: 42px;
+  width: 64px;
+  min-height: 64px;
   overflow: visible;
 }
 
 .avatar,
 .message {
   background: var(--repo-bg-main-point);
-  border-radius: 50px 50px 50px 0;
-  box-shadow: 0 3px 4px 1px rgba(0, 0, 0, 0.25);
+  border-radius: var(--repo-radius-pill) var(--repo-radius-pill) var(--repo-radius-pill) 0;
+  box-shadow: var(--repo-shadow-book);
 }
 
 .avatar {
-  z-index: 1;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 64px;
+  height: 64px;
   padding: 0;
   overflow: hidden;
   border: 0;
@@ -31,32 +31,33 @@
 
 .avatar:focus-visible {
   box-shadow:
-    0 3px 4px 1px rgba(0, 0, 0, 0.25),
+    var(--repo-shadow-book),
     0 0 0 2px var(--repo-gray-50);
 }
 
 .balloon[data-active='true'] .avatar {
   box-shadow:
-    0 3px 4px 1px rgba(0, 0, 0, 0.25),
+    var(--repo-shadow-book),
     0 0 0 3px var(--repo-gray-50);
 }
 
 .avatarImage {
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
 }
 
 .message {
   position: absolute;
   top: 0;
-  left: 58px;
+  left: 54px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-4);
   width: max-content;
-  min-height: 42px;
-  max-width: 320px;
-  padding: 12px 12px 12px 36px;
+  min-width: 280px;
+  min-height: 64px;
+  max-width: 420px;
+  padding: var(--space-4) var(--space-6) var(--space-4) var(--space-12);
   color: var(--repo-gray-50);
   clip-path: inset(0 100% 0 0);
   opacity: 0;
@@ -68,7 +69,8 @@
 }
 
 .balloon:hover .message,
-.balloon:focus-within .message {
+.balloon:focus-within .message,
+.balloon[data-active='true'] .message {
   clip-path: inset(0 0 0 0);
   opacity: 1;
   pointer-events: auto;
@@ -79,17 +81,19 @@
   max-width: 240px;
   min-width: 0;
   color: var(--repo-gray-50);
-  font-size: var(--repo-font-title-tiny-size);
-  font-weight: var(--repo-font-title-tiny-weight);
-  line-height: var(--repo-font-title-tiny-line-height);
-  white-space: normal;
+  font-size: var(--repo-font-title-small-size);
+  font-weight: var(--repo-font-title-small-weight);
+  line-height: var(--repo-font-title-small-line-height);
+  white-space: nowrap;
   word-break: normal;
   overflow-wrap: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .checkIcon {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   color: var(--repo-gray-300);
 }

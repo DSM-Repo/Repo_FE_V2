@@ -374,7 +374,7 @@ function toFailureMessage(result: Exclude<ResumeDetailResult, { readonly kind: '
 }
 
 function isCompletedFeedback(feedback: FeedbackListItem) {
-  return feedback.status.trim().toUpperCase() === 'COMPLETED'
+  return feedback.status.trim().toUpperCase() === 'COMPLETED' || Boolean(feedback.completedAt.trim())
 }
 
 function toFeedbackSummary(content: string) {
@@ -751,7 +751,7 @@ export function StudentResumePageContent() {
     }
 
     const targetFeedbackIds = feedbackLoadState.feedbacks
-      .filter((feedback) => selectedFeedbackIds.has(feedback.feedbackId) && !isCompletedFeedback(feedback))
+      .filter((feedback) => selectedFeedbackIds.has(feedback.feedbackId))
       .map((feedback) => feedback.feedbackId)
 
     if (targetFeedbackIds.length === 0) {
