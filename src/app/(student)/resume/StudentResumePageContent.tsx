@@ -159,7 +159,9 @@ type ViewMode = 'view' | 'edit' | 'feedback'
 type SaveSubmitState = 'auto-save' | 'idle' | 'save' | 'submit' | 'temporary-save'
 type SaveMode = 'auto' | 'manual' | 'temporary'
 type SaveOptions = {
+  readonly draft?: ResumeDraft
   readonly stayEditing?: boolean
+  readonly successMessage?: string
 }
 type ActionFeedback = {
   readonly message: string
@@ -883,36 +885,6 @@ export function StudentResumePageContent() {
     [handleDraftChange],
   )
 
-  const handlePortfolioUrlConfirm = useCallback(
-    (value: string) => {
-      const normalizedPortfolioUrl = toNormalizedPortfolioUrl(value)
-
-      if (normalizedPortfolioUrl === undefined) {
-        setPortfolioUrlModalState({
-          errorMessage: 'http:// 또는 https://로 시작하는 URL을 입력해주세요.',
-          kind: 'open',
-        })
-        return
-      }
-
-      if (normalizedPortfolioUrl.length > 106) {
-        setPortfolioUrlModalState({
-          errorMessage: 'QR 코드로 만들 URL은 106자 이하로 입력해주세요.',
-          kind: 'open',
-        })
-        return
-      }
-
-      handleDraftChange({ ...draft, portfolioUrl: normalizedPortfolioUrl })
-      setPortfolioUrlModalState({ kind: 'closed' })
-      setActionFeedback({
-        message: normalizedPortfolioUrl ? 'URL을 QR 코드로 추가했습니다.' : '포트폴리오 URL을 비웠습니다.',
-        tone: 'success',
-      })
-    },
-    [draft, handleDraftChange],
-  )
-
   const handleCancelEditing = useCallback(() => {
     documentSessionRef.current += 1
     draftRevisionRef.current += 1
@@ -1109,10 +1081,11 @@ export function StudentResumePageContent() {
         return undefined
       }
 
+      const draftToSave = options.draft ?? draft
       const activeResume = loadState.kind === 'success' ? loadState.resume : undefined
       const activeResumeId = activeResume?.id
-      const pages = toResumePages(draft, activeResume)
-      const savePages = toResumeSavePages(draft, activeResume)
+      const pages = toResumePages(draftToSave, activeResume)
+      const savePages = toResumeSavePages(draftToSave, activeResume)
       const saveRevision = draftRevisionRef.current
       const documentSession = documentSessionRef.current
       const saveOperation = ++saveOperationRef.current
@@ -1124,12 +1097,12 @@ export function StudentResumePageContent() {
 
       const saveInput = {
         accessToken,
-        email: draft.email,
-        introduce: joinIntroduction(draft),
+        email: draftToSave.email,
+        introduce: joinIntroduction(draftToSave),
         pages: savePages,
-        portfolioUrl: draft.portfolioUrl,
-        profileImageUrl: draft.profileImageUrl,
-        skills: draft.skills,
+        portfolioUrl: draftToSave.portfolioUrl,
+        profileImageUrl: draftToSave.profileImageUrl,
+        skills: draftToSave.skills,
       }
       const result = mode === 'manual' ? await saveResume(saveInput) : await autoSaveResume(saveInput)
 
@@ -1219,20 +1192,20 @@ export function StudentResumePageContent() {
           kind: 'success',
           resume: {
             ...activeResume,
-            email: draft.email,
-            introduce: joinIntroduction(draft),
+            email: draftToSave.email,
+            introduce: joinIntroduction(draftToSave),
             pages,
-            portfolioUrl: draft.portfolioUrl,
-            profileImageUrl: draft.profileImageUrl,
+            portfolioUrl: draftToSave.portfolioUrl,
+            profileImageUrl: draftToSave.profileImageUrl,
             savedAt: result.savedAt,
-            skills: draft.skills,
+            skills: draftToSave.skills,
           },
         })
       } else {
         setLoadState({
           kind: 'success',
           resume: toSavedDraftResume({
-            draft,
+            draft: draftToSave,
             pages,
             resumeId: result.resumeId,
             savedAt: result.savedAt,
@@ -1254,6 +1227,8 @@ export function StudentResumePageContent() {
         message:
           syncedResumeResult && syncedResumeResult.kind !== 'success'
             ? '이력서는 저장했지만 페이지 정보를 다시 불러오지 못했습니다. 다시 저장해 재시도해주세요.'
+            : options.successMessage
+              ? options.successMessage
             : hasNewChanges
               ? '이전 내용은 저장했습니다. 저장되지 않은 변경사항이 있습니다.'
               : mode === 'auto'
@@ -1267,6 +1242,38 @@ export function StudentResumePageContent() {
       return result.resumeId
     },
     [draft, isResumeActionPending, isResumeReady, loadState, viewMode],
+  )
+
+  const handlePortfolioUrlConfirm = useCallback(
+    (value: string) => {
+      const normalizedPortfolioUrl = toNormalizedPortfolioUrl(value)
+
+      if (normalizedPortfolioUrl === undefined) {
+        setPortfolioUrlModalState({
+          errorMessage: 'http:// 또는 https://로 시작하는 URL을 입력해주세요.',
+          kind: 'open',
+        })
+        return
+      }
+
+      if (normalizedPortfolioUrl.length > 106) {
+        setPortfolioUrlModalState({
+          errorMessage: 'QR 코드로 만들 URL은 106자 이하로 입력해주세요.',
+          kind: 'open',
+        })
+        return
+      }
+
+      const nextDraft = { ...draft, portfolioUrl: normalizedPortfolioUrl }
+      handleDraftChange(nextDraft)
+      setPortfolioUrlModalState({ kind: 'closed' })
+      void handleSave('temporary', {
+        draft: nextDraft,
+        stayEditing: true,
+        successMessage: normalizedPortfolioUrl ? 'URL을 QR 코드로 추가하고 저장했습니다.' : '포트폴리오 URL을 비우고 저장했습니다.',
+      })
+    },
+    [draft, handleDraftChange, handleSave],
   )
 
   const handleSubmitResume = useCallback(async () => {

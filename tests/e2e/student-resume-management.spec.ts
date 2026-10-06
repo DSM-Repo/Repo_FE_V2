@@ -880,8 +880,41 @@ test.describe('student resume management', () => {
   })
 
   test('adds a portfolio URL as a QR code and saves the URL', async ({ page }) => {
+    let autoSavedPortfolioUrl = ''
     let savedPortfolioUrl = ''
 
+    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          email: '',
+          id: 'resume-id',
+          introduce: '',
+          isPublic: false,
+          majorName: '',
+          name: '',
+          pages: [
+            { content: '', id: 'server-page-1', index: 0, type: 'PROFILE' },
+            { content: '', id: 'server-page-2', index: 1, type: 'PROJECT' },
+          ],
+          portfolioUrl: autoSavedPortfolioUrl,
+          profileImageUrl: '',
+          savedAt: '2026-09-20T10:00:00.000Z',
+          skills: [],
+          submissionStatus: 'ONGOING',
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route('**/resume/auto-save', async (route) => {
+      const requestBody = route.request().postDataJSON() as { portfolioUrl: string }
+      autoSavedPortfolioUrl = requestBody.portfolioUrl
+      await route.fulfill({
+        body: JSON.stringify({ autoSaved: true, resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
     await page.route('**/resume/save', async (route) => {
       const requestBody = route.request().postDataJSON() as { portfolioUrl: string }
       savedPortfolioUrl = requestBody.portfolioUrl
@@ -905,7 +938,8 @@ test.describe('student resume management', () => {
     await page.getByRole('textbox', { name: '메인 URL' }).fill('https://github.com/mare2mare6')
     await page.getByRole('button', { name: '확인' }).click()
 
-    await expect(page.getByText('URL을 QR 코드로 추가했습니다.')).toBeVisible()
+    await expect(page.getByText('URL을 QR 코드로 추가하고 저장했습니다.')).toBeVisible()
+    await expect.poll(() => autoSavedPortfolioUrl).toBe('https://github.com/mare2mare6')
     const qrButton = page.getByRole('button', { name: '포트폴리오 URL 변경' })
     const qrImage = qrButton.getByRole('img', { name: '포트폴리오 QR 코드' })
     await expect(qrImage).toBeVisible()
@@ -923,6 +957,10 @@ test.describe('student resume management', () => {
 
     await page.getByRole('button', { exact: true, name: '저장' }).click()
     await expect.poll(() => savedPortfolioUrl).toBe('https://github.com/mare2mare6')
+    await expect(page.getByRole('link', { name: '포트폴리오 QR 코드' })).toHaveAttribute('href', 'https://github.com/mare2mare6')
+
+    await page.reload()
+
     await expect(page.getByRole('link', { name: '포트폴리오 QR 코드' })).toHaveAttribute('href', 'https://github.com/mare2mare6')
   })
 
