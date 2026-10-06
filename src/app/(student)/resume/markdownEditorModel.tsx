@@ -1,3 +1,5 @@
+import { normalizeDisplayImageUrl } from '@/shared/api/imageUrl'
+
 export const markdownTools = [
   { command: 'h1', label: 'H1', title: '제목 1' },
   { command: 'h2', label: 'H2', title: '제목 2' },
@@ -37,6 +39,7 @@ const blockShortcuts: Readonly<Record<string, EditableMarkdownBlock>> = {
 }
 
 const blockTags = new Set(['ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'DIV', 'FIGURE', 'FOOTER', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HEADER', 'HR', 'LI', 'MAIN', 'OL', 'P', 'PRE', 'SECTION', 'TABLE', 'UL'])
+const RESUME_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 function findLineRange(value: string, selectionStart: number, selectionEnd: number) {
   const lineStart = value.lastIndexOf('\n', Math.max(0, selectionStart - 1)) + 1
@@ -106,7 +109,7 @@ function escapeMarkdownInline(value: string) {
 }
 
 function toMarkdownImage(src: string, alt: string) {
-  const normalizedSrc = src.trim()
+  const normalizedSrc = normalizeDisplayImageUrl(src, RESUME_API_BASE_URL)
 
   if (!normalizedSrc || normalizedSrc.startsWith('blob:')) {
     return ''
@@ -358,10 +361,11 @@ function appendInlineNodes(parent: HTMLElement, value: string): void {
     const underlineText = match[8]
 
     if (imageAlt !== undefined && imageHref !== undefined) {
+      const imageSrc = normalizeDisplayImageUrl(imageHref, RESUME_API_BASE_URL)
       const image = document.createElement('img')
       image.dataset.markdownImage = ''
       image.setAttribute('alt', imageAlt)
-      image.setAttribute('src', imageHref)
+      image.setAttribute('src', imageSrc || imageHref)
       parent.append(image)
     } else if (linkText !== undefined && linkHref !== undefined) {
       const link = document.createElement('a')

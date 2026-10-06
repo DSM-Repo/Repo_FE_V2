@@ -464,20 +464,16 @@ test.describe('student resume management', () => {
     await expect(page.getByLabel('이력서 페이지 도구')).toHaveCount(0)
   })
 
-  test('submits the resume after saving from edit mode', async ({ page }) => {
-    let saveRequestBody: unknown
-    let submitRequestBody: string | null | undefined
+  test('submits the resume with the draft body from edit mode', async ({ page }) => {
+    let saveRequestCount = 0
+    let submitRequestBody: unknown
 
     await page.route('**/resume/save', async (route) => {
-      saveRequestBody = route.request().postDataJSON()
-      await route.fulfill({
-        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
-        contentType: 'application/json',
-        status: 200,
-      })
+      saveRequestCount += 1
+      await route.fulfill({ status: 500 })
     })
     await page.route(`${apiBaseUrl}/resume/submit`, async (route) => {
-      submitRequestBody = route.request().postData()
+      submitRequestBody = route.request().postDataJSON()
       await route.fulfill({
         body: JSON.stringify({ resumeId: 'resume-id', submissionStatus: 'SUBMITTED' }),
         contentType: 'application/json',
@@ -490,8 +486,8 @@ test.describe('student resume management', () => {
     await page.getByLabel('자기소개 제목').fill('제출할 이력서')
     await page.getByRole('button', { exact: true, name: '제출' }).click()
 
-    await expect.poll(() => saveRequestBody).toMatchObject({ introduce: '제출할 이력서' })
-    await expect.poll(() => submitRequestBody).toBe(null)
+    await expect.poll(() => submitRequestBody).toMatchObject({ introduce: '제출할 이력서' })
+    expect(saveRequestCount).toBe(0)
     await expect(page.getByRole('status')).toContainText('이력서를 제출했습니다.')
     await expect(page.getByRole('button', { name: '이력서 수정하기' })).toBeVisible()
     await expect(page.getByRole('button', { exact: true, name: '저장' })).toHaveCount(0)
@@ -610,13 +606,13 @@ test.describe('student resume management', () => {
               y: 0.42,
             },
             {
-              completedAt: '',
+              completedAt: '2026-09-22T10:00:00.000Z',
               content: '프로젝트 성과를 숫자로 표현해보세요.',
               createdAt: '2026-09-21T10:00:00.000Z',
               feedbackId: 'feedback-2',
               pageDeleted: false,
               pageId: 'server-page-2',
-              status: 'PENDING',
+              status: 'COMPLETED',
               teacherName: '이선생',
               x: 0.58,
               y: 0.36,
@@ -630,8 +626,11 @@ test.describe('student resume management', () => {
     })
     await page.route(`${apiBaseUrl}/feedback/apply`, async (route) => {
       applyRequestBody = route.request().postDataJSON()
+      const feedbackIds = Array.isArray((applyRequestBody as { feedbackIds?: unknown }).feedbackIds)
+        ? (applyRequestBody as { feedbackIds: unknown[] }).feedbackIds
+        : []
       await route.fulfill({
-        body: JSON.stringify({ failed: [], successCount: 2 }),
+        body: JSON.stringify({ failed: [], successCount: feedbackIds.length }),
         contentType: 'application/json',
         status: 200,
       })
@@ -649,7 +648,9 @@ test.describe('student resume management', () => {
     await expect(page.getByRole('heading', { name: '피드백 목록' })).toBeVisible()
     await expect(feedbackPanel.getByRole('button', { name: /문장 근거를 한 줄 더 추가해보세요/ })).toBeVisible()
     await expect(feedbackPanel.getByRole('button', { name: /프로젝트 성과를 숫자로 표현해보세요/ })).toBeVisible()
-    await expect(feedbackPanel.getByText('0개 선택됨')).toBeVisible()
+    await expect(feedbackPanel.getByText('0개 선택됨 · 미완료 1개 · 완료 1개')).toBeVisible()
+    await expect(feedbackPanel.getByText('미완료', { exact: true })).toBeVisible()
+    await expect(feedbackPanel.getByText('완료', { exact: true })).toBeVisible()
     await expect(
       page.locator('article[aria-label="이력서 작성 1쪽"]').getByRole('button', { name: /피드백 위치: 문장 근거를 한 줄 더 추가해보세요/ }),
     ).toBeVisible()
@@ -658,7 +659,7 @@ test.describe('student resume management', () => {
       .getByRole('button', { name: /피드백 위치: 프로젝트 성과를 숫자로 표현해보세요/ })
     await expect(secondPageFeedbackMarker).toBeVisible()
     await secondPageFeedbackMarker.click()
-    await expect(feedbackPanel.getByText('1개 선택됨')).toBeVisible()
+    await expect(feedbackPanel.getByText('0개 선택됨 · 미완료 1개 · 완료 1개')).toBeVisible()
     await expect(feedbackPanel.getByRole('paragraph').filter({ hasText: '프로젝트 성과를 숫자로 표현해보세요.' })).toBeVisible()
     await feedbackPanel.getByRole('button', { name: /문장 근거를 한 줄 더 추가해보세요/ }).click()
 
@@ -671,11 +672,11 @@ test.describe('student resume management', () => {
       expect(headerBox.x + headerBox.width).toBeLessThanOrEqual(feedbackPanelBox.x + 1)
     }
 
-    await expect(feedbackPanel.getByText('2개 선택됨')).toBeVisible()
+    await expect(feedbackPanel.getByText('1개 선택됨 · 미완료 1개 · 완료 1개')).toBeVisible()
     await feedbackPanel.getByRole('button', { exact: true, name: '완료 처리하기' }).click()
 
-    await expect.poll(() => applyRequestBody).toEqual({ applied: true, feedbackIds: ['feedback-1', 'feedback-2'] })
-    await expect(page.getByRole('status')).toContainText('2개 피드백을 완료 처리했습니다.')
+    await expect.poll(() => applyRequestBody).toEqual({ applied: true, feedbackIds: ['feedback-1'] })
+    await expect(page.getByRole('status')).toContainText('1개 피드백을 완료 처리했습니다.')
   })
 
   test('allows writing a resume before opening an existing resume', async ({ page }) => {
@@ -819,6 +820,63 @@ test.describe('student resume management', () => {
     await page.getByRole('button', { exact: true, name: '저장' }).click()
 
     await expect.poll(() => savedProjectImageUrl).toBe('https://cdn.example.test/dsm_repo/project.png')
+  })
+
+  test('resolves a root-relative uploaded project image url before previewing and saving', async ({ page }) => {
+    let savedProjectImageUrl = ''
+    const png1x1 = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lH9fWAAAAABJRU5ErkJggg==',
+      'base64',
+    )
+
+    await page.route(`${apiBaseUrl}/image`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          imageUrl: '/relative-project.png',
+          key: 'dsm_repo/relative-project.png',
+        }),
+        contentType: 'application/json',
+        status: 201,
+      })
+    })
+    await page.route(`${apiBaseUrl}/relative-project.png`, async (route) => {
+      await route.fulfill({
+        body: png1x1,
+        contentType: 'image/png',
+        status: 200,
+      })
+    })
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as {
+        pages: Array<{ project?: { imageUrl?: string } }>
+      }
+      savedProjectImageUrl = requestBody.pages[1]?.project?.imageUrl ?? ''
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.setViewportSize({ height: 1080, width: 1920 })
+    await page.goto('/resume?mode=edit')
+
+    const fileChooserPromise = page.waitForEvent('filechooser')
+    await page.getByRole('button', { name: '프로젝트 이미지 추가' }).click()
+    const fileChooser = await fileChooserPromise
+    await fileChooser.setFiles({
+      buffer: Buffer.from('fake png bytes'),
+      mimeType: 'image/png',
+      name: 'project.png',
+    })
+
+    const projectImage = page.getByRole('button', { name: '프로젝트 이미지 변경' }).locator('img')
+    await expect(projectImage).toBeVisible()
+    await expect.poll(async () => projectImage.evaluate((image) => image instanceof HTMLImageElement && image.naturalWidth)).toBe(1)
+
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+
+    await expect.poll(() => savedProjectImageUrl).toBe(`${apiBaseUrl}/relative-project.png`)
   })
 
   test('adds a portfolio URL as a QR code and saves the URL', async ({ page }) => {
@@ -1161,9 +1219,19 @@ test.describe('student resume management', () => {
 
     await page.route(`${apiBaseUrl}/image`, async (route) => {
       await route.fulfill({
-        body: JSON.stringify({ imageUrl: new URL('/uploaded-paste.png', page.url()).href, key: 'uploaded-paste.png' }),
+        body: JSON.stringify({ key: 'dsm_repo/uploaded-paste.png', link: '/uploaded-paste.png' }),
         contentType: 'application/json',
         status: 201,
+      })
+    })
+    await page.route(`${apiBaseUrl}/uploaded-paste.png`, async (route) => {
+      await route.fulfill({
+        body: Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lH9fWAAAAABJRU5ErkJggg==',
+          'base64',
+        ),
+        contentType: 'image/png',
+        status: 200,
       })
     })
     await page.route(`${apiBaseUrl}/user`, async (route) => {
@@ -1207,6 +1275,13 @@ test.describe('student resume management', () => {
     await expect(firstPageContent.locator('img[alt="노션 이미지"]')).toBeVisible()
     await expect(firstPageContent.locator('img[alt="Screenshot 2026-06-17 at 09.53.01.png"]')).toBeVisible()
     await expect(firstPageContent.locator('img[alt="clipboard-image.png"]')).toBeVisible()
+    await expect
+      .poll(async () =>
+        firstPageContent
+          .locator('img[alt="clipboard-image.png"]')
+          .evaluate((image) => image instanceof HTMLImageElement && image.naturalWidth),
+      )
+      .toBe(1)
 
     const secondPage = page.getByRole('article', { name: '이력서 작성 2쪽' })
     await expect(secondPage.getByLabel('프로젝트 이름')).toHaveCount(0)
@@ -1232,7 +1307,7 @@ test.describe('student resume management', () => {
     expect(savedPastedContent).toContain('<u>밑줄 메모</u>')
     expect(savedPastedContent).toContain('![노션 이미지](data:image/png;base64')
     expect(savedPastedContent).toContain('![Screenshot 2026-06-17 at 09.53.01.png](https://cdn.example.test/notion-capture.png)')
-    expect(savedPastedContent).toContain('![clipboard-image.png](http://localhost')
+    expect(savedPastedContent).toContain(`![clipboard-image.png](${apiBaseUrl}/uploaded-paste.png)`)
     expect(savedPages[1]?.content).toContain('노션에서 붙여넣은 긴 활동 문단')
 
     await expect(page.getByLabel('이력서 미리보기')).toBeVisible()
@@ -1835,5 +1910,31 @@ test.describe('student resume management', () => {
     await page.clock.fastForward(1_000)
     await expect.poll(() => autoSaveRequestCount).toBe(1)
     await expect(page.getByRole('status')).toContainText('변경사항을 자동 저장했습니다.')
+  })
+
+  test('stops auto-save after a released resume conflict', async ({ page }) => {
+    let autoSaveRequestCount = 0
+
+    await page.clock.install()
+    await page.route('**/resume/auto-save', async (route) => {
+      autoSaveRequestCount += 1
+      await route.fulfill({
+        body: JSON.stringify({ message: '공개된 이력서는 수정할 수 없습니다.' }),
+        contentType: 'application/json',
+        status: 409,
+      })
+    })
+    await page.goto('/resume?mode=edit')
+
+    await page.getByLabel('자기소개 제목').fill('공개 후 수정 시도')
+    await page.clock.fastForward(180_000)
+
+    await expect.poll(() => autoSaveRequestCount).toBe(1)
+    await expect(page.getByRole('alert').filter({ hasText: '공개된 이력서는 수정할 수 없습니다.' })).toBeVisible()
+
+    await page.getByLabel('이메일').first().fill('blocked@example.com')
+    await page.clock.fastForward(180_000)
+
+    expect(autoSaveRequestCount).toBe(1)
   })
 })

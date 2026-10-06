@@ -522,14 +522,14 @@ test('submitResume sends bearer auth and returns parsed submission state', async
   let requestedUrl = ''
   let requestedMethod = ''
   let requestedAuthorization = ''
-  let requestedBody: BodyInit | null | undefined
+  let requestedBody = ''
   let requestedContentType = ''
 
   globalThis.fetch = async (input, init) => {
     requestedUrl = String(input)
     requestedMethod = init?.method ?? ''
     requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
-    requestedBody = init?.body
+    requestedBody = String(init?.body)
     requestedContentType = new Headers(init?.headers).get('Content-Type') ?? ''
 
     return new Response(JSON.stringify({ resumeId: 'resume-id', submissionStatus: 'SUBMITTED' }), {
@@ -542,13 +542,29 @@ test('submitResume sends bearer auth and returns parsed submission state', async
 
   const result = await resumeApi.submitResume({
     accessToken: 'access-token',
+    email: 'student@example.test',
+    introduce: '제출할 이력서',
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+    portfolioUrl: 'https://repo.example.test/hong',
+    profileImageUrl: 'https://cdn.example.test/profile.png',
+    skills: ['React', 'TypeScript'],
   })
 
   assert.equal(requestedUrl, 'https://api.example.test/resume/submit')
   assert.equal(requestedMethod, 'POST')
   assert.equal(requestedAuthorization, 'Bearer access-token')
-  assert.equal(requestedBody, undefined)
-  assert.equal(requestedContentType, '')
+  assert.equal(requestedContentType, 'application/json')
+  assert.equal(
+    requestedBody,
+    JSON.stringify({
+      email: 'student@example.test',
+      introduce: '제출할 이력서',
+      pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+      portfolioUrl: 'https://repo.example.test/hong',
+      profileImageUrl: 'https://cdn.example.test/profile.png',
+      skills: ['React', 'TypeScript'],
+    }),
+  )
   assert.deepEqual(result, {
     kind: 'success',
     resumeId: 'resume-id',
@@ -599,11 +615,41 @@ test('submitResume returns server-error when the response body is not submission
 
   const result = await resumeApi.submitResume({
     accessToken: 'access-token',
+    email: '',
+    introduce: '',
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+    portfolioUrl: '',
+    skills: [],
   })
 
   assert.deepEqual(result, {
     kind: 'server-error',
     message: '이력서 제출 응답 형식이 올바르지 않습니다.',
+  })
+})
+
+test('submitResume exposes server messages for validation and conflict responses', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ message: '선생님이 공개한 이력서는 수정할 수 없습니다.' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 409,
+    })
+
+  const result = await resumeApi.submitResume({
+    accessToken: 'access-token',
+    email: 'student@example.test',
+    introduce: '사용자 소개',
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+    portfolioUrl: '',
+    skills: [],
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '선생님이 공개한 이력서는 수정할 수 없습니다.',
+    status: 409,
   })
 })
 
@@ -712,7 +758,34 @@ test('uploadResumeImage sends multipart form data with bearer auth and returns u
   })
 })
 
-test('uploadResumeImage rejects uploaded image responses without an accessible image url', async () => {
+test('uploadResumeImage resolves root-relative uploaded image urls against the API base URL', async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        imageUrl: '/4514af56-7086-4600-8257-af4a817e6.png',
+        key: 'dsm_repo/4514af56-7086-4600-8257-af4a817e6.png',
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 201,
+      },
+    )
+
+  const result = await resumeApi.uploadResumeImage({
+    accessToken: 'access-token',
+    image: new File(['image-bytes'], 'profile.png', { type: 'image/png' }),
+  })
+
+  assert.deepEqual(result, {
+    imageUrl: 'https://api.example.test/4514af56-7086-4600-8257-af4a817e6.png',
+    key: 'dsm_repo/4514af56-7086-4600-8257-af4a817e6.png',
+    kind: 'success',
+  })
+})
+
+test('uploadResumeImage rejects bare file keys as image urls', async () => {
   globalThis.fetch = async () =>
     new Response(
       JSON.stringify({
@@ -735,6 +808,33 @@ test('uploadResumeImage rejects uploaded image responses without an accessible i
   assert.deepEqual(result, {
     kind: 'server-error',
     message: '이미지 업로드 응답 형식이 올바르지 않습니다.',
+  })
+})
+
+test('uploadResumeImage accepts FileResponse link as the uploaded image url', async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        key: 'dsm_repo/profile.png',
+        link: 'https://cdn.example.test/dsm_repo/profile.png',
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 201,
+      },
+    )
+
+  const result = await resumeApi.uploadResumeImage({
+    accessToken: 'access-token',
+    image: new File(['image-bytes'], 'profile.png', { type: 'image/png' }),
+  })
+
+  assert.deepEqual(result, {
+    imageUrl: 'https://cdn.example.test/dsm_repo/profile.png',
+    key: 'dsm_repo/profile.png',
+    kind: 'success',
   })
 })
 
@@ -820,6 +920,31 @@ test('saveResume returns server-error when the response body is not save state',
   })
 })
 
+test('saveResume exposes server messages for handled mutation failures', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ message: '필수 항목을 확인해주세요.' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 400,
+    })
+
+  const result = await resumeApi.saveResume({
+    accessToken: 'access-token',
+    email: '',
+    introduce: '',
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+    portfolioUrl: '',
+    skills: [],
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '필수 항목을 확인해주세요.',
+    status: 400,
+  })
+})
+
 test('autoSaveResume returns server-error when the response body is not auto-save state', async () => {
   globalThis.fetch = async () =>
     new Response(JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-10T14:03:53.700Z' }), {
@@ -841,5 +966,30 @@ test('autoSaveResume returns server-error when the response body is not auto-sav
   assert.deepEqual(result, {
     kind: 'server-error',
     message: '이력서 자동 저장 응답 형식이 올바르지 않습니다.',
+  })
+})
+
+test('autoSaveResume exposes server messages for handled mutation failures', async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ message: '삭제된 이력서는 수정할 수 없습니다.' }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      status: 410,
+    })
+
+  const result = await resumeApi.autoSaveResume({
+    accessToken: 'access-token',
+    email: '',
+    introduce: '',
+    pages: [{ content: '첫 페이지 내용', index: 0, type: 'PROFILE' }],
+    portfolioUrl: '',
+    skills: [],
+  })
+
+  assert.deepEqual(result, {
+    kind: 'server-error',
+    message: '삭제된 이력서는 수정할 수 없습니다.',
+    status: 410,
   })
 })

@@ -375,6 +375,11 @@
   line-height: var(--repo-font-body-tiny-line-height);
 }
 
+.feedbackListHeader span {
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
 .feedbackBulkAction,
 .feedbackCancelAction {
   display: inline-flex;
@@ -459,11 +464,21 @@
   border-color: var(--repo-gray-600);
 }
 
+.selectedFeedbackItem {
+  background: rgb(255 255 255 / 8%);
+  box-shadow: inset 0 0 0 1px var(--repo-gray-50);
+}
+
+.completedFeedbackItem {
+  border-color: transparent;
+  opacity: 0.72;
+}
+
 .feedbackItemButton {
   display: grid;
   width: 100%;
   min-height: 42px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   padding: 0 14px;
@@ -472,6 +487,19 @@
   color: var(--repo-gray-50);
   background: transparent;
   text-align: left;
+}
+
+.feedbackSelectionMark {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--repo-gray-500);
+  border-radius: 50%;
+}
+
+.feedbackSelectionMark[data-selected='true'] {
+  border-color: var(--repo-gray-50);
+  background: var(--repo-gray-50);
+  box-shadow: inset 0 0 0 3px var(--repo-bg-main-point);
 }
 
 .feedbackTitle {
@@ -499,6 +527,33 @@
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: 1.25;
   white-space: nowrap;
+}
+
+.feedbackStatusBadge {
+  display: inline-flex;
+  min-width: 54px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border: 1px solid var(--repo-gray-500);
+  border-radius: var(--repo-radius-pill);
+  color: var(--repo-gray-300);
+  font-size: 13px;
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.feedbackStatusBadge[data-status='pending'] {
+  border-color: var(--repo-gray-400);
+  color: var(--repo-gray-50);
+}
+
+.feedbackStatusBadge[data-status='completed'] {
+  border-color: var(--repo-gray-600);
+  background: var(--repo-gray-600);
+  color: var(--repo-gray-50);
 }
 
 .feedbackChevron {

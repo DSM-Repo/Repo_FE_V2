@@ -191,6 +191,92 @@ test('getLibraryResumeByStudentId requests one public resume and returns parsed 
   })
 })
 
+test('getLibraryResumeByStudentId accepts nullable profile image from library resume response', async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        cohort: 11,
+        date: 2026,
+        email: 'taekyun0117@dsm.hs.kr',
+        introduce: '백엔드 김태균입니다\n문제를 정의하고 생각하는 개발자',
+        majorName: 'Backend',
+        name: '김태균',
+        pages: [
+          {
+            content: '---\n- 2026.08.06 - softwave 참관',
+            id: '3d5ae3e3-60fa-4730-91ac-8c15fb9fe516',
+            index: 0,
+            project: null,
+            type: 'PROFILE',
+          },
+        ],
+        portfolioUrl: 'https://github.com/DSM-Repo/Repo_BE_V2',
+        profileImageUrl: null,
+        releasedAt: '2026-10-06T04:13:03.628',
+        resumeId: '6abc64ee9bd1dbbed64d9027',
+        studentId: 3,
+        studentNumber: '2205',
+        year: 2,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+
+  const result = await libraryApi.getLibraryResumeByStudentId({ accessToken: 'access-token', studentId: 3 })
+
+  assert.equal(result.kind, 'success')
+  if (result.kind === 'success') {
+    assert.equal(result.resume.profileImageUrl, '')
+    assert.equal(result.resume.name, '김태균')
+    assert.equal(result.resume.pages[0]?.id, '3d5ae3e3-60fa-4730-91ac-8c15fb9fe516')
+  }
+})
+
+test('getLibraryResumeByStudentId resolves root-relative profile image urls against the API base URL', async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        cohort: 11,
+        date: 2026,
+        email: 'taekyun0117@dsm.hs.kr',
+        introduce: '백엔드 김태균입니다',
+        majorName: 'Backend',
+        name: '김태균',
+        pages: [
+          {
+            content: '내용',
+            id: '3d5ae3e3-60fa-4730-91ac-8c15fb9fe516',
+            index: 0,
+          },
+        ],
+        portfolioUrl: 'https://github.com/DSM-Repo/Repo_BE_V2',
+        profileImageUrl: '/profiles/taekyun.png',
+        releasedAt: '2026-10-06T04:13:03.628',
+        resumeId: '6abc64ee9bd1dbbed64d9027',
+        studentId: 3,
+        studentNumber: '2205',
+        year: 2,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+
+  const result = await libraryApi.getLibraryResumeByStudentId({ accessToken: 'access-token', studentId: 3 })
+
+  assert.equal(result.kind, 'success')
+  if (result.kind === 'success') {
+    assert.equal(result.resume.profileImageUrl, 'https://api.example.test/profiles/taekyun.png')
+  }
+})
+
 test('getLibraryResumeByStudentId returns not-found when the public resume is unavailable', async () => {
   globalThis.fetch = async () => new Response(null, { status: 404 })
 

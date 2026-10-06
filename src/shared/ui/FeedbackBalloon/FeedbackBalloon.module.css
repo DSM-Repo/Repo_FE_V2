@@ -41,6 +41,18 @@
     0 0 0 3px var(--repo-gray-50);
 }
 
+.balloon[data-selected='true'] .avatar {
+  box-shadow:
+    var(--repo-shadow-book),
+    0 0 0 3px var(--repo-gray-50),
+    0 0 0 6px var(--repo-bg-main-point);
+}
+
+.balloon[data-completed='true'] .avatar,
+.balloon[data-completed='true'] .message {
+  background: var(--repo-gray-600);
+}
+
 .avatarImage {
   width: 48px;
   height: 48px;
@@ -89,6 +101,28 @@
   overflow-wrap: normal;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.status {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid rgb(255 255 255 / 36%);
+  border-radius: var(--repo-radius-pill);
+  color: var(--repo-gray-50);
+  font-size: 13px;
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.balloon[data-selected='true'] .status {
+  background: var(--repo-gray-50);
+  color: var(--repo-bg-main-point);
+}
+
+.balloon[data-completed='true'] .status {
+  background: var(--repo-gray-50);
+  color: var(--repo-gray-600);
 }
 
 .checkIcon {

@@ -19,6 +19,7 @@ import {
   type LibraryRequestFailure,
   type LibraryRequestResponse,
 } from './libraryHttpClient'
+import { normalizeApiImageUrl } from '../../../shared/api/imageUrl'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -40,6 +41,7 @@ const RESPONSE_BODY_STREAM_FAILURE = {
   kind: 'network-error',
   message: '도서관 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
 } as const satisfies LibraryRequestFailure
+const LIBRARY_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 type LibraryHttpResponse = Extract<LibraryRequestResponse, { readonly kind: 'response' }>
 type InvalidLibraryResponse = typeof INVALID_LIBRARY_RESPONSE | typeof INVALID_LIBRARY_SEARCH_RESPONSE | typeof INVALID_LIBRARY_RESUME_RESPONSE
@@ -167,7 +169,7 @@ function parseLibraryResume(value: unknown): LibraryResume | undefined {
     typeof value['majorName'] !== 'string' ||
     typeof value['name'] !== 'string' ||
     typeof value['portfolioUrl'] !== 'string' ||
-    typeof value['profileImageUrl'] !== 'string' ||
+    (typeof value['profileImageUrl'] !== 'string' && value['profileImageUrl'] !== null) ||
     typeof value['releasedAt'] !== 'string' ||
     typeof value['resumeId'] !== 'string' ||
     typeof value['studentId'] !== 'number' ||
@@ -192,7 +194,8 @@ function parseLibraryResume(value: unknown): LibraryResume | undefined {
     name: value['name'],
     pages,
     portfolioUrl: value['portfolioUrl'],
-    profileImageUrl: value['profileImageUrl'],
+    profileImageUrl:
+      typeof value['profileImageUrl'] === 'string' ? normalizeApiImageUrl(value['profileImageUrl'], LIBRARY_API_BASE_URL) : '',
     releasedAt: value['releasedAt'],
     resumeId: value['resumeId'],
     studentId: value['studentId'],

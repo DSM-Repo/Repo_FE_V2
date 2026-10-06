@@ -468,6 +468,7 @@ export function StudentResumePageContent() {
   const manualSaveRequestedRef = useRef(false)
   const autoSaveTimerRef = useRef<number | undefined>(undefined)
   const autoSaveGenerationRef = useRef(0)
+  const isAutoSaveBlockedRef = useRef(false)
   const pendingSaveModeRef = useRef<SaveMode | undefined>(undefined)
   const saveOperationRef = useRef(0)
 
@@ -630,9 +631,25 @@ export function StudentResumePageContent() {
   const canMovePrevious = normalizedSpreadStartIndex > 0
   const canMoveNext = normalizedSpreadStartIndex < maxSpreadStartIndex
   const visiblePageCount = Math.min(normalizedSpreadStartIndex + 2, draft.pages.length)
-  const selectedFeedbackCount = selectedFeedbackIds.size
+  const selectedFeedbackCount =
+    feedbackLoadState.kind === 'success'
+      ? feedbackLoadState.feedbacks.filter(
+          (feedback) => selectedFeedbackIds.has(feedback.feedbackId) && !isCompletedFeedback(feedback),
+        ).length
+      : selectedFeedbackIds.size
+  const completedFeedbackCount =
+    feedbackLoadState.kind === 'success' ? feedbackLoadState.feedbacks.filter(isCompletedFeedback).length : 0
+  const pendingFeedbackCount =
+    feedbackLoadState.kind === 'success' ? feedbackLoadState.feedbacks.length - completedFeedbackCount : 0
   const isFeedbackSubmitting = feedbackSubmitState.kind !== 'idle'
   const toggleFeedbackSelection = useCallback((feedbackId: string) => {
+    if (
+      feedbackLoadState.kind === 'success' &&
+      feedbackLoadState.feedbacks.some((feedback) => feedback.feedbackId === feedbackId && isCompletedFeedback(feedback))
+    ) {
+      return
+    }
+
     setSelectedFeedbackIds((currentFeedbackIds) => {
       const nextFeedbackIds = new Set(currentFeedbackIds)
 
@@ -644,9 +661,17 @@ export function StudentResumePageContent() {
 
       return nextFeedbackIds
     })
-  }, [])
+  }, [feedbackLoadState])
   const selectFeedback = useCallback((feedbackId: string) => {
     setOpenFeedbackId(feedbackId)
+
+    if (
+      feedbackLoadState.kind === 'success' &&
+      feedbackLoadState.feedbacks.some((feedback) => feedback.feedbackId === feedbackId && isCompletedFeedback(feedback))
+    ) {
+      return
+    }
+
     setSelectedFeedbackIds((currentFeedbackIds) => {
       if (currentFeedbackIds.has(feedbackId)) {
         return currentFeedbackIds
@@ -654,7 +679,7 @@ export function StudentResumePageContent() {
 
       return new Set(currentFeedbackIds).add(feedbackId)
     })
-  }, [])
+  }, [feedbackLoadState])
   const toPageFeedbackMarkers = useCallback(
     (page: ResumeDraftPage | undefined): readonly ResumeBookSheetFeedbackMarker[] => {
       if (viewMode !== 'feedback' || feedbackLoadState.kind !== 'success' || !page?.id) {
@@ -665,19 +690,21 @@ export function StudentResumePageContent() {
         .filter((feedback) => feedback.pageId === page.id)
         .map((feedback) => {
           const title = toFeedbackSummary(feedback.content)
+          const isCompleted = isCompletedFeedback(feedback)
 
           return {
             active: openFeedbackId === feedback.feedbackId,
-            checked: isCompletedFeedback(feedback),
+            checked: isCompleted,
             id: feedback.feedbackId,
             onSelect: () => selectFeedback(feedback.feedbackId),
+            selected: selectedFeedbackIds.has(feedback.feedbackId) && !isCompleted,
             title,
             x: feedback.x,
             y: feedback.y,
           }
         })
     },
-    [feedbackLoadState, openFeedbackId, selectFeedback, viewMode],
+    [feedbackLoadState, openFeedbackId, selectFeedback, selectedFeedbackIds, viewMode],
   )
 
   useEffect(() => {
@@ -751,7 +778,7 @@ export function StudentResumePageContent() {
     }
 
     const targetFeedbackIds = feedbackLoadState.feedbacks
-      .filter((feedback) => selectedFeedbackIds.has(feedback.feedbackId))
+      .filter((feedback) => selectedFeedbackIds.has(feedback.feedbackId) && !isCompletedFeedback(feedback))
       .map((feedback) => feedback.feedbackId)
 
     if (targetFeedbackIds.length === 0) {
@@ -1051,6 +1078,10 @@ export function StudentResumePageContent() {
 
   const handleSave = useCallback(
     async (mode: SaveMode, options: SaveOptions = {}) => {
+      if (mode === 'auto' && isAutoSaveBlockedRef.current) {
+        return undefined
+      }
+
       if (mode === 'auto' && (manualSaveRequestedRef.current || pendingSaveModeRef.current === 'manual')) {
         return undefined
       }
@@ -1115,6 +1146,14 @@ export function StudentResumePageContent() {
       }
 
       if (result.kind !== 'success') {
+        if (result.status === 409) {
+          isAutoSaveBlockedRef.current = true
+          autoSaveGenerationRef.current += 1
+          if (autoSaveTimerRef.current !== undefined) {
+            window.clearTimeout(autoSaveTimerRef.current)
+            autoSaveTimerRef.current = undefined
+          }
+        }
         savePendingRef.current = false
         pendingSaveModeRef.current = undefined
         if (mode === 'manual') {
@@ -1146,6 +1185,7 @@ export function StudentResumePageContent() {
       }
 
       savePendingRef.current = false
+      isAutoSaveBlockedRef.current = false
       pendingSaveModeRef.current = undefined
       if (mode === 'manual') {
         manualSaveRequestedRef.current = false
@@ -1235,29 +1275,104 @@ export function StudentResumePageContent() {
     }
 
     manualSaveRequestedRef.current = true
-    const savedResumeId = await handleSave('manual', { stayEditing: true })
-
-    if (!savedResumeId) {
-      return
-    }
 
     const accessToken = getSavedAccessToken()
 
     if (!accessToken) {
+      manualSaveRequestedRef.current = false
       setActionFeedback({ message: '로그인 후 이력서를 제출할 수 있습니다.', tone: 'error' })
       return
     }
 
+    const activeResume = loadState.kind === 'success' ? loadState.resume : undefined
+    const pages = toResumePages(draft, activeResume)
+    const savePages = toResumeSavePages(draft, activeResume)
+    const saveRevision = draftRevisionRef.current
+    const documentSession = documentSessionRef.current
+    const submitOperation = ++saveOperationRef.current
+
+    savePendingRef.current = true
+    pendingSaveModeRef.current = 'manual'
     setActionFeedback(undefined)
     setSaveSubmitState('submit')
 
-    const result = await submitResume({ accessToken })
+    const result = await submitResume({
+      accessToken,
+      email: draft.email,
+      introduce: joinIntroduction(draft),
+      pages: savePages,
+      portfolioUrl: draft.portfolioUrl,
+      profileImageUrl: draft.profileImageUrl,
+      skills: draft.skills,
+    })
 
+    if (saveOperationRef.current !== submitOperation || documentSessionRef.current !== documentSession) {
+      if (saveOperationRef.current === submitOperation) {
+        savePendingRef.current = false
+        pendingSaveModeRef.current = undefined
+        manualSaveRequestedRef.current = false
+        setSaveSubmitState('idle')
+      }
+      return
+    }
+
+    savePendingRef.current = false
+    pendingSaveModeRef.current = undefined
+    manualSaveRequestedRef.current = false
     setSaveSubmitState('idle')
 
     if (result.kind !== 'success') {
+      if (result.status === 409) {
+        isAutoSaveBlockedRef.current = true
+        autoSaveGenerationRef.current += 1
+        if (autoSaveTimerRef.current !== undefined) {
+          window.clearTimeout(autoSaveTimerRef.current)
+          autoSaveTimerRef.current = undefined
+        }
+      }
       setActionFeedback({ message: result.message, tone: 'error' })
       return
+    }
+
+    viewedResumeIdRef.current = result.resumeId
+    saveResumeId(result.resumeId)
+    isAutoSaveBlockedRef.current = false
+
+    const syncedResumeResult = pages.some((page) => !page.id.trim())
+      ? await getResumeById({
+          accessToken,
+          resumeId: result.resumeId,
+        })
+      : undefined
+    const syncedResume = syncedResumeResult?.kind === 'success' ? syncedResumeResult.resume : undefined
+
+    if (saveOperationRef.current !== submitOperation || documentSessionRef.current !== documentSession) {
+      return
+    }
+
+    if (syncedResume) {
+      setLoadState({ kind: 'success', resume: { ...syncedResume, submissionStatus: result.submissionStatus } })
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        pages: currentDraft.pages.map((page) => {
+          const savedPage = syncedResume.pages.find((candidate) => candidate.index === page.index && candidate.type === page.type)
+          return savedPage ? { ...page, id: savedPage.id } : page
+        }),
+      }))
+    } else if (activeResume) {
+      setLoadState({
+        kind: 'success',
+        resume: {
+          ...activeResume,
+          email: draft.email,
+          introduce: joinIntroduction(draft),
+          pages,
+          portfolioUrl: draft.portfolioUrl,
+          profileImageUrl: draft.profileImageUrl,
+          skills: draft.skills,
+          submissionStatus: result.submissionStatus,
+        },
+      })
     }
 
     setLoadState((currentState) =>
@@ -1265,12 +1380,15 @@ export function StudentResumePageContent() {
         ? { kind: 'success', resume: { ...currentState.resume, submissionStatus: result.submissionStatus } }
         : currentState,
     )
+    if (draftRevisionRef.current === saveRevision) {
+      setIsDraftDirty(false)
+    }
     setFeedbackLoadState({ kind: 'idle' })
     setOpenFeedbackId(undefined)
     setViewMode('view')
     window.history.replaceState(null, '', `/resume?resumeId=${encodeURIComponent(result.resumeId)}`)
     setActionFeedback({ message: '이력서를 제출했습니다.', tone: 'success' })
-  }, [handleSave, isResumeActionPending, isResumeReady])
+  }, [draft, isResumeActionPending, isResumeReady, loadState])
 
   useEffect(() => {
     if (!isDraftDirty || !isEditing || isResumeActionPending || savePendingRef.current) {
@@ -1488,7 +1606,11 @@ export function StudentResumePageContent() {
               </button>
             </div>
             <div className={styles.feedbackListHeader}>
-              <span>{feedbackLoadState.kind === 'success' ? `${selectedFeedbackCount}개 선택됨` : '목록'}</span>
+              <span>
+                {feedbackLoadState.kind === 'success'
+                  ? `${selectedFeedbackCount}개 선택됨 · 미완료 ${pendingFeedbackCount}개 · 완료 ${completedFeedbackCount}개`
+                  : '목록'}
+              </span>
             </div>
             {feedbackLoadState.kind === 'loading' ? <p className={styles.feedbackPanelMessage}>피드백을 불러오는 중입니다.</p> : null}
             {feedbackLoadState.kind === 'failure' ? (
@@ -1503,11 +1625,12 @@ export function StudentResumePageContent() {
               <ul className={styles.feedbackList}>
                 {feedbackLoadState.feedbacks.map((item) => {
                   const isOpen = openFeedbackId === item.feedbackId
-                  const isSelected = selectedFeedbackIds.has(item.feedbackId)
+                  const isCompleted = isCompletedFeedback(item)
+                  const isSelected = selectedFeedbackIds.has(item.feedbackId) && !isCompleted
 
                   return (
                     <li
-                      className={`${styles.feedbackItem} ${isOpen ? styles.openFeedbackItem : ''} ${isSelected ? styles.selectedFeedbackItem : ''}`}
+                      className={`${styles.feedbackItem} ${isOpen ? styles.openFeedbackItem : ''} ${isSelected ? styles.selectedFeedbackItem : ''} ${isCompleted ? styles.completedFeedbackItem : ''}`}
                       key={item.feedbackId}
                     >
                       <button
@@ -1515,14 +1638,24 @@ export function StudentResumePageContent() {
                         aria-pressed={isSelected}
                         className={styles.feedbackItemButton}
                         onClick={() => {
-                          toggleFeedbackSelection(item.feedbackId)
                           setOpenFeedbackId(item.feedbackId)
+                          if (!isCompleted) {
+                            toggleFeedbackSelection(item.feedbackId)
+                          }
                         }}
                         type="button"
                       >
+                        <span
+                          aria-hidden="true"
+                          className={styles.feedbackSelectionMark}
+                          data-selected={isSelected ? 'true' : undefined}
+                        />
                         <span className={styles.feedbackTitle}>
                           <span className={styles.feedbackSummary}>{toFeedbackSummary(item.content)}</span>
                           <span className={styles.feedbackMeta}>{formatFeedbackDate(item.createdAt)}</span>
+                        </span>
+                        <span className={styles.feedbackStatusBadge} data-status={isCompleted ? 'completed' : 'pending'}>
+                          {isCompleted ? '완료' : isSelected ? '선택됨' : '미완료'}
                         </span>
                         <span className={styles.feedbackChevron} data-open={isOpen ? 'true' : 'false'}>
                           <Icon name="chevron-right" />

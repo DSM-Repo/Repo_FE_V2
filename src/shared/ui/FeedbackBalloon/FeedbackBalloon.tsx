@@ -8,6 +8,7 @@ export interface FeedbackBalloonProps extends Omit<HTMLAttributes<HTMLDivElement
   avatarSrc?: string
   buttonAriaLabel?: string
   checked?: boolean
+  selected?: boolean
   onActivate?: () => void
   title: ReactNode
 }
@@ -16,22 +17,30 @@ export function FeedbackBalloon({
   avatarAlt = '피드백 작성자 프로필',
   avatarSrc = '/person.svg',
   buttonAriaLabel = '피드백 내용 보기',
-  checked = true,
+  checked = false,
   className,
   onActivate,
+  selected = false,
   title,
   ...props
 }: FeedbackBalloonProps) {
   const balloonClassName = [styles.balloon, className].filter(Boolean).join(' ')
+  const statusLabel = checked ? '완료' : selected ? '선택됨' : '미완료'
 
   return (
-    <div className={balloonClassName} {...props}>
+    <div
+      className={balloonClassName}
+      data-completed={checked ? 'true' : undefined}
+      data-selected={selected ? 'true' : undefined}
+      {...props}
+    >
       <button aria-label={buttonAriaLabel} className={styles.avatar} onClick={onActivate} type="button">
         <Image alt={avatarAlt} className={styles.avatarImage} height={48} src={avatarSrc} width={48} />
       </button>
 
       <div className={styles.message}>
         <span className={styles.title}>{title}</span>
+        <span className={styles.status}>{statusLabel}</span>
         {checked ? <CheckCircleIcon className={styles.checkIcon} /> : null}
       </div>
     </div>

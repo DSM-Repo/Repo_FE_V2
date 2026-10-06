@@ -2,6 +2,7 @@ import { Fragment, type MouseEvent, type ReactNode } from 'react'
 import Image from 'next/image'
 
 import { FeedbackBalloon } from '@/shared/ui/FeedbackBalloon'
+import { normalizeDisplayImageUrl } from '@/shared/api/imageUrl'
 import { Icon } from '@/shared/ui/Icon'
 import { QrCode } from '@/shared/ui/QrCode'
 
@@ -53,6 +54,7 @@ export type ResumeBookSheetFeedbackMarker = {
   readonly checked?: boolean
   readonly id: string
   readonly onSelect?: () => void
+  readonly selected?: boolean
   readonly title: string
   readonly x: number
   readonly y: number
@@ -84,6 +86,8 @@ type MarkdownBlock =
       readonly kind: 'bulletList'
       readonly text: string
     }
+
+const RESUME_BOOK_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 function toMarkdownBlock(line: string): MarkdownBlock | undefined {
   const trimmedLine = line.trim()
@@ -142,25 +146,7 @@ function toSafeHref(value: string) {
 }
 
 function toSafeImageSrc(value: string) {
-  if (value.startsWith('data:image/')) {
-    return value
-  }
-
-  try {
-    const url = new URL(value)
-
-    if (url.protocol === 'http:' || url.protocol === 'https:') {
-      return url.href
-    }
-  } catch (error) {
-    if (error instanceof TypeError) {
-      return undefined
-    }
-
-    throw error
-  }
-
-  return undefined
+  return normalizeDisplayImageUrl(value, RESUME_BOOK_API_BASE_URL) || undefined
 }
 
 function renderMarkdownInline(value: string): readonly ReactNode[] {
@@ -350,6 +336,7 @@ function renderFeedbackMarkers(feedbackMarkers: readonly ResumeBookSheetFeedback
           data-active={marker.active ? 'true' : undefined}
           key={marker.id}
           onActivate={marker.onSelect}
+          selected={marker.selected}
           style={{
             left: toFeedbackPosition(marker.x, 'x'),
             top: toFeedbackPosition(marker.y, 'y'),

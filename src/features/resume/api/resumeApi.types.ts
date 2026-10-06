@@ -80,7 +80,9 @@ export type ResumeImageUploadInput = {
   readonly image: File
 }
 
-export type ResumeSubmissionInput = {
+export type ResumeSubmissionInput = ResumeSaveInput
+
+export type ResumeSubmissionCancelInput = {
   readonly accessToken: string
 }
 
@@ -170,6 +172,7 @@ export type ResumeSubmissionResult =
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
       readonly message: string
+      readonly status?: number
     }
 
 export type ResumeSaveResult =
@@ -179,6 +182,7 @@ export type ResumeSaveResult =
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
       readonly message: string
+      readonly status?: number
     }
 
 export type ResumeAutoSaveResult =
@@ -188,6 +192,7 @@ export type ResumeAutoSaveResult =
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
       readonly message: string
+      readonly status?: number
     }
 
 export type ResumeImageUploadResult =

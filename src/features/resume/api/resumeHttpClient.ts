@@ -7,6 +7,7 @@ import type {
   ResumeSaveInput,
   ResumeStudentDetailInput,
   ResumeStudentStatusListInput,
+  ResumeSubmissionCancelInput,
   ResumeSubmissionInput,
   ResumeVisibilityInput,
 } from './resumeApi.types'
@@ -138,14 +139,16 @@ export async function patchResumeVisibilityRequest(input: ResumeVisibilityInput)
 
 export async function postResumeSubmitRequest(input: ResumeSubmissionInput): Promise<ResumeRequestResponse> {
   return sendResumeRequest('resume/submit', {
+    body: JSON.stringify(toResumeMutationBody(input)),
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
+      'Content-Type': 'application/json',
     },
     method: 'POST',
   })
 }
 
-export async function postResumeSubmitCancelRequest(input: ResumeSubmissionInput): Promise<ResumeRequestResponse> {
+export async function postResumeSubmitCancelRequest(input: ResumeSubmissionCancelInput): Promise<ResumeRequestResponse> {
   return sendResumeRequest('resume/submit/cancel', {
     headers: {
       Authorization: `Bearer ${input.accessToken}`,

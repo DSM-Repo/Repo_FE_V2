@@ -20,10 +20,11 @@ import type {
   ResumeStudentStatus,
   ResumeStudentStatusListInput,
   ResumeStudentStatusListResult,
-  ResumeSubmissionStatus,
   ResumeSubmission,
+  ResumeSubmissionCancelInput,
   ResumeSubmissionInput,
   ResumeSubmissionResult,
+  ResumeSubmissionStatus,
   ResumeVisibility,
   ResumeVisibilityInput,
   ResumeVisibilityResult,
@@ -41,6 +42,7 @@ import {
   type ResumeRequestFailure,
   type ResumeRequestResponse,
 } from './resumeHttpClient'
+import { normalizeApiImageUrl } from '../../../shared/api/imageUrl'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -74,10 +76,18 @@ const INVALID_STUDENT_STATUS_RESPONSE = {
   kind: 'server-error',
   message: '학생 이력서 제출 현황 응답 형식이 올바르지 않습니다.',
 } as const satisfies ResumeStudentStatusListResult
+const SERVER_MESSAGE_STATUS_CODES = new Set([400, 409, 410])
+
+type ResumeMutationFailure = {
+  readonly kind: 'forbidden' | 'server-error'
+  readonly message: string
+  readonly status: number
+}
 const RESPONSE_BODY_STREAM_FAILURE = {
   kind: 'network-error',
   message: '이력서 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
 } as const satisfies ResumeRequestFailure
+const RESUME_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 type ResumeHttpResponse = Extract<ResumeRequestResponse, { readonly kind: 'response' }>
 
@@ -91,30 +101,6 @@ function isResumePageType(value: unknown): value is ResumePageType {
 
 function isOptionalString(value: unknown): value is string | null | undefined {
   return value === undefined || value === null || typeof value === 'string'
-}
-
-function normalizeHttpImageUrl(value: string) {
-  const trimmedValue = value.trim()
-
-  if (!trimmedValue) {
-    return ''
-  }
-
-  try {
-    const url = trimmedValue.startsWith('//') ? new URL(`https:${trimmedValue}`) : new URL(trimmedValue)
-
-    if (url.protocol === 'http:' || url.protocol === 'https:') {
-      return url.href
-    }
-  } catch (error) {
-    if (error instanceof TypeError) {
-      return ''
-    }
-
-    throw error
-  }
-
-  return ''
 }
 
 function inferResumePageType(index: number): ResumePageType {
@@ -143,7 +129,7 @@ function parseResumeProject(value: unknown): ResumeProject | undefined {
 
   return {
     endDate: typeof value['endDate'] === 'string' ? value['endDate'] : '',
-    imageUrl: typeof value['imageUrl'] === 'string' ? normalizeHttpImageUrl(value['imageUrl']) : '',
+    imageUrl: typeof value['imageUrl'] === 'string' ? normalizeApiImageUrl(value['imageUrl'], RESUME_API_BASE_URL) : '',
     name: typeof value['name'] === 'string' ? value['name'] : '',
     startDate: typeof value['startDate'] === 'string' ? value['startDate'] : '',
     summary: typeof value['summary'] === 'string' ? value['summary'] : '',
@@ -238,7 +224,8 @@ function parseResume(value: unknown): Resume | undefined {
     name: typeof value['name'] === 'string' ? value['name'] : '',
     pages,
     portfolioUrl: typeof value['portfolioUrl'] === 'string' ? value['portfolioUrl'] : '',
-    profileImageUrl: typeof value['profileImageUrl'] === 'string' ? normalizeHttpImageUrl(value['profileImageUrl']) : '',
+    profileImageUrl:
+      typeof value['profileImageUrl'] === 'string' ? normalizeApiImageUrl(value['profileImageUrl'], RESUME_API_BASE_URL) : '',
     savedAt: typeof value['savedAt'] === 'string' ? value['savedAt'] : '',
     skills,
     submissionStatus: typeof value['submissionStatus'] === 'string' ? value['submissionStatus'] : 'ONGOING',
@@ -292,11 +279,21 @@ function parseResumeAutoSave(value: unknown): ResumeAutoSave | undefined {
 }
 
 function parseResumeImageUpload(value: unknown): ResumeImageUpload | undefined {
-  if (!isJsonRecord(value) || typeof value['imageUrl'] !== 'string' || typeof value['key'] !== 'string') {
+  if (
+    !isJsonRecord(value) ||
+    typeof value['key'] !== 'string' ||
+    (typeof value['link'] !== 'string' && typeof value['imageUrl'] !== 'string')
+  ) {
     return undefined
   }
 
-  const imageUrl = normalizeHttpImageUrl(value['imageUrl'])
+  const rawImageUrl = typeof value['link'] === 'string' ? value['link'] : value['imageUrl']
+
+  if (typeof rawImageUrl !== 'string') {
+    return undefined
+  }
+
+  const imageUrl = normalizeApiImageUrl(rawImageUrl, RESUME_API_BASE_URL)
 
   if (!imageUrl) {
     return undefined
@@ -458,6 +455,41 @@ async function readServerMessage(response: ResumeHttpResponse, fallbackMessage: 
   }
 
   return trimmedText
+}
+
+async function readResumeMutationFailure(
+  response: ResumeHttpResponse,
+  fallbackMessage: string,
+  forbiddenMessage: string,
+): Promise<ResumeMutationFailure> {
+  const status = response.value.status
+
+  if (status === 401 || status === 403) {
+    response.complete()
+    return {
+      kind: 'forbidden',
+      message: forbiddenMessage,
+      status,
+    }
+  }
+
+  if (SERVER_MESSAGE_STATUS_CODES.has(status)) {
+    const serverMessage = await readServerMessage(response, fallbackMessage)
+
+    return {
+      kind: 'server-error',
+      message: serverMessage,
+      status,
+    }
+  }
+
+  response.complete()
+
+  return {
+    kind: 'server-error',
+    message: fallbackMessage,
+    status,
+  }
 }
 
 async function readVisibilitySuccessResponseBody(
@@ -775,22 +807,14 @@ export async function submitResume(input: ResumeSubmissionInput): Promise<Resume
     return readSubmissionResponseBody(response)
   }
 
-  response.complete()
-
-  if (response.value.status === 401 || response.value.status === 403) {
-    return {
-      kind: 'forbidden',
-      message: '이력서를 제출할 권한이 없습니다. 다시 로그인해주세요.',
-    }
-  }
-
-  return {
-    kind: 'server-error',
-    message: '이력서 제출 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
-  }
+  return readResumeMutationFailure(
+    response,
+    '이력서 제출 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    '이력서를 제출할 권한이 없습니다. 다시 로그인해주세요.',
+  )
 }
 
-export async function cancelResumeSubmission(input: ResumeSubmissionInput): Promise<ResumeSubmissionResult> {
+export async function cancelResumeSubmission(input: ResumeSubmissionCancelInput): Promise<ResumeSubmissionResult> {
   const response = await postResumeSubmitCancelRequest(input)
 
   if (response.kind !== 'response') {
@@ -827,19 +851,11 @@ export async function saveResume(input: ResumeSaveInput): Promise<ResumeSaveResu
     return readSaveResponseBody(response)
   }
 
-  response.complete()
-
-  if (response.value.status === 401 || response.value.status === 403) {
-    return {
-      kind: 'forbidden',
-      message: '이력서를 저장할 권한이 없습니다. 다시 로그인해주세요.',
-    }
-  }
-
-  return {
-    kind: 'server-error',
-    message: '이력서 저장 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
-  }
+  return readResumeMutationFailure(
+    response,
+    '이력서 저장 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    '이력서를 저장할 권한이 없습니다. 다시 로그인해주세요.',
+  )
 }
 
 export async function autoSaveResume(input: ResumeAutoSaveInput): Promise<ResumeAutoSaveResult> {
@@ -853,19 +869,11 @@ export async function autoSaveResume(input: ResumeAutoSaveInput): Promise<Resume
     return readAutoSaveResponseBody(response)
   }
 
-  response.complete()
-
-  if (response.value.status === 401 || response.value.status === 403) {
-    return {
-      kind: 'forbidden',
-      message: '이력서를 자동 저장할 권한이 없습니다. 다시 로그인해주세요.',
-    }
-  }
-
-  return {
-    kind: 'server-error',
-    message: '이력서 자동 저장 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
-  }
+  return readResumeMutationFailure(
+    response,
+    '이력서 자동 저장 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    '이력서를 자동 저장할 권한이 없습니다. 다시 로그인해주세요.',
+  )
 }
 
 export async function uploadResumeImage(input: ResumeImageUploadInput): Promise<ResumeImageUploadResult> {

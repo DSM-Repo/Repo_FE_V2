@@ -96,6 +96,7 @@ function renderFeedbackMarkers(feedbackMarkers: readonly ResumeBookSheetFeedback
           data-active={marker.active ? 'true' : undefined}
           key={marker.id}
           onActivate={marker.onSelect}
+          selected={marker.selected}
           style={{
             left: toFeedbackPosition(marker.x, 'x'),
             top: toFeedbackPosition(marker.y, 'y'),
