@@ -42,12 +42,12 @@
 }
 
 .profileHeader {
-  grid-template-columns: var(--resume-book-sheet-avatar-size, 56px) minmax(0, 1fr) var(--resume-book-sheet-qr-size, 56px);
+  grid-template-columns: var(--resume-book-sheet-avatar-size, 56px) minmax(0, 1fr) var(--resume-book-sheet-qr-size, 80px);
   gap: var(--resume-book-sheet-header-gap, var(--space-4));
 }
 
 .projectHeader {
-  grid-template-columns: var(--resume-book-sheet-qr-size, 56px) minmax(0, 1fr);
+  grid-template-columns: var(--resume-book-sheet-qr-size, 80px) minmax(0, 1fr);
   gap: var(--resume-book-sheet-header-gap, var(--space-5));
 }
 
@@ -84,8 +84,8 @@
 
 .projectImageButton,
 .qrButton {
-  width: var(--resume-book-sheet-qr-size, 56px);
-  height: var(--resume-book-sheet-qr-size, 56px);
+  width: var(--resume-book-sheet-qr-size, 80px);
+  height: var(--resume-book-sheet-qr-size, 80px);
   overflow: hidden;
 }
 

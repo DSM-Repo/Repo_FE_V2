@@ -39,12 +39,12 @@
 }
 
 .sheetHeader {
-  grid-template-columns: var(--resume-book-sheet-avatar-size, 50px) minmax(0, 1fr) var(--resume-book-sheet-qr-size, 47px);
+  grid-template-columns: var(--resume-book-sheet-avatar-size, 50px) minmax(0, 1fr) var(--resume-book-sheet-qr-size, 80px);
   gap: var(--resume-book-sheet-header-gap, 13px);
 }
 
 .projectHeader {
-  grid-template-columns: var(--resume-book-sheet-qr-size, 47px) minmax(0, 1fr);
+  grid-template-columns: var(--resume-book-sheet-qr-size, 80px) minmax(0, 1fr);
   gap: var(--resume-book-sheet-header-gap, 13px);
 }
 
@@ -115,8 +115,8 @@
 
 .qrCode,
 .qrPlaceholder {
-  width: var(--resume-book-sheet-qr-size, 47px);
-  height: var(--resume-book-sheet-qr-size, 47px);
+  width: var(--resume-book-sheet-qr-size, 80px);
+  height: var(--resume-book-sheet-qr-size, 80px);
   margin-left: auto;
   outline: 4px solid var(--repo-gray-50);
 }
@@ -157,8 +157,8 @@
 
 .projectImage,
 .projectImagePlaceholder {
-  width: var(--resume-book-sheet-qr-size, 47px);
-  height: var(--resume-book-sheet-qr-size, 47px);
+  width: var(--resume-book-sheet-qr-size, 80px);
+  height: var(--resume-book-sheet-qr-size, 80px);
   object-fit: cover;
 }
 

@@ -17,7 +17,7 @@ function decodeBase64Url(value: string) {
   return new TextDecoder().decode(bytes)
 }
 
-function parseAuthAccessTokenPayload(accessToken: string): JsonRecord | undefined {
+function parseAuthAccessTokenPayload(accessToken: string, options: { readonly ignoreExpiration?: boolean } = {}): JsonRecord | undefined {
   const tokenParts = accessToken.split('.')
 
   if (tokenParts.length !== 3 || tokenParts.some((part) => !part)) {
@@ -42,7 +42,7 @@ function parseAuthAccessTokenPayload(accessToken: string): JsonRecord | undefine
 
   const expiresAt = payload['exp']
 
-  if (expiresAt !== undefined && (typeof expiresAt !== 'number' || expiresAt <= Date.now() / 1_000)) {
+  if (!options.ignoreExpiration && expiresAt !== undefined && (typeof expiresAt !== 'number' || expiresAt <= Date.now() / 1_000)) {
     return undefined
   }
 
@@ -51,6 +51,13 @@ function parseAuthAccessTokenPayload(accessToken: string): JsonRecord | undefine
 
 export function getAuthSubjectFromAccessToken(accessToken: string): string | undefined {
   const payload = parseAuthAccessTokenPayload(accessToken)
+  const subject = payload?.['sub']
+
+  return typeof subject === 'string' && subject.trim() ? subject : undefined
+}
+
+export function getAuthSubjectClaimFromAccessToken(accessToken: string): string | undefined {
+  const payload = parseAuthAccessTokenPayload(accessToken, { ignoreExpiration: true })
   const subject = payload?.['sub']
 
   return typeof subject === 'string' && subject.trim() ? subject : undefined

@@ -1861,6 +1861,48 @@ test.describe('student resume management', () => {
     await expect(page.getByLabel('1쪽 추가 내용')).toContainText('저장된 활동')
   })
 
+  test('restores a legacy saved resume id when reopening resume management', async ({ page }) => {
+    let resumeRequestCount = 0
+
+    await page.addInitScript(() => {
+      window.localStorage.setItem('repo.resume.id', 'resume-id')
+    })
+    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+      resumeRequestCount += 1
+      await route.fulfill({
+        body: JSON.stringify({
+          id: 'resume-id',
+          introduce: '레거시 저장 이력서',
+          isPublic: false,
+          majorName: 'Backend',
+          name: '김레포',
+          pages: [
+            { content: '레거시 활동', id: 'server-page-1', index: 0, type: 'PROFILE' },
+            { content: '', id: 'server-page-2', index: 1, type: 'PROJECT' },
+          ],
+          portfolioUrl: '',
+          profileImageUrl: '',
+          savedAt: '2026-09-20T10:05:00.000Z',
+          skills: [],
+          submissionStatus: 'ONGOING',
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.goto('/resume')
+
+    await expect.poll(() => resumeRequestCount).toBe(1)
+    await expect(page.evaluate(() => window.localStorage.getItem('repo.resume.id.student%40dsm.hs.kr'))).resolves.toBe('resume-id')
+    await expect(page.evaluate(() => window.localStorage.getItem('repo.resume.id'))).resolves.toBeNull()
+    await expect(page.getByLabel('이력서 미리보기')).toBeVisible()
+    await page.getByRole('button', { name: '이력서 수정하기' }).click()
+
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('레거시 저장 이력서')
+    await expect(page.getByLabel('1쪽 추가 내용')).toContainText('레거시 활동')
+  })
+
   test('shows a fixed toast after manual save', async ({ page }) => {
     await page.route('**/resume/save', async (route) => {
       await route.fulfill({

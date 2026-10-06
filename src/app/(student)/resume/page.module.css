@@ -177,7 +177,7 @@
   --resume-book-sheet-major-size: clamp(9px, calc(var(--resume-book-sheet-width) * 0.024), var(--repo-font-body-tiny-size));
   --resume-book-sheet-meta-size: clamp(9px, calc(var(--resume-book-sheet-width) * 0.025), var(--repo-font-body-tiny-size));
   --resume-book-sheet-project-name-size: clamp(14px, calc(var(--resume-book-sheet-width) * 0.043), 24px);
-  --resume-book-sheet-qr-size: clamp(34px, calc(var(--resume-book-sheet-width) * 0.095), 56px);
+  --resume-book-sheet-qr-size: clamp(56px, calc(var(--resume-book-sheet-width) * 0.14), 80px);
   --resume-book-sheet-header-gap: clamp(8px, calc(var(--resume-book-sheet-width) * 0.028), var(--space-5));
 }
 
