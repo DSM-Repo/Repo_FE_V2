@@ -9,6 +9,7 @@ import type {
   MajorDeleteResult,
   MajorList,
   MajorListResult,
+  MajorStudent,
 } from './majorApi.types'
 import { deleteMajorRequest, getMajorsRequest, type MajorRequestFailure, type MajorRequestResponse, postMajorRequest } from './majorHttpClient'
 
@@ -31,14 +32,76 @@ function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+function parseOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined
+}
+
+function parseOptionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' ? value : undefined
+}
+
+function parseMajorStudent(value: unknown): MajorStudent | undefined {
+  if (
+    !isJsonRecord(value) ||
+    typeof value['grade'] !== 'number' ||
+    typeof value['name'] !== 'string' ||
+    typeof value['schoolNumber'] !== 'string' ||
+    typeof value['studentId'] !== 'number'
+  ) {
+    return undefined
+  }
+
+  const classNumber = parseOptionalNumber(value['classNumber'])
+  const number = parseOptionalNumber(value['number'])
+  const resumeId = parseOptionalString(value['resumeId'])
+
+  return {
+    ...(classNumber !== undefined ? { classNumber } : {}),
+    grade: value['grade'],
+    name: value['name'],
+    ...(number !== undefined ? { number } : {}),
+    ...(resumeId !== undefined ? { resumeId } : {}),
+    schoolNumber: value['schoolNumber'],
+    studentId: value['studentId'],
+  }
+}
+
+function parseMajorStudents(value: unknown): readonly MajorStudent[] | undefined {
+  if (value === undefined || value === null) {
+    return []
+  }
+
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const students = value.map(parseMajorStudent)
+
+  if (students.some((student) => student === undefined)) {
+    return undefined
+  }
+
+  return students.filter((student) => student !== undefined)
+}
+
 function parseMajor(value: unknown): Major | undefined {
   if (!isJsonRecord(value) || typeof value['majorId'] !== 'number' || typeof value['name'] !== 'string') {
     return undefined
   }
 
+  const students = parseMajorStudents(value['students'])
+
+  if (!students) {
+    return undefined
+  }
+
+  const createdAt = parseOptionalString(value['createdAt']) ?? parseOptionalString(value['createdDate'])
+
   return {
+    ...(createdAt !== undefined ? { createdAt } : {}),
     majorId: value['majorId'],
     name: value['name'],
+    students,
   }
 }
 

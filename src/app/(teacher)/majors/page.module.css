@@ -161,13 +161,13 @@
   margin-top: 12px;
 }
 
-.yearTabs {
+.gradeTabs {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.yearTabs button {
+.gradeTabs button {
   min-width: 48px;
   padding: 8px 0 10px;
   border: 0;
@@ -180,9 +180,9 @@
   cursor: pointer;
 }
 
-.yearTabs button:hover,
-.yearTabs button:focus-visible,
-.yearTabs .activeYear {
+.gradeTabs button:hover,
+.gradeTabs button:focus-visible,
+.gradeTabs .activeGrade {
   border-bottom-color: var(--repo-gray-50);
   outline: 0;
   color: var(--repo-gray-50);
@@ -272,11 +272,11 @@
     padding-inline: 24px;
   }
 
-  .yearTabs {
+  .gradeTabs {
     gap: 2px;
   }
 
-  .yearTabs button {
+  .gradeTabs button {
     min-width: 42px;
   }
 }
@@ -320,7 +320,7 @@
     overflow-x: auto;
   }
 
-  .yearTabs {
+  .gradeTabs {
     flex: 0 0 auto;
   }
 

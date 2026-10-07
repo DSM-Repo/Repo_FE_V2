@@ -16,16 +16,18 @@ const navigationItems = [
 ] satisfies readonly AppHeaderItem[]
 
 type Major = MajorListItem & {
-  readonly hasStudents: boolean
+  readonly createdAt?: string
   readonly majorId: number
+  readonly students: readonly Student[]
 }
 
 type Student = {
-  readonly classNumber: string
+  readonly classNumber?: number
+  readonly grade: number
   readonly id: number
   readonly name: string
-  readonly number: string
-  readonly year: string
+  readonly resumeId?: string
+  readonly schoolNumber: string
 }
 
 type Notice = {
@@ -35,14 +37,11 @@ type Notice = {
 
 const initialMajors: readonly Major[] = []
 
-const students: readonly Student[] = []
-
-const yearFilters = [
+const gradeFilters = [
   { label: '전체', value: 'all' },
-  { label: '2023', value: '2023' },
-  { label: '2024', value: '2024' },
-  { label: '2025', value: '2025' },
-  { label: '2026', value: '2026' },
+  { label: '1학년', value: '1' },
+  { label: '2학년', value: '2' },
+  { label: '3학년', value: '3' },
 ] as const
 
 const classFilters = [
@@ -55,11 +54,37 @@ const classFilters = [
 
 function toMajor(major: ApiMajor): Major {
   return {
-    hasStudents: false,
+    ...(major.createdAt ? { createdAt: major.createdAt } : {}),
     id: String(major.majorId),
     majorId: major.majorId,
     name: major.name,
+    students: major.students.map((student) => ({
+      ...(student.classNumber !== undefined ? { classNumber: student.classNumber } : {}),
+      grade: student.grade,
+      id: student.studentId,
+      name: student.name,
+      ...(student.resumeId ? { resumeId: student.resumeId } : {}),
+      schoolNumber: student.schoolNumber,
+    })),
   }
+}
+
+function formatMajorCreatedAt(value: string | undefined) {
+  if (!value) {
+    return '생성일 : -'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return `생성일 : ${value}`
+  }
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `생성일 : ${year}.${month}.${day}`
 }
 
 export default function TeacherMajorsPage() {
@@ -67,7 +92,7 @@ export default function TeacherMajorsPage() {
   const [selectedMajorId, setSelectedMajorId] = useState<string | null>(null)
   const [majorName, setMajorName] = useState('')
   const [majorNameError, setMajorNameError] = useState<string | undefined>()
-  const [selectedYear, setSelectedYear] = useState('all')
+  const [selectedGrade, setSelectedGrade] = useState('all')
   const [selectedClass, setSelectedClass] = useState('all')
   const [notice, setNotice] = useState<Notice | null>(null)
   const [isLoadingMajors, setIsLoadingMajors] = useState(false)
@@ -77,16 +102,16 @@ export default function TeacherMajorsPage() {
 
   const selectedMajor = majors.find((major) => major.id === selectedMajorId) ?? null
   const filteredStudents = useMemo(() => {
-    if (!selectedMajor?.hasStudents) {
+    if (!selectedMajor) {
       return []
     }
 
-    return students.filter(
+    return selectedMajor.students.filter(
       (student) =>
-        (selectedYear === 'all' || student.year === selectedYear) &&
-        (selectedClass === 'all' || student.classNumber === selectedClass),
+        (selectedGrade === 'all' || String(student.grade) === selectedGrade) &&
+        (selectedClass === 'all' || String(student.classNumber) === selectedClass),
     )
-  }, [selectedClass, selectedMajor, selectedYear])
+  }, [selectedClass, selectedGrade, selectedMajor])
 
   useEffect(() => {
     return () => {
@@ -150,7 +175,7 @@ export default function TeacherMajorsPage() {
 
   const selectMajor = (majorId: string) => {
     setSelectedMajorId(majorId)
-    setSelectedYear('all')
+    setSelectedGrade('all')
     setSelectedClass('all')
   }
 
@@ -282,20 +307,20 @@ export default function TeacherMajorsPage() {
             <section className={styles.detailPanel} aria-labelledby="selected-major-title">
               <header className={styles.detailHeader}>
                 <h2 id="selected-major-title">{selectedMajor.name}</h2>
-                <p>학생들이 선택할 수 있는 전공입니다.</p>
+                <p>{formatMajorCreatedAt(selectedMajor.createdAt)}</p>
               </header>
 
               <div className={styles.detailDivider} />
 
               <div className={styles.filters}>
-                <div className={styles.yearTabs} aria-label="연도 필터">
-                  {yearFilters.map((filter) => (
+                <div className={styles.gradeTabs} aria-label="학년 필터">
+                  {gradeFilters.map((filter) => (
                     <button
-                      aria-pressed={selectedYear === filter.value}
-                      className={selectedYear === filter.value ? styles.activeYear : undefined}
+                      aria-pressed={selectedGrade === filter.value}
+                      className={selectedGrade === filter.value ? styles.activeGrade : undefined}
                       key={filter.value}
                       type="button"
-                      onClick={() => setSelectedYear(filter.value)}
+                      onClick={() => setSelectedGrade(filter.value)}
                     >
                       {filter.label}
                     </button>
@@ -319,7 +344,7 @@ export default function TeacherMajorsPage() {
                         className={styles.studentRow}
                         href={`/students/${student.id}`}
                         key={student.id}
-                        title={`${student.number} ${student.name}`}
+                        title={`${student.schoolNumber} ${student.name}`}
                       />
                     ))}
                   </div>

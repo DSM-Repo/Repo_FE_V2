@@ -47,7 +47,7 @@ test.describe('teacher major management', () => {
       expect(route.request().postDataJSON()).toEqual({ name: 'Backend Developer' })
 
       await route.fulfill({
-        body: JSON.stringify({ majorId: 1, name: 'Backend Developer' }),
+        body: JSON.stringify({ majorId: 1, name: 'Backend Developer', students: [] }),
         contentType: 'application/json',
         status: 201,
       })
@@ -83,6 +83,66 @@ test.describe('teacher major management', () => {
     await page.getByRole('region', { name: '전공 목록' }).getByRole('button', { name: 'Backend Developer' }).click()
 
     await expect(page.getByText('해당 전공에 소속된 학생이 없습니다.')).toBeVisible()
+  })
+
+  test('shows creation date and filters major students by grade', async ({ page }) => {
+    await page.route(`${apiBaseUrl}/major`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          majors: [
+            {
+              createdAt: '2023-05-23T00:00:00.000Z',
+              majorId: 1,
+              name: 'Frontend Developer',
+              students: [
+                {
+                  classNumber: 4,
+                  grade: 2,
+                  name: '최하은',
+                  resumeId: 'resume-1',
+                  schoolNumber: '2415',
+                  studentId: 1,
+                },
+                {
+                  classNumber: 1,
+                  grade: 1,
+                  name: '김일학',
+                  resumeId: 'resume-2',
+                  schoolNumber: '1101',
+                  studentId: 2,
+                },
+                {
+                  classNumber: 3,
+                  grade: 3,
+                  name: '박삼학',
+                  resumeId: 'resume-3',
+                  schoolNumber: '3302',
+                  studentId: 3,
+                },
+              ],
+            },
+          ],
+          numberOfData: 1,
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.goto('/majors')
+
+    await page.getByRole('region', { name: '전공 목록' }).getByRole('button', { name: 'Frontend Developer' }).click()
+
+    await expect(page.getByText('생성일 : 2023.05.23')).toBeVisible()
+    await expect(page.getByRole('link', { name: /2415 최하은/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /1101 김일학/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /3302 박삼학/ })).toBeVisible()
+
+    await page.getByRole('button', { name: '2학년' }).click()
+
+    await expect(page.getByRole('link', { name: /2415 최하은/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /1101 김일학/ })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: /3302 박삼학/ })).toHaveCount(0)
   })
 
   test('deletes the selected major with a toast', async ({ page }) => {

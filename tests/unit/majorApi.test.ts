@@ -25,8 +25,20 @@ test('getMajors requests the major list with bearer auth and returns parsed majo
       JSON.stringify({
         majors: [
           {
+            createdAt: '2026-10-07T10:00:00.000Z',
             majorId: 1,
             name: '백엔드',
+            students: [
+              {
+                classNumber: 4,
+                grade: 2,
+                name: '최하은',
+                number: 15,
+                resumeId: 'resume-id',
+                schoolNumber: '2415',
+                studentId: 3,
+              },
+            ],
           },
         ],
         numberOfData: 1,
@@ -50,8 +62,20 @@ test('getMajors requests the major list with bearer auth and returns parsed majo
     value: {
       majors: [
         {
+          createdAt: '2026-10-07T10:00:00.000Z',
           majorId: 1,
           name: '백엔드',
+          students: [
+            {
+              classNumber: 4,
+              grade: 2,
+              name: '최하은',
+              number: 15,
+              resumeId: 'resume-id',
+              schoolNumber: '2415',
+              studentId: 3,
+            },
+          ],
         },
       ],
       numberOfData: 1,
@@ -87,6 +111,7 @@ test('createMajor posts the major name and returns the created major', async () 
     major: {
       majorId: 2,
       name: '프론트엔드',
+      students: [],
     },
   })
 })

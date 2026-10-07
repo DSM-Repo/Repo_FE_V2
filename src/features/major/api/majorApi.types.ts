@@ -1,6 +1,18 @@
 export type Major = {
+  readonly createdAt?: string
   readonly majorId: number
   readonly name: string
+  readonly students: readonly MajorStudent[]
+}
+
+export type MajorStudent = {
+  readonly classNumber?: number
+  readonly grade: number
+  readonly name: string
+  readonly number?: number
+  readonly resumeId?: string
+  readonly schoolNumber: string
+  readonly studentId: number
 }
 
 export type MajorList = {
