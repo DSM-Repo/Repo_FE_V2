@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { getSavedAccessToken } from '@/features/auth/api'
-import { createMajor, deleteMajor, getMajors, type Major as ApiMajor } from '@/features/major/api'
+import { createMajor, deleteMajor, getMajors, getMajorStudents, type Major as ApiMajor, type MajorStudent as ApiMajorStudent } from '@/features/major/api'
 import type { AppHeaderItem, MajorListItem, ToastVariant } from '@/shared/ui'
 import { AppHeader, Button, Dropdown, LinkRow, MajorInputGroup, MajorList, Toast } from '@/shared/ui'
 
@@ -58,14 +58,18 @@ function toMajor(major: ApiMajor): Major {
     id: String(major.majorId),
     majorId: major.majorId,
     name: major.name,
-    students: major.students.map((student) => ({
-      ...(student.classNumber !== undefined ? { classNumber: student.classNumber } : {}),
-      grade: student.grade,
-      id: student.studentId,
-      name: student.name,
-      ...(student.resumeId ? { resumeId: student.resumeId } : {}),
-      schoolNumber: student.schoolNumber,
-    })),
+    students: [],
+  }
+}
+
+function toStudent(student: ApiMajorStudent): Student {
+  return {
+    ...(student.classNumber !== undefined ? { classNumber: student.classNumber } : {}),
+    grade: student.grade,
+    id: student.studentId,
+    name: student.name,
+    ...(student.resumeId ? { resumeId: student.resumeId } : {}),
+    schoolNumber: student.schoolNumber,
   }
 }
 
@@ -96,11 +100,14 @@ export default function TeacherMajorsPage() {
   const [selectedClass, setSelectedClass] = useState('all')
   const [notice, setNotice] = useState<Notice | null>(null)
   const [isLoadingMajors, setIsLoadingMajors] = useState(false)
+  const [isLoadingMajorStudents, setIsLoadingMajorStudents] = useState(false)
   const [isSubmittingMajor, setIsSubmittingMajor] = useState(false)
   const [isDeletingMajor, setIsDeletingMajor] = useState(false)
   const noticeTimerId = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const studentRequestId = useRef(0)
 
   const selectedMajor = majors.find((major) => major.id === selectedMajorId) ?? null
+  const selectedMajorApiId = selectedMajor?.majorId ?? null
   const filteredStudents = useMemo(() => {
     if (!selectedMajor) {
       return []
@@ -165,6 +172,58 @@ export default function TeacherMajorsPage() {
   useEffect(() => {
     void Promise.resolve().then(loadMajors)
   }, [loadMajors])
+
+  useEffect(() => {
+    if (!selectedMajorId || selectedMajorApiId === null) {
+      return
+    }
+
+    const accessToken = getSavedAccessToken()
+
+    if (!accessToken) {
+      return
+    }
+
+    const currentSelectedMajorId = selectedMajorId
+    const requestId = studentRequestId.current + 1
+    studentRequestId.current = requestId
+
+    void Promise.resolve().then(async () => {
+      setIsLoadingMajorStudents(true)
+
+      const result = await getMajorStudents({
+        accessToken,
+        ...(selectedClass !== 'all' ? { classNumber: Number(selectedClass) } : {}),
+        ...(selectedGrade !== 'all' ? { grade: Number(selectedGrade) } : {}),
+        majorId: selectedMajorApiId,
+      })
+
+      if (studentRequestId.current !== requestId) {
+        return
+      }
+
+      setIsLoadingMajorStudents(false)
+
+      if (result.kind !== 'success') {
+        showNotice({ message: result.message, variant: 'error' })
+        setMajors((currentMajors) =>
+          currentMajors.map((major) => (major.id === currentSelectedMajorId ? { ...major, students: [] } : major)),
+        )
+        return
+      }
+
+      setMajors((currentMajors) =>
+        currentMajors.map((major) =>
+          major.id === currentSelectedMajorId
+            ? {
+                ...major,
+                students: result.value.students.map(toStudent),
+              }
+          : major,
+        ),
+      )
+    })
+  }, [selectedClass, selectedGrade, selectedMajorApiId, selectedMajorId, showNotice])
 
   const toFailureNotice = (message: string): Notice => {
     return {
@@ -336,7 +395,9 @@ export default function TeacherMajorsPage() {
               </div>
 
               <div className={styles.studentContent}>
-                {filteredStudents.length > 0 ? (
+                {isLoadingMajorStudents ? (
+                  <p className={styles.emptyMessage}>학생 목록을 불러오는 중입니다.</p>
+                ) : filteredStudents.length > 0 ? (
                   <div className={styles.studentList} aria-label={`${selectedMajor.name} 소속 학생`}>
                     {filteredStudents.map((student) => (
                       <LinkRow

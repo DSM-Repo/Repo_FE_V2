@@ -1,6 +1,6 @@
 'use client'
 
-import type { MajorAuthInput, MajorCreateInput, MajorDeleteInput } from './majorApi.types'
+import type { MajorAuthInput, MajorCreateInput, MajorDeleteInput, MajorStudentsInput } from './majorApi.types'
 import { sendAuthenticatedRequest } from '../../auth/api/authenticatedRequest'
 import { buildClientApiUrl, getClientApiConfig } from '../../../shared/api/clientApiBaseUrl'
 
@@ -64,6 +64,26 @@ async function sendMajorRequest(path: string, init: RequestInit): Promise<MajorR
 
 export async function getMajorsRequest(input: MajorAuthInput): Promise<MajorRequestResponse> {
   return sendMajorRequest('major', {
+    headers: buildAuthorizationHeader(input),
+    method: 'GET',
+  })
+}
+
+export async function getMajorStudentsRequest(input: MajorStudentsInput): Promise<MajorRequestResponse> {
+  const searchParams = new URLSearchParams()
+
+  if (input.grade !== undefined) {
+    searchParams.set('grade', String(input.grade))
+  }
+
+  if (input.classNumber !== undefined) {
+    searchParams.set('classNumber', String(input.classNumber))
+  }
+
+  const query = searchParams.toString()
+  const encodedMajorId = encodeURIComponent(String(input.majorId))
+
+  return sendMajorRequest(`major/${encodedMajorId}/students${query ? `?${query}` : ''}`, {
     headers: buildAuthorizationHeader(input),
     method: 'GET',
   })

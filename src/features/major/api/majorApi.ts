@@ -10,8 +10,18 @@ import type {
   MajorList,
   MajorListResult,
   MajorStudent,
+  MajorStudentList,
+  MajorStudentListResult,
+  MajorStudentsInput,
 } from './majorApi.types'
-import { deleteMajorRequest, getMajorsRequest, type MajorRequestFailure, type MajorRequestResponse, postMajorRequest } from './majorHttpClient'
+import {
+  deleteMajorRequest,
+  getMajorsRequest,
+  getMajorStudentsRequest,
+  type MajorRequestFailure,
+  type MajorRequestResponse,
+  postMajorRequest,
+} from './majorHttpClient'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -40,6 +50,14 @@ function parseOptionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' ? value : undefined
 }
 
+function parseSubmissionStatus(value: unknown): MajorStudent['submissionStatus'] | undefined {
+  if (value === 'DELETED' || value === 'ONGOING' || value === 'RELEASED' || value === 'SUBMITTED') {
+    return value
+  }
+
+  return undefined
+}
+
 function parseMajorStudent(value: unknown): MajorStudent | undefined {
   if (
     !isJsonRecord(value) ||
@@ -54,6 +72,9 @@ function parseMajorStudent(value: unknown): MajorStudent | undefined {
   const classNumber = parseOptionalNumber(value['classNumber'])
   const number = parseOptionalNumber(value['number'])
   const resumeId = parseOptionalString(value['resumeId'])
+  const submissionStatus = parseSubmissionStatus(value['submissionStatus'])
+  const submitted = typeof value['submitted'] === 'boolean' ? value['submitted'] : undefined
+  const submittedAt = parseOptionalString(value['submittedAt'])
 
   return {
     ...(classNumber !== undefined ? { classNumber } : {}),
@@ -62,6 +83,9 @@ function parseMajorStudent(value: unknown): MajorStudent | undefined {
     ...(number !== undefined ? { number } : {}),
     ...(resumeId !== undefined ? { resumeId } : {}),
     schoolNumber: value['schoolNumber'],
+    ...(submissionStatus !== undefined ? { submissionStatus } : {}),
+    ...(submitted !== undefined ? { submitted } : {}),
+    ...(submittedAt !== undefined ? { submittedAt } : {}),
     studentId: value['studentId'],
   }
 }
@@ -89,19 +113,12 @@ function parseMajor(value: unknown): Major | undefined {
     return undefined
   }
 
-  const students = parseMajorStudents(value['students'])
-
-  if (!students) {
-    return undefined
-  }
-
   const createdAt = parseOptionalString(value['createdAt']) ?? parseOptionalString(value['createdDate'])
 
   return {
     ...(createdAt !== undefined ? { createdAt } : {}),
     majorId: value['majorId'],
     name: value['name'],
-    students,
   }
 }
 
@@ -119,6 +136,35 @@ function parseMajorList(value: unknown): MajorList | undefined {
   return {
     majors: majors.filter((major) => major !== undefined),
     numberOfData: value['numberOfData'],
+  }
+}
+
+function parseMajorStudentList(value: unknown): MajorStudentList | undefined {
+  if (
+    !isJsonRecord(value) ||
+    typeof value['majorId'] !== 'number' ||
+    typeof value['majorName'] !== 'string' ||
+    typeof value['numberOfData'] !== 'number'
+  ) {
+    return undefined
+  }
+
+  const students = parseMajorStudents(value['students'])
+
+  if (!students) {
+    return undefined
+  }
+
+  const classNumber = parseOptionalNumber(value['classNumber'])
+  const grade = parseOptionalNumber(value['grade'])
+
+  return {
+    ...(classNumber !== undefined ? { classNumber } : {}),
+    ...(grade !== undefined ? { grade } : {}),
+    majorId: value['majorId'],
+    majorName: value['majorName'],
+    numberOfData: value['numberOfData'],
+    students,
   }
 }
 
@@ -187,6 +233,29 @@ async function readMajorCreateResponseBody(response: MajorHttpResponse): Promise
   }
 }
 
+async function readMajorStudentListResponseBody(response: MajorHttpResponse): Promise<MajorStudentListResult> {
+  let responseBody: unknown
+
+  try {
+    responseBody = await response.value.json()
+  } catch (error) {
+    return toResponseBodyReadFailure(error)
+  } finally {
+    response.complete()
+  }
+
+  const value = parseMajorStudentList(responseBody)
+
+  if (!value) {
+    return INVALID_MAJOR_RESPONSE
+  }
+
+  return {
+    kind: 'success',
+    value,
+  }
+}
+
 export async function getMajors(input: MajorAuthInput): Promise<MajorListResult> {
   const response = await getMajorsRequest(input)
 
@@ -207,6 +276,29 @@ export async function getMajors(input: MajorAuthInput): Promise<MajorListResult>
   return {
     kind: 'server-error',
     message: '전공 목록 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  }
+}
+
+export async function getMajorStudents(input: MajorStudentsInput): Promise<MajorStudentListResult> {
+  const response = await getMajorStudentsRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  if (response.value.ok) {
+    return readMajorStudentListResponseBody(response)
+  }
+
+  response.complete()
+
+  if (response.value.status === 401 || response.value.status === 403) {
+    return toForbiddenResult('전공별 학생을 조회할 권한이 없습니다. 다시 로그인해주세요.')
+  }
+
+  return {
+    kind: 'server-error',
+    message: '전공별 학생 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
   }
 }
 

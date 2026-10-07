@@ -1,4 +1,4 @@
-export { createMajor, deleteMajor, getMajors } from './majorApi'
+export { createMajor, deleteMajor, getMajors, getMajorStudents } from './majorApi'
 export type {
   Major,
   MajorAuthInput,
@@ -8,4 +8,8 @@ export type {
   MajorDeleteResult,
   MajorList,
   MajorListResult,
+  MajorStudent,
+  MajorStudentList,
+  MajorStudentListResult,
+  MajorStudentsInput,
 } from './majorApi.types'

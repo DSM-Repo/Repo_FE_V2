@@ -2,7 +2,6 @@ export type Major = {
   readonly createdAt?: string
   readonly majorId: number
   readonly name: string
-  readonly students: readonly MajorStudent[]
 }
 
 export type MajorStudent = {
@@ -12,6 +11,9 @@ export type MajorStudent = {
   readonly number?: number
   readonly resumeId?: string
   readonly schoolNumber: string
+  readonly submissionStatus?: 'DELETED' | 'ONGOING' | 'RELEASED' | 'SUBMITTED'
+  readonly submitted?: boolean
+  readonly submittedAt?: string
   readonly studentId: number
 }
 
@@ -32,10 +34,35 @@ export type MajorDeleteInput = MajorAuthInput & {
   readonly majorId: number
 }
 
+export type MajorStudentList = {
+  readonly classNumber?: number
+  readonly grade?: number
+  readonly majorId: number
+  readonly majorName: string
+  readonly numberOfData: number
+  readonly students: readonly MajorStudent[]
+}
+
+export type MajorStudentsInput = MajorAuthInput & {
+  readonly classNumber?: number
+  readonly grade?: number
+  readonly majorId: number
+}
+
 export type MajorListResult =
   | {
       readonly kind: 'success'
       readonly value: MajorList
+    }
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type MajorStudentListResult =
+  | {
+      readonly kind: 'success'
+      readonly value: MajorStudentList
     }
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'

@@ -28,17 +28,6 @@ test('getMajors requests the major list with bearer auth and returns parsed majo
             createdAt: '2026-10-07T10:00:00.000Z',
             majorId: 1,
             name: '백엔드',
-            students: [
-              {
-                classNumber: 4,
-                grade: 2,
-                name: '최하은',
-                number: 15,
-                resumeId: 'resume-id',
-                schoolNumber: '2415',
-                studentId: 3,
-              },
-            ],
           },
         ],
         numberOfData: 1,
@@ -65,17 +54,6 @@ test('getMajors requests the major list with bearer auth and returns parsed majo
           createdAt: '2026-10-07T10:00:00.000Z',
           majorId: 1,
           name: '백엔드',
-          students: [
-            {
-              classNumber: 4,
-              grade: 2,
-              name: '최하은',
-              number: 15,
-              resumeId: 'resume-id',
-              schoolNumber: '2415',
-              studentId: 3,
-            },
-          ],
         },
       ],
       numberOfData: 1,
@@ -111,7 +89,83 @@ test('createMajor posts the major name and returns the created major', async () 
     major: {
       majorId: 2,
       name: '프론트엔드',
-      students: [],
+    },
+  })
+})
+
+test('getMajorStudents requests the selected major students with filters and returns parsed students', async () => {
+  let requestedUrl = ''
+  let requestedMethod = ''
+  let requestedAuthorization = ''
+
+  globalThis.fetch = async (input, init) => {
+    requestedUrl = String(input)
+    requestedMethod = init?.method ?? ''
+    requestedAuthorization = new Headers(init?.headers).get('Authorization') ?? ''
+
+    return new Response(
+      JSON.stringify({
+        classNumber: 4,
+        grade: 2,
+        majorId: 7,
+        majorName: '백엔드',
+        numberOfData: 1,
+        students: [
+          {
+            classNumber: 4,
+            grade: 2,
+            name: '최하은',
+            number: 15,
+            resumeId: 'resume-id',
+            schoolNumber: '2415',
+            studentId: 3,
+            submissionStatus: 'SUBMITTED',
+            submitted: true,
+            submittedAt: '2026-10-07T10:00:00.000Z',
+          },
+        ],
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+  }
+
+  const result = await majorApi.getMajorStudents({
+    accessToken: 'access-token',
+    classNumber: 4,
+    grade: 2,
+    majorId: 7,
+  })
+
+  assert.equal(requestedUrl, 'https://api.example.test/major/7/students?grade=2&classNumber=4')
+  assert.equal(requestedMethod, 'GET')
+  assert.equal(requestedAuthorization, 'Bearer access-token')
+  assert.deepEqual(result, {
+    kind: 'success',
+    value: {
+      classNumber: 4,
+      grade: 2,
+      majorId: 7,
+      majorName: '백엔드',
+      numberOfData: 1,
+      students: [
+        {
+          classNumber: 4,
+          grade: 2,
+          name: '최하은',
+          number: 15,
+          resumeId: 'resume-id',
+          schoolNumber: '2415',
+          studentId: 3,
+          submissionStatus: 'SUBMITTED',
+          submitted: true,
+          submittedAt: '2026-10-07T10:00:00.000Z',
+        },
+      ],
     },
   })
 })
