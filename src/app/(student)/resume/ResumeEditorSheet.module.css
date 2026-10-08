@@ -13,6 +13,50 @@
   box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
 }
 
+.pageActions {
+  position: absolute;
+  top: clamp(10px, calc(var(--resume-book-sheet-width, 551px) * 0.025), var(--space-4));
+  right: clamp(10px, calc(var(--resume-book-sheet-width, 551px) * 0.025), var(--space-4));
+  z-index: 4;
+}
+
+.removePageButton {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--repo-gray-300);
+  border-radius: 50%;
+  color: var(--repo-gray-700);
+  background: rgb(255 255 255 / 72%);
+  transition:
+    background 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.removePageButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.removePageButton:hover {
+  border-color: var(--repo-gray-700);
+  color: var(--repo-text-black);
+  background: var(--repo-gray-50);
+}
+
+.removePageButton:active {
+  transform: translateY(1px);
+}
+
+.removePageButton:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 3px;
+}
+
 .feedbackLayer {
   position: absolute;
   z-index: 8;

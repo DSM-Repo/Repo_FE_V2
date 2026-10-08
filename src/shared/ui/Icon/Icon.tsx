@@ -12,6 +12,7 @@ export type IconName =
   | 'plus'
   | 'right-arrow'
   | 'search'
+  | 'trash'
   | 'upload'
 
 type IconProps = Omit<SVGProps<SVGSVGElement>, 'children'> & {
@@ -61,6 +62,10 @@ export function Icon({ name, 'aria-hidden': ariaHidden = true, focusable = false
 
   if (name === 'search') {
     return <SearchIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
+  }
+
+  if (name === 'trash') {
+    return <TrashIcon aria-hidden={ariaHidden} focusable={focusable} {...props} />
   }
 
   if (name === 'upload') {
@@ -202,6 +207,17 @@ function SearchIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
         strokeLinejoin="round"
         strokeWidth="1.6"
       />
+    </svg>
+  )
+}
+
+function TrashIcon(props: Omit<SVGProps<SVGSVGElement>, 'children'>) {
+  return (
+    <svg fill="none" height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <path d="M3 4.5H13" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+      <path d="M6.5 2.5H9.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+      <path d="M5 6.5V12.5M8 6.5V12.5M11 6.5V12.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.35" />
+      <path d="M4 4.5L4.6 14H11.4L12 4.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
     </svg>
   )
 }

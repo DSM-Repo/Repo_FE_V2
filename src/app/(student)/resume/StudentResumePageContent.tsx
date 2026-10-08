@@ -46,6 +46,7 @@ const navigationItems = [
 ] satisfies readonly AppHeaderItem[]
 
 const AUTO_SAVE_IDLE_MS = 180_000
+const MAX_RESUME_PAGE_COUNT = 5
 const PROFILE_PASTE_PAGE_UNITS = 18
 const FREE_PASTE_PAGE_UNITS = 30
 
@@ -276,11 +277,13 @@ function toSheetContent(draft: ResumeDraft, pageIndex: number): ResumeBookSheetC
 
 function toResumeDraft(resume: Resume): ResumeDraft {
   const introduction = splitIntroduction(resume.introduce)
-  const savedPages = [...resume.pages].sort((left, right) => left.index - right.index).map(toDraftPage)
+  const savedPages = [...resume.pages].sort((left, right) => left.index - right.index).slice(0, MAX_RESUME_PAGE_COUNT).map(toDraftPage)
   const pages = savedPages.length > 0 ? savedPages : defaultResumeDraft.pages
   const pagesWithProjectTemplate = pages.some((page) => page.type === 'PROJECT')
     ? pages
-    : reindexDraftPages([...pages, createEmptyProjectPage(pages.length)])
+    : pages.length < MAX_RESUME_PAGE_COUNT
+      ? reindexDraftPages([...pages, createEmptyProjectPage(pages.length)])
+      : pages
 
   return {
     ...defaultResumeDraft,
@@ -626,7 +629,8 @@ export function StudentResumePageContent() {
   const isImageUploading = imageUploadState.kind === 'uploading'
   const isResumeActionPending = saveSubmitState !== 'idle' || majorSubmitState === 'pending' || isImageUploading
   const isEditing = isResumeReady && (viewMode === 'edit' || viewMode === 'feedback')
-  const visiblePageSlotCount = draft.pages.length + (isEditing ? 1 : 0)
+  const canAddPage = isEditing && draft.pages.length < MAX_RESUME_PAGE_COUNT
+  const visiblePageSlotCount = draft.pages.length + (canAddPage ? 1 : 0)
   const maxSpreadStartIndex = Math.max(0, Math.floor((visiblePageSlotCount - 1) / 2) * 2)
   const normalizedSpreadStartIndex = Math.min(spreadStartIndex - (spreadStartIndex % 2), maxSpreadStartIndex)
   const visiblePageSlots = [normalizedSpreadStartIndex, normalizedSpreadStartIndex + 1].filter((index) => index < visiblePageSlotCount)
@@ -870,7 +874,8 @@ export function StudentResumePageContent() {
         const pagesAfterOverflow = firstProjectOffset === -1
           ? remainingPages.filter((draftPage) => draftPage.type !== 'FREE')
           : remainingPages.slice(firstProjectOffset)
-        const overflowPages = chunks.slice(1).map((chunk): ResumeDraftPage => ({
+        const availableOverflowPageCount = Math.max(0, MAX_RESUME_PAGE_COUNT - 1 - pagesAfterOverflow.length)
+        const overflowPages = chunks.slice(1, 1 + availableOverflowPageCount).map((chunk): ResumeDraftPage => ({
           content: chunk,
           index: 0,
           type: 'FREE',
@@ -878,7 +883,7 @@ export function StudentResumePageContent() {
 
         return {
           ...currentDraft,
-          pages: reindexDraftPages([{ ...page, content: chunks[0] ?? '' }, ...overflowPages, ...pagesAfterOverflow]),
+          pages: reindexDraftPages([{ ...page, content: chunks[0] ?? '' }, ...overflowPages, ...pagesAfterOverflow].slice(0, MAX_RESUME_PAGE_COUNT)),
         }
       })
     },
@@ -906,6 +911,11 @@ export function StudentResumePageContent() {
   }, [loadState])
 
   const addProjectPage = useCallback(() => {
+    if (draft.pages.length >= MAX_RESUME_PAGE_COUNT) {
+      setActionFeedback({ message: '이력서는 최대 5쪽까지 작성할 수 있습니다.', tone: 'error' })
+      return
+    }
+
     const nextPageIndex = draft.pages.reduce((highestIndex, page) => Math.max(highestIndex, page.index), -1) + 1
     const nextPage: ResumeDraftPage = {
       content: '',
@@ -922,6 +932,25 @@ export function StudentResumePageContent() {
 
     handleDraftChange({ ...draft, pages: [...draft.pages, nextPage] })
   }, [draft, handleDraftChange])
+
+  const removePage = useCallback((pageIndex: number) => {
+    handleDraftChange((currentDraft) => {
+      if (currentDraft.pages.length <= 1 || pageIndex < 0 || pageIndex >= currentDraft.pages.length) {
+        return currentDraft
+      }
+
+      return {
+        ...currentDraft,
+        pages: reindexDraftPages(currentDraft.pages.filter((_, index) => index !== pageIndex)),
+      }
+    })
+    setSpreadStartIndex((currentIndex) => {
+      const nextPageCount = Math.max(1, draft.pages.length - 1)
+      const maxNextSpreadStartIndex = Math.max(0, Math.floor((nextPageCount - 1) / 2) * 2)
+
+      return Math.min(currentIndex - (currentIndex % 2), maxNextSpreadStartIndex)
+    })
+  }, [draft.pages.length, handleDraftChange])
 
   const handleImageUpload = useCallback(
     async ({ file, target }: { readonly file: File; readonly target: ResumeImageTarget }) => {
@@ -1484,7 +1513,7 @@ export function StudentResumePageContent() {
             </button>
             <div className={styles.spread} aria-label={isEditing ? '이력서 작성' : '이력서 미리보기'}>
               {visiblePageSlots.map((pageIndex) => {
-                if (isEditing && pageIndex >= draft.pages.length) {
+                if (canAddPage && pageIndex >= draft.pages.length) {
                   return (
                     <button
                       className={`${styles.documentSheet} ${styles.addPageSheet}`}
@@ -1518,6 +1547,7 @@ export function StudentResumePageContent() {
                     onMajorChange={(majorId) => void handleMajorChange(majorId)}
                     onPageRichPaste={handlePageRichPaste}
                     onPortfolioUrlClick={() => setPortfolioUrlModalState({ kind: 'open' })}
+                    onRemovePage={() => removePage(pageIndex)}
                     pageIndex={pageIndex}
                   />
                 ) : (

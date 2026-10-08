@@ -61,6 +61,7 @@ export type ResumeEditorSheetProps = {
   readonly onMajorChange?: (majorId: number) => void
   readonly onPageRichPaste?: (input: { readonly content: string; readonly pageIndex: number }) => void
   readonly onPortfolioUrlClick?: () => void
+  readonly onRemovePage?: () => void
   readonly pageIndex: number
 }
 
@@ -155,6 +156,7 @@ export function ResumeEditorSheet({
   onMajorChange,
   onPageRichPaste,
   onPortfolioUrlClick,
+  onRemovePage,
   pageIndex,
 }: ResumeEditorSheetProps) {
   const fileInputId = useId()
@@ -182,6 +184,7 @@ export function ResumeEditorSheet({
   ]
   const page = draft.pages[pageIndex]
   const hasPortfolioUrl = Boolean(draft.portfolioUrl)
+  const canRemovePage = Boolean(onRemovePage) && draft.pages.length > 1
 
   if (!page) {
     return null
@@ -261,9 +264,24 @@ export function ResumeEditorSheet({
     updateDraft({ skills: draft.skills.filter((skill) => skill !== skillToRemove) })
   }
 
+  const renderPageActions = () =>
+    canRemovePage ? (
+      <div className={styles.pageActions}>
+        <button
+          aria-label={`${page.index + 1}쪽 삭제`}
+          className={styles.removePageButton}
+          onClick={onRemovePage}
+          type="button"
+        >
+          <Icon name="trash" />
+        </button>
+      </div>
+    ) : null
+
   if (page.type === 'FREE') {
     return (
       <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
+        {renderPageActions()}
         <MarkdownTextarea
           className={styles.freePageContentInput}
           id={`resume-page-content-${page.index}`}
@@ -286,6 +304,7 @@ export function ResumeEditorSheet({
 
     return (
       <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
+        {renderPageActions()}
         <header className={styles.projectHeader}>
           <input
             accept="image/jpeg,image/png,image/webp"
@@ -383,6 +402,7 @@ export function ResumeEditorSheet({
 
   return (
     <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
+      {renderPageActions()}
       <header className={styles.profileHeader}>
         <input
           accept="image/jpeg,image/png,image/webp"

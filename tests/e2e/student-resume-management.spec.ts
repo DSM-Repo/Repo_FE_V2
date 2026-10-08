@@ -272,9 +272,9 @@ test.describe('student resume management', () => {
     await page.getByLabel('프로젝트 이름').fill('첫 프로젝트')
     await next.click()
     await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()
-    await next.click()
     await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()
     await next.click()
+    await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()
     await page.getByRole('button', { name: '작성 취소' }).click()
     await expect(page.getByLabel('이력서 미리보기').getByRole('article')).toHaveCount(2)
     await expect(page.getByRole('button', { name: '이전 페이지' })).toBeDisabled()
@@ -1635,6 +1635,64 @@ test.describe('student resume management', () => {
       project: { name: 'Repo Project V2' },
       type: 'PROJECT',
     })
+  })
+
+  test('deletes an existing resume page and saves the remaining pages', async ({ page }) => {
+    let savedPages: Array<{ index: number; type: string }> = []
+
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as {
+        pages: Array<{ index: number; type: string }>
+      }
+      savedPages = requestBody.pages
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.setViewportSize({ height: 1080, width: 1920 })
+    await page.goto('/resume?mode=edit')
+
+    await page.getByRole('button', { name: '2쪽 삭제' }).click()
+
+    await expect(page.getByRole('article', { name: '이력서 작성 2쪽' })).toHaveCount(0)
+    await expect(page.getByText('1 / 1')).toBeVisible()
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+
+    await expect.poll(() => savedPages).toHaveLength(1)
+    expect(savedPages[0]).toMatchObject({ index: 0, type: 'PROFILE' })
+  })
+
+  test('limits resume pages to five while adding project pages', async ({ page }) => {
+    let savedPages: Array<{ index: number; type: string }> = []
+
+    await page.route('**/resume/save', async (route) => {
+      const requestBody = route.request().postDataJSON() as {
+        pages: Array<{ index: number; type: string }>
+      }
+      savedPages = requestBody.pages
+      await route.fulfill({
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.setViewportSize({ height: 1080, width: 1920 })
+    await page.goto('/resume?mode=edit')
+
+    await page.getByRole('button', { name: '다음 페이지' }).click()
+    await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()
+    await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()
+    await page.getByRole('button', { name: '다음 페이지' }).click()
+    await page.getByRole('button', { name: '프로젝트 페이지 추가' }).click()
+
+    await expect(page.getByText('5 / 5')).toBeVisible()
+    await expect(page.getByRole('button', { name: '프로젝트 페이지 추가' })).toHaveCount(0)
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+
+    await expect.poll(() => savedPages).toHaveLength(5)
+    expect(savedPages.map((savedPage) => savedPage.index)).toEqual([0, 1, 2, 3, 4])
   })
 
   test('saves the blank resume as a new resume', async ({ page }) => {
