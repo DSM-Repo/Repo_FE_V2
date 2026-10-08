@@ -184,7 +184,7 @@ export function ResumeEditorSheet({
   ]
   const page = draft.pages[pageIndex]
   const hasPortfolioUrl = Boolean(draft.portfolioUrl)
-  const canRemovePage = Boolean(onRemovePage) && draft.pages.length > 1
+  const canRemovePage = Boolean(onRemovePage) && pageIndex > 0
 
   if (!page) {
     return null

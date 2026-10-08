@@ -1654,6 +1654,7 @@ test.describe('student resume management', () => {
     await page.setViewportSize({ height: 1080, width: 1920 })
     await page.goto('/resume?mode=edit')
 
+    await expect(page.getByRole('button', { name: '1쪽 삭제' })).toHaveCount(0)
     await page.getByRole('button', { name: '2쪽 삭제' }).click()
 
     await expect(page.getByRole('article', { name: '이력서 작성 2쪽' })).toHaveCount(0)

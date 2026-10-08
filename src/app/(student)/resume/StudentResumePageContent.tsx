@@ -935,7 +935,7 @@ export function StudentResumePageContent() {
 
   const removePage = useCallback((pageIndex: number) => {
     handleDraftChange((currentDraft) => {
-      if (currentDraft.pages.length <= 1 || pageIndex < 0 || pageIndex >= currentDraft.pages.length) {
+      if (currentDraft.pages.length <= 1 || pageIndex <= 0 || pageIndex >= currentDraft.pages.length) {
         return currentDraft
       }
 
