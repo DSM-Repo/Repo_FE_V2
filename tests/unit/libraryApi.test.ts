@@ -147,7 +147,7 @@ test('getLibraryResumeByStudentId requests one public resume and returns parsed 
         introduce: '문제를 끝까지 파고드는 백엔드 개발자입니다.',
         majorName: '백엔드',
         name: '김태균',
-        pages: [{ content: 'API 설계와 테스트 자동화를 좋아합니다.', id: 'page-1', index: 0 }],
+        pages: [{ content: 'API 설계와 테스트 자동화를 좋아합니다.', id: 'page-1', index: 0, type: 'PROFILE' }],
         portfolioUrl: 'https://portfolio.example.test',
         profileImageUrl: 'https://cdn.example.test/profile.png',
         releasedAt: '2026-09-15T14:54:37.468Z',
@@ -179,7 +179,7 @@ test('getLibraryResumeByStudentId requests one public resume and returns parsed 
       introduce: '문제를 끝까지 파고드는 백엔드 개발자입니다.',
       majorName: '백엔드',
       name: '김태균',
-      pages: [{ content: 'API 설계와 테스트 자동화를 좋아합니다.', id: 'page-1', index: 0 }],
+      pages: [{ content: 'API 설계와 테스트 자동화를 좋아합니다.', id: 'page-1', index: 0, type: 'PROFILE' }],
       portfolioUrl: 'https://portfolio.example.test',
       profileImageUrl: 'https://cdn.example.test/profile.png',
       releasedAt: '2026-09-15T14:54:37.468Z',
@@ -233,6 +233,71 @@ test('getLibraryResumeByStudentId accepts nullable profile image from library re
     assert.equal(result.resume.profileImageUrl, '')
     assert.equal(result.resume.name, '김태균')
     assert.equal(result.resume.pages[0]?.id, '3d5ae3e3-60fa-4730-91ac-8c15fb9fe516')
+    assert.equal(result.resume.pages[0]?.type, 'PROFILE')
+  }
+})
+
+test('getLibraryResumeByStudentId preserves project pages from library resume response', async () => {
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        cohort: 11,
+        date: 2026,
+        email: 'student@example.com',
+        introduce: '프로젝트를 깊게 만드는 개발자입니다.',
+        majorName: 'Frontend Developer',
+        name: '최하은',
+        pages: [
+          {
+            content: '프로필 본문',
+            id: 'profile-page',
+            index: 0,
+            project: null,
+            type: 'profile',
+          },
+          {
+            content: '프로젝트 본문',
+            id: 'project-page',
+            index: 1,
+            project: {
+              endDate: '2026.10',
+              imageUrl: '/projects/repo.png',
+              name: 'Repo',
+              startDate: '2026.09',
+              summary: '학생 포트폴리오 관리 서비스',
+            },
+            type: 'project',
+          },
+        ],
+        portfolioUrl: 'https://portfolio.example.test',
+        profileImageUrl: null,
+        releasedAt: '2026-10-06T04:13:03.628',
+        resumeId: 'resume-2',
+        studentId: 4,
+        studentNumber: '2401',
+        year: 2,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 200,
+      },
+    )
+
+  const result = await libraryApi.getLibraryResumeByStudentId({ accessToken: 'access-token', studentId: 4 })
+
+  assert.equal(result.kind, 'success')
+  if (result.kind === 'success') {
+    assert.equal(result.resume.pages[0]?.type, 'PROFILE')
+    assert.equal(result.resume.pages[1]?.type, 'PROJECT')
+    assert.deepEqual(result.resume.pages[1]?.project, {
+      endDate: '2026.10',
+      imageUrl: 'https://api.example.test/projects/repo.png',
+      name: 'Repo',
+      startDate: '2026.09',
+      summary: '학생 포트폴리오 관리 서비스',
+    })
   }
 })
 
@@ -251,6 +316,7 @@ test('getLibraryResumeByStudentId resolves root-relative profile image urls agai
             content: '내용',
             id: '3d5ae3e3-60fa-4730-91ac-8c15fb9fe516',
             index: 0,
+            type: 'PROFILE',
           },
         ],
         portfolioUrl: 'https://github.com/DSM-Repo/Repo_BE_V2',

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
 import { getSavedAccessToken, getSavedAuthRole, type AuthLoginRole } from '@/features/auth/api'
@@ -22,7 +21,7 @@ import {
 } from '@/features/library/api'
 import type { InternalHref } from '@/shared/lib/internalHref'
 import type { AppHeaderItem, LibraryBookCardProps, ResumeBookSheetContent } from '@/shared/ui'
-import { AppHeader, Button, LibraryBookCard, ResumeBookSheet, SearchField, Toast } from '@/shared/ui'
+import { AppHeader, Button, CheckboxOption, LibraryBookCard, ResumeBookSheet, SearchField, Tag, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -39,6 +38,7 @@ const teacherNavigationItems = [
 ] satisfies readonly AppHeaderItem[]
 
 const LIBRARY_STUDENT_FETCH_SIZE = 100
+const fallbackClassFilters = [1, 2, 3, 4] as const
 
 type LibraryPageContentProps = {
   readonly showsLoadError: boolean
@@ -88,6 +88,11 @@ type LibrarySheetPage = {
   readonly key: string
   readonly page: LibraryResumePage
   readonly resume: LibraryResume
+}
+
+type LibraryFilters = {
+  readonly classes: readonly number[]
+  readonly majors: readonly string[]
 }
 
 function subscribeToSavedAuthRole(onStoreChange: () => void) {
@@ -152,8 +157,10 @@ function toSheetContent(resume: LibraryResume, page: LibraryResumePage): ResumeB
     majorName: resume.majorName,
     name: resume.name,
     pageContent: page.content,
+    pageType: page.type,
     portfolioUrl: resume.portfolioUrl,
     profileImageUrl: resume.profileImageUrl,
+    project: page.project,
     projects: [],
     skills: [],
   }
@@ -205,8 +212,62 @@ function sortLibraryResumes(resumes: readonly LibraryResume[], students: readonl
   })
 }
 
+function getStudentClassNumber(studentNumber: string | undefined) {
+  const digits = studentNumber?.match(/\d/g)?.join('')
+
+  if (!digits || digits.length < 2) {
+    return undefined
+  }
+
+  const classNumber = Number(digits[1])
+
+  return Number.isSafeInteger(classNumber) && classNumber > 0 ? classNumber : undefined
+}
+
+function getUniqueSortedMajors(students: readonly LibrarySearchStudent[]) {
+  return [...new Set(students.map((student) => student.major.trim()).filter(Boolean))].sort((leftMajor, rightMajor) =>
+    leftMajor.localeCompare(rightMajor, 'ko-KR', { numeric: true, sensitivity: 'base' }),
+  )
+}
+
+function getUniqueSortedClasses(students: readonly LibrarySearchStudent[]) {
+  const classNumbers = students.map((student) => getStudentClassNumber(student.studentNumber)).filter((classNumber) => classNumber !== undefined)
+  const uniqueClassNumbers = classNumbers.length > 0 ? [...new Set(classNumbers)] : [...fallbackClassFilters]
+
+  return uniqueClassNumbers.sort((leftClass, rightClass) => leftClass - rightClass)
+}
+
+function toggleStringFilter(values: readonly string[], value: string) {
+  return values.includes(value) ? values.filter((currentValue) => currentValue !== value) : [...values, value]
+}
+
+function toggleNumberFilter(values: readonly number[], value: number) {
+  return values.includes(value) ? values.filter((currentValue) => currentValue !== value) : [...values, value]
+}
+
+function hasActiveFilters(filters: LibraryFilters) {
+  return filters.majors.length > 0 || filters.classes.length > 0
+}
+
+function filterLibraryStudents(students: readonly LibrarySearchStudent[], filters: LibraryFilters) {
+  if (!hasActiveFilters(filters)) {
+    return students
+  }
+
+  return students.filter((student) => {
+    const classNumber = getStudentClassNumber(student.studentNumber)
+    const matchesMajor = filters.majors.length === 0 || filters.majors.includes(student.major)
+    const matchesClass = filters.classes.length === 0 || (classNumber !== undefined && filters.classes.includes(classNumber))
+
+    return matchesMajor && matchesClass
+  })
+}
+
 function toLibrarySheetPages(resumes: readonly LibraryResume[], students: readonly LibrarySearchStudent[]): readonly LibrarySheetPage[] {
-  return sortLibraryResumes(resumes, students).flatMap((resume) =>
+  const studentIds = new Set(students.map((student) => student.studentId))
+  const filteredResumes = resumes.filter((resume) => studentIds.has(resume.studentId))
+
+  return sortLibraryResumes(filteredResumes, students).flatMap((resume) =>
     sortResumePages(resume.pages).map((page) => ({
       key: `${resume.studentId}:${page.id}`,
       page,
@@ -228,6 +289,9 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
   const [studentSearchState, setStudentSearchState] = useState<StudentSearchState>({ kind: 'loading' })
   const [resumeLoadState, setResumeLoadState] = useState<ResumeLoadState>({ kind: 'loading' })
   const [visiblePageIndex, setVisiblePageIndex] = useState(0)
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false)
+  const [activeFilters, setActiveFilters] = useState<LibraryFilters>({ classes: [], majors: [] })
+  const [draftFilters, setDraftFilters] = useState<LibraryFilters>({ classes: [], majors: [] })
   const selectedDate = parseSelectedDate(searchParams.get('date'))
   const navigationItems = role === 'teacher' ? teacherNavigationItems : studentNavigationItems
   const libraryBooks = loadState.kind === 'success' ? loadState.books.map(toLibraryBookCard) : []
@@ -236,9 +300,13 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     () => (studentSearchState.kind === 'success' ? studentSearchState.students : []),
     [studentSearchState],
   )
+  const filteredStudents = useMemo(() => filterLibraryStudents(searchedStudents, activeFilters), [activeFilters, searchedStudents])
+  const filterMajorOptions = useMemo(() => getUniqueSortedMajors(searchedStudents), [searchedStudents])
+  const filterClassOptions = useMemo(() => getUniqueSortedClasses(searchedStudents), [searchedStudents])
+  const activeFilterCount = activeFilters.majors.length + activeFilters.classes.length
   const librarySheetPages = useMemo(
-    () => (resumeLoadState.kind === 'success' ? toLibrarySheetPages(resumeLoadState.resumes, searchedStudents) : []),
-    [resumeLoadState, searchedStudents],
+    () => (resumeLoadState.kind === 'success' ? toLibrarySheetPages(resumeLoadState.resumes, filteredStudents) : []),
+    [filteredStudents, resumeLoadState],
   )
   const visibleResumePages = librarySheetPages.slice(visiblePageIndex, visiblePageIndex + 2)
   const displayedPageNumber = Math.min(librarySheetPages.length, visiblePageIndex + visibleResumePages.length)
@@ -290,6 +358,22 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
       ignoresResult = true
     }
   }, [accessToken])
+
+  useEffect(() => {
+    if (!isFilterPanelOpen) {
+      return undefined
+    }
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsFilterPanelOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [isFilterPanelOpen])
 
   useEffect(() => {
     if (selectedDate === undefined) {
@@ -486,9 +570,18 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
         ) : (
           <section className={styles.resumeLibrary} aria-label={`${selectedDate}학년도 학생 이력서 목록`}>
             <div className={styles.viewerToolbar}>
-              <Link className={styles.filterButton} href="/library" aria-label="전체 학년도 보기">
+              <button
+                className={styles.filterButton}
+                type="button"
+                aria-label="도서관 필터 열기"
+                aria-pressed={isFilterPanelOpen}
+                onClick={() => {
+                  setDraftFilters(activeFilters)
+                  setIsFilterPanelOpen(true)
+                }}
+              >
                 <span aria-hidden="true" />
-              </Link>
+              </button>
               <SearchField
                 aria-label="학생 이름 검색"
                 className={styles.searchField}
@@ -504,6 +597,40 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                 전체 PDF 다운로드
               </Button>
             </div>
+            {hasActiveFilters(activeFilters) ? (
+              <div className={styles.activeFilters} aria-label="적용된 필터">
+                {activeFilters.classes.map((classNumber) => (
+                  <Tag
+                    key={`class-${classNumber}`}
+                    removeLabel={`${classNumber}반 필터 삭제`}
+                    onRemove={() => {
+                      setActiveFilters((currentFilters) => ({
+                        ...currentFilters,
+                        classes: currentFilters.classes.filter((currentClass) => currentClass !== classNumber),
+                      }))
+                      setVisiblePageIndex(0)
+                    }}
+                  >
+                    {classNumber}반
+                  </Tag>
+                ))}
+                {activeFilters.majors.map((major) => (
+                  <Tag
+                    key={`major-${major}`}
+                    removeLabel={`${major} 필터 삭제`}
+                    onRemove={() => {
+                      setActiveFilters((currentFilters) => ({
+                        ...currentFilters,
+                        majors: currentFilters.majors.filter((currentMajor) => currentMajor !== major),
+                      }))
+                      setVisiblePageIndex(0)
+                    }}
+                  >
+                    {major}
+                  </Tag>
+                ))}
+              </div>
+            ) : null}
             <div className={styles.resumeViewer} aria-live="polite">
               {studentSearchState.kind === 'loading' ? (
                 <p className={styles.emptyMessage}>학생 이력서를 불러오는 중입니다.</p>
@@ -518,18 +645,23 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                   {normalizedSearchKeyword ? '검색어와 일치하는 학생이 없습니다.' : '공개된 학생 이력서가 없습니다.'}
                 </p>
               ) : null}
-              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'loading' ? (
+              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && filteredStudents.length === 0 ? (
+                <p className={styles.emptyMessage}>
+                  {activeFilterCount > 0 ? '필터와 일치하는 학생이 없습니다.' : '공개된 학생 이력서가 없습니다.'}
+                </p>
+              ) : null}
+              {studentSearchState.kind === 'success' && filteredStudents.length > 0 && resumeLoadState.kind === 'loading' ? (
                 <p className={styles.emptyMessage}>공개 이력서를 불러오는 중입니다.</p>
               ) : null}
-              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'failure' ? (
+              {studentSearchState.kind === 'success' && filteredStudents.length > 0 && resumeLoadState.kind === 'failure' ? (
                 <p className={styles.emptyMessage} role="alert">
                   {resumeLoadState.message}
                 </p>
               ) : null}
-              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'success' && librarySheetPages.length === 0 ? (
+              {studentSearchState.kind === 'success' && filteredStudents.length > 0 && resumeLoadState.kind === 'success' && librarySheetPages.length === 0 ? (
                 <p className={styles.emptyMessage}>공개된 포트폴리오 문서가 없습니다.</p>
               ) : null}
-              {studentSearchState.kind === 'success' && studentSearchState.students.length > 0 && resumeLoadState.kind === 'success' && librarySheetPages.length > 0 ? (
+              {studentSearchState.kind === 'success' && filteredStudents.length > 0 && resumeLoadState.kind === 'success' && librarySheetPages.length > 0 ? (
                 <>
                   <button
                     aria-label="이전 페이지"
@@ -569,6 +701,88 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                 </>
               ) : null}
             </div>
+            {isFilterPanelOpen ? (
+              <div className={styles.filterLayer} role="presentation">
+                <button
+                  className={styles.filterScrim}
+                  type="button"
+                  aria-label="필터 닫기"
+                  onClick={() => setIsFilterPanelOpen(false)}
+                />
+                <aside className={styles.filterPanel} aria-label="도서관 필터">
+                  <header className={styles.filterPanelHeader}>
+                    <h2>필터링</h2>
+                    <button className={styles.filterCloseButton} type="button" aria-label="필터 닫기" onClick={() => setIsFilterPanelOpen(false)}>
+                      ×
+                    </button>
+                  </header>
+                  <div className={styles.filterPanelBody}>
+                    <section className={styles.filterGroup}>
+                      <h3>전공</h3>
+                      <div className={styles.filterOptions}>
+                        {filterMajorOptions.length > 0 ? (
+                          filterMajorOptions.map((major) => (
+                            <CheckboxOption
+                              checked={draftFilters.majors.includes(major)}
+                              key={major}
+                              onCheckedChange={() =>
+                                setDraftFilters((currentFilters) => ({
+                                  ...currentFilters,
+                                  majors: toggleStringFilter(currentFilters.majors, major),
+                                }))
+                              }
+                            >
+                              {major}
+                            </CheckboxOption>
+                          ))
+                        ) : (
+                          <p className={styles.filterEmptyMessage}>선택할 전공이 없습니다.</p>
+                        )}
+                      </div>
+                    </section>
+                    <section className={styles.filterGroup}>
+                      <h3>반</h3>
+                      <div className={styles.filterOptions}>
+                        {filterClassOptions.map((classNumber) => (
+                          <CheckboxOption
+                            checked={draftFilters.classes.includes(classNumber)}
+                            key={classNumber}
+                            onCheckedChange={() =>
+                              setDraftFilters((currentFilters) => ({
+                                ...currentFilters,
+                                classes: toggleNumberFilter(currentFilters.classes, classNumber),
+                              }))
+                            }
+                          >
+                            {classNumber}반
+                          </CheckboxOption>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                  <footer className={styles.filterActions}>
+                    <button
+                      className={styles.filterResetButton}
+                      type="button"
+                      onClick={() => setDraftFilters({ classes: [], majors: [] })}
+                    >
+                      초기화
+                    </button>
+                    <button
+                      className={styles.filterApplyButton}
+                      type="button"
+                      onClick={() => {
+                        setActiveFilters(draftFilters)
+                        setVisiblePageIndex(0)
+                        setIsFilterPanelOpen(false)
+                      }}
+                    >
+                      적용하기
+                    </button>
+                  </footer>
+                </aside>
+              </div>
+            ) : null}
           </section>
         )}
       </section>

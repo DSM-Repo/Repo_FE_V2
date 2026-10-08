@@ -73,8 +73,10 @@ function toSheetContent(resume: LibraryResume, page: LibraryResumePage): ResumeB
     majorName: resume.majorName,
     name: resume.name,
     pageContent: page.content,
+    pageType: page.type,
     portfolioUrl: resume.portfolioUrl,
     profileImageUrl: resume.profileImageUrl,
+    project: page.project,
     projects: [],
     skills: [],
   }

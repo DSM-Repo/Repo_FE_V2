@@ -136,6 +136,50 @@ function getStudentKey(student: Pick<RecentLibraryStudent, 'date' | 'studentId'>
   return `${student.date}:${student.studentId}`
 }
 
+function toRecentLibraryPageType(value: unknown, index: number): LibraryResume['pages'][number]['type'] | undefined {
+  if (value === undefined || value === null) {
+    return index === 1 ? 'PROJECT' : 'PROFILE'
+  }
+
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const normalizedValue = value.trim().toUpperCase()
+
+  if (normalizedValue === 'FREE' || normalizedValue === 'PROFILE' || normalizedValue === 'PROJECT') {
+    return normalizedValue
+  }
+
+  return undefined
+}
+
+function toRecentLibraryProject(value: unknown): LibraryResume['pages'][number]['project'] | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined
+  }
+
+  const candidate = value as Record<string, unknown>
+
+  if (
+    (candidate.endDate !== undefined && candidate.endDate !== null && typeof candidate.endDate !== 'string') ||
+    (candidate.imageUrl !== undefined && candidate.imageUrl !== null && typeof candidate.imageUrl !== 'string') ||
+    (candidate.name !== undefined && candidate.name !== null && typeof candidate.name !== 'string') ||
+    (candidate.startDate !== undefined && candidate.startDate !== null && typeof candidate.startDate !== 'string') ||
+    (candidate.summary !== undefined && candidate.summary !== null && typeof candidate.summary !== 'string')
+  ) {
+    return undefined
+  }
+
+  return {
+    endDate: typeof candidate.endDate === 'string' ? candidate.endDate : '',
+    imageUrl: typeof candidate.imageUrl === 'string' ? candidate.imageUrl : '',
+    name: typeof candidate.name === 'string' ? candidate.name : '',
+    startDate: typeof candidate.startDate === 'string' ? candidate.startDate : '',
+    summary: typeof candidate.summary === 'string' ? candidate.summary : '',
+  }
+}
+
 function toRecentLibraryResume(value: unknown): LibraryResume | undefined {
   if (!value || typeof value !== 'object') {
     return undefined
@@ -178,10 +222,20 @@ function toRecentLibraryResume(value: unknown): LibraryResume | undefined {
         return undefined
       }
 
+      const type = toRecentLibraryPageType(pageCandidate.type, Number(pageCandidate.index))
+      const rawProject = pageCandidate.project
+      const project = rawProject === undefined || rawProject === null ? undefined : toRecentLibraryProject(rawProject)
+
+      if (!type || (rawProject !== undefined && rawProject !== null && !project)) {
+        return undefined
+      }
+
       return {
         content: pageCandidate.content,
         id: pageCandidate.id,
         index: Number(pageCandidate.index),
+        ...(project ? { project } : {}),
+        type,
       }
     })
     .filter((page) => page !== undefined)

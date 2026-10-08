@@ -7,6 +7,8 @@ import type {
   LibraryResume,
   LibraryResumeInput,
   LibraryResumePage,
+  LibraryResumePageType,
+  LibraryResumeProject,
   LibraryResumeResult,
   LibrarySearchInput,
   LibrarySearchResult,
@@ -128,6 +130,45 @@ function parseLibrarySearchStudents(value: unknown): readonly LibrarySearchStude
   return students.filter((student) => student !== undefined)
 }
 
+function parseLibraryResumePageType(value: unknown, index: number): LibraryResumePageType | undefined {
+  if (value === undefined || value === null) {
+    return index === 1 ? 'PROJECT' : 'PROFILE'
+  }
+
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const normalizedValue = value.trim().toUpperCase()
+
+  if (normalizedValue === 'FREE' || normalizedValue === 'PROFILE' || normalizedValue === 'PROJECT') {
+    return normalizedValue
+  }
+
+  return undefined
+}
+
+function parseLibraryResumeProject(value: unknown): LibraryResumeProject | undefined {
+  if (
+    !isJsonRecord(value) ||
+    (value['endDate'] !== undefined && value['endDate'] !== null && typeof value['endDate'] !== 'string') ||
+    (value['imageUrl'] !== undefined && value['imageUrl'] !== null && typeof value['imageUrl'] !== 'string') ||
+    (value['name'] !== undefined && value['name'] !== null && typeof value['name'] !== 'string') ||
+    (value['startDate'] !== undefined && value['startDate'] !== null && typeof value['startDate'] !== 'string') ||
+    (value['summary'] !== undefined && value['summary'] !== null && typeof value['summary'] !== 'string')
+  ) {
+    return undefined
+  }
+
+  return {
+    endDate: typeof value['endDate'] === 'string' ? value['endDate'] : '',
+    imageUrl: typeof value['imageUrl'] === 'string' ? normalizeApiImageUrl(value['imageUrl'], LIBRARY_API_BASE_URL) : '',
+    name: typeof value['name'] === 'string' ? value['name'] : '',
+    startDate: typeof value['startDate'] === 'string' ? value['startDate'] : '',
+    summary: typeof value['summary'] === 'string' ? value['summary'] : '',
+  }
+}
+
 function parseLibraryResumePage(value: unknown): LibraryResumePage | undefined {
   if (
     !isJsonRecord(value) ||
@@ -138,10 +179,25 @@ function parseLibraryResumePage(value: unknown): LibraryResumePage | undefined {
     return undefined
   }
 
+  const type = parseLibraryResumePageType(value['type'], value['index'])
+
+  if (!type) {
+    return undefined
+  }
+
+  const rawProject = value['project']
+  const project = rawProject === undefined || rawProject === null ? undefined : parseLibraryResumeProject(rawProject)
+
+  if (rawProject !== undefined && rawProject !== null && !project) {
+    return undefined
+  }
+
   return {
     content: value['content'],
     id: value['id'],
     index: value['index'],
+    ...(project ? { project } : {}),
+    type,
   }
 }
 

@@ -78,9 +78,11 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
+  border: 0;
   border-radius: var(--repo-radius-pill);
   color: var(--repo-gray-300);
   background: var(--repo-bg-main-point);
+  cursor: pointer;
   text-decoration: none;
 }
 
@@ -117,6 +119,9 @@
 }
 
 .filterButton:focus-visible,
+.filterCloseButton:focus-visible,
+.filterResetButton:focus-visible,
+.filterApplyButton:focus-visible,
 .pageArrow:focus-visible {
   outline: 2px solid var(--repo-main);
   outline-offset: 3px;
@@ -164,6 +169,15 @@
   opacity: 1;
 }
 
+.activeFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-top: -20px;
+}
+
 .resumeViewer {
   position: relative;
   display: grid;
@@ -173,6 +187,152 @@
   gap: 8px;
   align-items: center;
   justify-content: center;
+}
+
+.filterLayer {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 318px;
+}
+
+.filterScrim {
+  width: 100%;
+  border: 0;
+  background: rgb(0 0 0 / 68%);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.filterPanel {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border-left: 1px solid var(--repo-bg-main-lighter);
+  color: var(--repo-gray-50);
+  background: #1f1f22;
+  box-shadow: -12px 0 30px rgb(0 0 0 / 32%);
+}
+
+.filterPanelHeader {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 18px 0 22px;
+  border-bottom: 1px solid var(--repo-bg-main-lighter);
+}
+
+.filterPanelHeader h2 {
+  margin: 0;
+  color: var(--repo-gray-50);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.filterCloseButton {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  color: var(--repo-gray-50);
+  background: transparent;
+  font-family: inherit;
+  font-size: 30px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.filterPanelBody {
+  display: grid;
+  align-content: start;
+  gap: 28px;
+  overflow: auto;
+  padding: 26px 18px 32px 22px;
+}
+
+.filterGroup {
+  display: grid;
+  gap: 14px;
+}
+
+.filterGroup h3 {
+  margin: 0;
+  color: var(--repo-gray-50);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  letter-spacing: 0;
+}
+
+.filterOptions {
+  display: grid;
+  gap: 12px;
+}
+
+.filterOptions label {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 5px;
+}
+
+.filterEmptyMessage {
+  margin: 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+}
+
+.filterActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px 22px 24px;
+  border-top: 1px solid var(--repo-bg-main-lighter);
+}
+
+.filterResetButton,
+.filterApplyButton {
+  display: inline-flex;
+  min-width: 94px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: var(--repo-font-body-small-size);
+  font-weight: var(--repo-font-body-small-weight);
+  line-height: var(--repo-font-body-small-line-height);
+  cursor: pointer;
+}
+
+.filterResetButton {
+  border: 1px solid var(--repo-gray-400);
+  color: var(--repo-gray-50);
+  background: transparent;
+}
+
+.filterApplyButton {
+  border: 0;
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main-point);
+}
+
+.filterResetButton:hover,
+.filterApplyButton:hover {
+  background: var(--repo-bg-main-lighter);
 }
 
 .sheets {
@@ -328,6 +488,11 @@
     flex-direction: column;
   }
 
+  .activeFilters {
+    justify-content: start;
+    margin-top: -16px;
+  }
+
   .downloadButton {
     position: static;
   }
@@ -359,6 +524,19 @@
 
   .toastLayer {
     top: 148px;
+  }
+
+  .filterLayer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filterScrim {
+    display: none;
+  }
+
+  .filterPanel {
+    width: min(100vw, 360px);
+    justify-self: end;
   }
 }
 

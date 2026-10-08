@@ -54,6 +54,18 @@ export type LibraryResumePage = {
   readonly content: string
   readonly id: string
   readonly index: number
+  readonly project?: LibraryResumeProject
+  readonly type: LibraryResumePageType
+}
+
+export type LibraryResumePageType = 'FREE' | 'PROFILE' | 'PROJECT'
+
+export type LibraryResumeProject = {
+  readonly endDate: string
+  readonly imageUrl: string
+  readonly name: string
+  readonly startDate: string
+  readonly summary: string
 }
 
 export type LibraryResume = {

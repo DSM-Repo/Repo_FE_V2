@@ -229,6 +229,8 @@ export default function TeacherStudentReviewPage() {
             content: page.content,
             id: page.id,
             index: page.index,
+            ...(page.project ? { project: page.project } : {}),
+            type: page.type,
           })),
           portfolioUrl: resume.portfolioUrl,
           profileImageUrl: resume.profileImageUrl,
