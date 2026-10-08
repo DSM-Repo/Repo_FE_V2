@@ -212,7 +212,7 @@ function sortLibraryResumes(resumes: readonly LibraryResume[], students: readonl
   })
 }
 
-function getStudentClassNumber(studentNumber: string | undefined) {
+function getClassNumberFromStudentNumber(studentNumber: string | undefined) {
   const digits = studentNumber?.match(/\d/g)?.join('')
 
   if (!digits || digits.length < 2) {
@@ -224,6 +224,16 @@ function getStudentClassNumber(studentNumber: string | undefined) {
   return Number.isSafeInteger(classNumber) && classNumber > 0 ? classNumber : undefined
 }
 
+function getStudentClassNumber(student: LibrarySearchStudent) {
+  return student.classNumber ?? getClassNumberFromStudentNumber(student.studentNumber)
+}
+
+function getResumeClassNumber(resume: LibraryResume, studentsById: ReadonlyMap<number, LibrarySearchStudent>) {
+  const student = studentsById.get(resume.studentId)
+
+  return student?.classNumber ?? getClassNumberFromStudentNumber(student?.studentNumber ?? resume.studentNumber)
+}
+
 function getUniqueSortedMajors(students: readonly LibrarySearchStudent[]) {
   return [...new Set(students.map((student) => student.major.trim()).filter(Boolean))].sort((leftMajor, rightMajor) =>
     leftMajor.localeCompare(rightMajor, 'ko-KR', { numeric: true, sensitivity: 'base' }),
@@ -231,7 +241,7 @@ function getUniqueSortedMajors(students: readonly LibrarySearchStudent[]) {
 }
 
 function getUniqueSortedClasses(students: readonly LibrarySearchStudent[]) {
-  const classNumbers = students.map((student) => getStudentClassNumber(student.studentNumber)).filter((classNumber) => classNumber !== undefined)
+  const classNumbers = students.map(getStudentClassNumber).filter((classNumber) => classNumber !== undefined)
   const uniqueClassNumbers = classNumbers.length > 0 ? [...new Set(classNumbers)] : [...fallbackClassFilters]
 
   return uniqueClassNumbers.sort((leftClass, rightClass) => leftClass - rightClass)
@@ -255,17 +265,34 @@ function filterLibraryStudents(students: readonly LibrarySearchStudent[], filter
   }
 
   return students.filter((student) => {
-    const classNumber = getStudentClassNumber(student.studentNumber)
+    const classNumber = getStudentClassNumber(student)
     const matchesMajor = filters.majors.length === 0 || filters.majors.includes(student.major)
-    const matchesClass = filters.classes.length === 0 || (classNumber !== undefined && filters.classes.includes(classNumber))
+    const matchesClass = filters.classes.length === 0 || classNumber === undefined || filters.classes.includes(classNumber)
 
     return matchesMajor && matchesClass
   })
 }
 
-function toLibrarySheetPages(resumes: readonly LibraryResume[], students: readonly LibrarySearchStudent[]): readonly LibrarySheetPage[] {
+function toLibrarySheetPages(
+  resumes: readonly LibraryResume[],
+  students: readonly LibrarySearchStudent[],
+  filters: LibraryFilters,
+): readonly LibrarySheetPage[] {
   const studentIds = new Set(students.map((student) => student.studentId))
-  const filteredResumes = resumes.filter((resume) => studentIds.has(resume.studentId))
+  const studentsById = new Map(students.map((student) => [student.studentId, student]))
+  const filteredResumes = resumes.filter((resume) => {
+    if (!studentIds.has(resume.studentId)) {
+      return false
+    }
+
+    if (filters.classes.length === 0) {
+      return true
+    }
+
+    const classNumber = getResumeClassNumber(resume, studentsById)
+
+    return classNumber !== undefined && filters.classes.includes(classNumber)
+  })
 
   return sortLibraryResumes(filteredResumes, students).flatMap((resume) =>
     sortResumePages(resume.pages).map((page) => ({
@@ -305,8 +332,8 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
   const filterClassOptions = useMemo(() => getUniqueSortedClasses(searchedStudents), [searchedStudents])
   const activeFilterCount = activeFilters.majors.length + activeFilters.classes.length
   const librarySheetPages = useMemo(
-    () => (resumeLoadState.kind === 'success' ? toLibrarySheetPages(resumeLoadState.resumes, filteredStudents) : []),
-    [filteredStudents, resumeLoadState],
+    () => (resumeLoadState.kind === 'success' ? toLibrarySheetPages(resumeLoadState.resumes, filteredStudents, activeFilters) : []),
+    [activeFilters, filteredStudents, resumeLoadState],
   )
   const visibleResumePages = librarySheetPages.slice(visiblePageIndex, visiblePageIndex + 2)
   const displayedPageNumber = Math.min(librarySheetPages.length, visiblePageIndex + visibleResumePages.length)

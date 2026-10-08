@@ -107,8 +107,12 @@ function parseLibrarySearchStudent(value: unknown): LibrarySearchStudent | undef
           : typeof value['number'] === 'number'
             ? String(value['number'])
           : undefined
+  const classNumber = typeof value['classNumber'] === 'number' ? value['classNumber'] : undefined
+  const grade = typeof value['grade'] === 'number' ? value['grade'] : undefined
 
   return {
+    ...(classNumber === undefined ? {} : { classNumber }),
+    ...(grade === undefined ? {} : { grade }),
     major: value['major'],
     studentId: value['studentId'],
     studentName: value['studentName'],

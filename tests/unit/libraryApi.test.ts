@@ -78,7 +78,7 @@ test('searchLibraryStudents requests public students with date and keyword filte
 
     return new Response(
       JSON.stringify({
-        content: [{ major: '백엔드', studentId: 1, studentName: '김태균' }],
+        content: [{ classNumber: 4, grade: 2, major: '백엔드', studentId: 1, studentName: '김태균' }],
         totalElements: 1,
       }),
       {
@@ -107,7 +107,7 @@ test('searchLibraryStudents requests public students with date and keyword filte
   assert.equal(requestedAuthorization, 'Bearer access-token')
   assert.deepEqual(result, {
     kind: 'success',
-    students: [{ major: '백엔드', studentId: 1, studentName: '김태균' }],
+    students: [{ classNumber: 4, grade: 2, major: '백엔드', studentId: 1, studentName: '김태균' }],
     totalElements: 1,
   })
 })

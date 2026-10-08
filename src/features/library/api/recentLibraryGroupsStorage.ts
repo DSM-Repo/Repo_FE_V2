@@ -80,6 +80,8 @@ function toRecentLibraryStudent(value: unknown): RecentLibraryStudent | undefine
   if (
     !Number.isSafeInteger(candidate.date) ||
     !Number.isSafeInteger(candidate.studentId) ||
+    ('classNumber' in candidate && !Number.isSafeInteger(candidate.classNumber)) ||
+    ('grade' in candidate && !Number.isSafeInteger(candidate.grade)) ||
     typeof candidate.major !== 'string' ||
     typeof candidate.studentName !== 'string' ||
     ('studentNumber' in candidate && typeof candidate.studentNumber !== 'string')
@@ -90,7 +92,9 @@ function toRecentLibraryStudent(value: unknown): RecentLibraryStudent | undefine
   const studentNumber = typeof candidate.studentNumber === 'string' ? candidate.studentNumber : undefined
 
   return {
+    ...(Number.isSafeInteger(candidate.classNumber) ? { classNumber: Number(candidate.classNumber) } : {}),
     date: Number(candidate.date),
+    ...(Number.isSafeInteger(candidate.grade) ? { grade: Number(candidate.grade) } : {}),
     major: candidate.major,
     studentId: Number(candidate.studentId),
     studentName: candidate.studentName,
@@ -342,7 +346,9 @@ export function getRecentLibraryStudents(input: { readonly date: number; readonl
   return readRecentStudents()
     .filter((student) => student.date === input.date)
     .filter((student) => (keyword ? student.studentName.toLowerCase().includes(keyword) : true))
-    .map(({ major, studentId, studentName, studentNumber }) => ({
+    .map(({ classNumber, grade, major, studentId, studentName, studentNumber }) => ({
+      ...(classNumber === undefined ? {} : { classNumber }),
+      ...(grade === undefined ? {} : { grade }),
       major,
       studentId,
       studentName,

@@ -29,6 +29,8 @@ export type LibrarySearchInput = LibraryAuthInput & {
 }
 
 export type LibrarySearchStudent = {
+  readonly classNumber?: number
+  readonly grade?: number
   readonly major: string
   readonly studentId: number
   readonly studentName: string
