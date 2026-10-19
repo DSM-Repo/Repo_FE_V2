@@ -226,3 +226,54 @@ test('getNotifications returns server-error when the response body is not a noti
     message: '알림 목록 응답 형식이 올바르지 않습니다.',
   })
 })
+
+test('getNotifications preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await notificationApi.getNotifications({ accessToken: 'access-token' })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})
+
+test('markNotificationRead preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await notificationApi.markNotificationRead({ accessToken: 'access-token', alramId: 'alram-1' })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})
+
+test('removeNotification preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await notificationApi.removeNotification({ accessToken: 'access-token', alramId: 'alram-1' })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})

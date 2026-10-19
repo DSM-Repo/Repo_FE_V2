@@ -524,10 +524,10 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
           const result = await getLibraryResumeByStudentId({ accessToken, studentId: student.studentId })
 
           if (result.kind === 'success') {
-            return result.resume
+            return { resume: result.resume, message: undefined }
           }
 
-          return getRecentLibraryResume(student.studentId)
+          return { resume: getRecentLibraryResume(student.studentId), message: result.message }
         }),
       )
 
@@ -535,7 +535,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
         return
       }
 
-      const resumes = resumeResults.filter((resume) => resume !== undefined)
+      const resumes = resumeResults.map((result) => result.resume).filter((resume) => resume !== undefined)
 
       if (resumes.length > 0) {
         setResumeLoadState({
@@ -547,7 +547,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
 
       setResumeLoadState({
         kind: 'failure',
-        message: '공개된 이력서를 찾을 수 없습니다.',
+        message: resumeResults.find((result) => result.message !== undefined)?.message ?? '공개된 이력서를 찾을 수 없습니다.',
       })
     }
 

@@ -16,6 +16,7 @@ import type {
 } from './authApi.types'
 import { getAuthRoleFromAccessToken } from './authAccessToken'
 import { postAuthJsonRequest, postAuthRefreshRequest } from './authHttpClient'
+import { readServerErrorMessage } from '../../../shared/api/serverErrorMessage'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -104,13 +105,13 @@ export async function loginWithAuthApi(input: AuthLoginInput): Promise<AuthLogin
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'invalid-credentials',
-      message: '이메일 또는 비밀번호를 확인해주세요.',
+      message: await readServerErrorMessage(response.value, '이메일 또는 비밀번호를 확인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '로그인 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readServerErrorMessage(response.value, '로그인 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -150,13 +151,13 @@ export async function refreshAuthToken(input: AuthRefreshInput): Promise<AuthRef
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'invalid-refresh-token',
-      message: '다시 로그인해주세요.',
+      message: await readServerErrorMessage(response.value, '다시 로그인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '토큰 재발급 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readServerErrorMessage(response.value, '토큰 재발급 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -176,7 +177,7 @@ export async function signupWithAuthApi(input: AuthSignupInput): Promise<AuthSig
 
   return {
     kind: 'server-error',
-    message: '회원가입 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readServerErrorMessage(response.value, '회원가입 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -196,7 +197,7 @@ export async function sendEmailVerificationCode(input: AuthEmailSendInput): Prom
 
   return {
     kind: 'server-error',
-    message: '인증 코드 발송에 실패했습니다.',
+    message: await readServerErrorMessage(response.value, '인증 코드 발송에 실패했습니다.'),
   }
 }
 
@@ -217,12 +218,12 @@ export async function verifyEmailCode(input: AuthEmailVerifyInput): Promise<Auth
   if ([400, 401, 404].includes(response.value.status)) {
     return {
       kind: 'invalid-code',
-      message: '인증 코드를 확인해주세요.',
+      message: await readServerErrorMessage(response.value, '인증 코드를 확인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '이메일 인증에 실패했습니다.',
+    message: await readServerErrorMessage(response.value, '이메일 인증에 실패했습니다.'),
   }
 }

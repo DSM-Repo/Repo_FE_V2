@@ -1,5 +1,6 @@
 'use client'
 
+import { readServerErrorMessage } from '../../../shared/api/serverErrorMessage'
 import type {
   FeedbackApply,
   FeedbackApplyFailure,
@@ -82,6 +83,14 @@ const RESPONSE_BODY_STREAM_FAILURE = {
 } as const satisfies FeedbackRequestFailure
 
 type FeedbackHttpResponse = Extract<FeedbackRequestResponse, { readonly kind: 'response' }>
+
+async function readFeedbackErrorMessage(response: FeedbackHttpResponse, fallback: string): Promise<string> {
+  try {
+    return await readServerErrorMessage(response.value, fallback)
+  } finally {
+    response.complete()
+  }
+}
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -602,18 +611,16 @@ export async function createFeedback(input: FeedbackCreateInput): Promise<Feedba
     return readCreateResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '피드백을 작성할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readFeedbackErrorMessage(response, '피드백을 작성할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '피드백 생성 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readFeedbackErrorMessage(response, '피드백 생성 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -628,18 +635,16 @@ export async function applyFeedback(input: FeedbackApplyInput): Promise<Feedback
     return readApplyResponseBody(response, input.feedbackIds.length)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '피드백을 반영할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readFeedbackErrorMessage(response, '피드백을 반영할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '피드백 일괄 반영 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readFeedbackErrorMessage(response, '피드백 일괄 반영 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -654,18 +659,16 @@ export async function completeFeedback(input: FeedbackCompleteInput): Promise<Fe
     return readStatusResponseBody(response, INVALID_COMPLETE_RESPONSE)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '피드백을 완료 처리할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readFeedbackErrorMessage(response, '피드백을 완료 처리할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '피드백 완료 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readFeedbackErrorMessage(response, '피드백 완료 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -680,18 +683,16 @@ export async function pendingFeedback(input: FeedbackPendingInput): Promise<Feed
     return readStatusResponseBody(response, INVALID_PENDING_RESPONSE)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '피드백을 미반영 처리할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readFeedbackErrorMessage(response, '피드백을 미반영 처리할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '피드백 미반영 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readFeedbackErrorMessage(response, '피드백 미반영 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -706,18 +707,16 @@ export async function updateFeedback(input: FeedbackUpdateInput): Promise<Feedba
     return readUpdateResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '피드백을 수정할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readFeedbackErrorMessage(response, '피드백을 수정할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '피드백 수정 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readFeedbackErrorMessage(response, '피드백 수정 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -732,25 +731,23 @@ export async function getFeedbackById(input: FeedbackDetailInput): Promise<Feedb
     return readDetailResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '피드백을 조회할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readFeedbackErrorMessage(response, '피드백을 조회할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   if (response.value.status === 404) {
     return {
       kind: 'not-found',
-      message: '피드백을 찾을 수 없습니다.',
+      message: await readFeedbackErrorMessage(response, '피드백을 찾을 수 없습니다.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '피드백 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readFeedbackErrorMessage(response, '피드백 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -765,18 +762,16 @@ export async function getFeedbacks(input: FeedbackListInput): Promise<FeedbackLi
     return readListResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '피드백 목록을 조회할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readFeedbackErrorMessage(response, '피드백 목록을 조회할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '피드백 목록 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readFeedbackErrorMessage(response, '피드백 목록 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -791,17 +786,15 @@ export async function deleteFeedback(input: FeedbackDeleteInput): Promise<Feedba
     return readDeleteResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '피드백을 삭제할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readFeedbackErrorMessage(response, '피드백을 삭제할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '피드백 삭제 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readFeedbackErrorMessage(response, '피드백 삭제 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }

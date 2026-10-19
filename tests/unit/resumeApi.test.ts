@@ -15,6 +15,74 @@ test.afterEach(() => {
   globalThis.clearTimeout = originalClearTimeout
 })
 
+const resumeErrorOperations = [
+  { name: 'getResumeById', run: () => resumeApi.getResumeById({ accessToken: 'token', resumeId: 'resume-id' }) },
+  { name: 'getStudentResumeById', run: () => resumeApi.getStudentResumeById({ accessToken: 'token', studentId: 11 }) },
+  { name: 'getStudentResumeStatuses', run: () => resumeApi.getStudentResumeStatuses({ accessToken: 'token' }) },
+  { name: 'updateResumeVisibility', run: () => resumeApi.updateResumeVisibility({ accessToken: 'token', studentId: 11, isPublic: true }) },
+  { name: 'cancelResumeSubmission', run: () => resumeApi.cancelResumeSubmission({ accessToken: 'token' }) },
+  { name: 'submitResume', run: () => resumeApi.submitResume({ accessToken: 'token', email: '', introduce: '', pages: [], portfolioUrl: '', skills: [] }) },
+  { name: 'saveResume', run: () => resumeApi.saveResume({ accessToken: 'token', email: '', introduce: '', pages: [], portfolioUrl: '', skills: [] }) },
+  { name: 'autoSaveResume', run: () => resumeApi.autoSaveResume({ accessToken: 'token', email: '', introduce: '', pages: [], portfolioUrl: '', skills: [] }) },
+  { name: 'uploadResumeImage', run: () => resumeApi.uploadResumeImage({ accessToken: 'token', image: new File(['image'], 'profile.png', { type: 'image/png' }) }) },
+]
+
+for (const operation of resumeErrorOperations) {
+  test(`${operation.name} preserves server error.message for every HTTP failure status`, async () => {
+    for (const status of [400, 401, 403, 404, 409, 410, 422, 429, 500, 503]) {
+      const message = `  서버 원문 ${operation.name} ${status}\n`
+      globalThis.fetch = async () => new Response(JSON.stringify({ error: { message }, message: '다른 메시지' }), { status })
+
+      const result = await operation.run()
+
+      assert.notEqual(result.kind, 'success')
+      if (result.kind === 'success') throw new Error('Expected an HTTP failure')
+      assert.equal(result.message, message, `${operation.name}: ${status}`)
+      const expectedKind = status === 401 || status === 403
+        ? 'forbidden'
+        : status === 404 && (operation.name === 'getResumeById' || operation.name === 'getStudentResumeById')
+          ? 'not-found'
+          : status === 400 && operation.name === 'uploadResumeImage'
+            ? 'validation-error'
+            : 'server-error'
+      assert.equal(result.kind, expectedKind)
+    }
+  })
+}
+
+test('resume HTTP failures keep the timeout active until the error body is read', async () => {
+  let clearTimeoutCallCount = 0
+  globalThis.clearTimeout = (timeoutId) => {
+    clearTimeoutCallCount += 1
+    originalClearTimeout(timeoutId)
+  }
+  globalThis.fetch = async () => {
+    const response = new Response(null, { status: 403 })
+    Object.defineProperty(response, 'text', {
+      value: async () => {
+        await new Promise<void>((resolve) => originalSetTimeout(resolve, 0))
+        assert.equal(clearTimeoutCallCount, 0)
+        return JSON.stringify({ error: { message: '서버가 반환한 권한 오류' } })
+      },
+    })
+    return response
+  }
+
+  assert.deepEqual(await resumeApi.getResumeById({ accessToken: 'token', resumeId: 'resume-id' }), {
+    kind: 'forbidden',
+    message: '서버가 반환한 권한 오류',
+  })
+  assert.equal(clearTimeoutCallCount, 1)
+})
+
+test('resume HTTP failures use a fallback when the server provides no message', async () => {
+  globalThis.fetch = async () => new Response(null, { status: 404 })
+  assert.deepEqual(await resumeApi.getResumeById({ accessToken: 'token', resumeId: 'resume-id' }), {
+    kind: 'not-found',
+    message: '이력서를 찾을 수 없습니다.',
+  })
+})
+
 test('updateUserMajor sends the selected major id with bearer auth', async () => {
   let requestedUrl = ''
   let requestedMethod = ''

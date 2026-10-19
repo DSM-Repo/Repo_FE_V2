@@ -1,5 +1,7 @@
 'use client'
 
+import { readServerErrorMessage } from '../../../shared/api/serverErrorMessage'
+
 import type {
   Major,
   MajorAuthInput,
@@ -267,15 +269,17 @@ export async function getMajors(input: MajorAuthInput): Promise<MajorListResult>
     return readMajorListResponseBody(response)
   }
 
-  response.complete()
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toForbiddenResult(await readServerErrorMessage(response.value, '전공 목록을 조회할 권한이 없습니다. 다시 로그인해주세요.'))
+    }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toForbiddenResult('전공 목록을 조회할 권한이 없습니다. 다시 로그인해주세요.')
-  }
-
-  return {
-    kind: 'server-error',
-    message: '전공 목록 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '전공 목록 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }
 
@@ -290,15 +294,17 @@ export async function getMajorStudents(input: MajorStudentsInput): Promise<Major
     return readMajorStudentListResponseBody(response)
   }
 
-  response.complete()
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toForbiddenResult(await readServerErrorMessage(response.value, '전공별 학생을 조회할 권한이 없습니다. 다시 로그인해주세요.'))
+    }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toForbiddenResult('전공별 학생을 조회할 권한이 없습니다. 다시 로그인해주세요.')
-  }
-
-  return {
-    kind: 'server-error',
-    message: '전공별 학생 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '전공별 학생 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }
 
@@ -313,15 +319,17 @@ export async function createMajor(input: MajorCreateInput): Promise<MajorCreateR
     return readMajorCreateResponseBody(response)
   }
 
-  response.complete()
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toForbiddenResult(await readServerErrorMessage(response.value, '전공을 추가할 권한이 없습니다. 다시 로그인해주세요.'))
+    }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toForbiddenResult('전공을 추가할 권한이 없습니다. 다시 로그인해주세요.')
-  }
-
-  return {
-    kind: 'server-error',
-    message: '전공 추가 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '전공 추가 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }
 
@@ -332,20 +340,23 @@ export async function deleteMajor(input: MajorDeleteInput): Promise<MajorDeleteR
     return response
   }
 
-  response.complete()
-
   if (response.value.status === 204) {
+    response.complete()
     return {
       kind: 'success',
     }
   }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toForbiddenResult('전공을 삭제할 권한이 없습니다. 다시 로그인해주세요.')
-  }
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toForbiddenResult(await readServerErrorMessage(response.value, '전공을 삭제할 권한이 없습니다. 다시 로그인해주세요.'))
+    }
 
-  return {
-    kind: 'server-error',
-    message: '전공 삭제 요청을 처리하지 못했습니다. 학생이 사용 중인 전공인지 확인해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '전공 삭제 요청을 처리하지 못했습니다. 학생이 사용 중인 전공인지 확인해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }

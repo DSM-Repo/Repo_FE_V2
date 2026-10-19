@@ -154,3 +154,90 @@ test('removeHistory deletes the selected history', async () => {
     kind: 'success',
   })
 })
+
+test('getHistories keeps the request timeout until the server error body has been read', async () => {
+  let timeoutCleared = false
+  globalThis.clearTimeout = (...args) => {
+    timeoutCleared = true
+    return originalClearTimeout(...args)
+  }
+  const response = new Response(null, { status: 503 })
+  response.text = async () => {
+    assert.equal(timeoutCleared, false)
+    return JSON.stringify({ error: { message: '서버가 복구 중입니다.' } })
+  }
+  globalThis.fetch = async () => response
+
+  const result = await historyApi.getHistories({ accessToken: 'access-token' })
+
+  assert.deepEqual(result, { kind: 'server-error', message: '서버가 복구 중입니다.' })
+  assert.equal(timeoutCleared, true)
+})
+
+test('getHistories preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await historyApi.getHistories({ accessToken: 'access-token' })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})
+
+test('createHistory preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await historyApi.createHistory({ accessToken: 'access-token', content: '내용', date: '2026-10-19' })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})
+
+test('updateHistory preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await historyApi.updateHistory({ accessToken: 'access-token', content: '내용', date: '2026-10-19', historyId: 'history-1' })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})
+
+test('removeHistory preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await historyApi.removeHistory({ accessToken: 'access-token', historyId: 'history-1' })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})

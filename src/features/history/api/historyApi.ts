@@ -1,5 +1,7 @@
 'use client'
 
+import { readServerErrorMessage } from '../../../shared/api/serverErrorMessage'
+
 import type {
   HistoryAuthInput,
   HistoryDeleteInput,
@@ -184,15 +186,17 @@ export async function getHistories(input: HistoryAuthInput): Promise<HistoryList
     return readHistoryListResponseBody(response)
   }
 
-  response.complete()
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toHistoryForbidden(await readServerErrorMessage(response.value, '히스토리 목록을 조회할 권한이 없습니다. 다시 로그인해주세요.'))
+    }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toHistoryForbidden('히스토리 목록을 조회할 권한이 없습니다. 다시 로그인해주세요.')
-  }
-
-  return {
-    kind: 'server-error',
-    message: '히스토리 목록 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '히스토리 목록 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }
 
@@ -207,15 +211,17 @@ export async function createHistory(input: HistoryMutationInput): Promise<Histor
     return readHistoryMutationResponseBody(response)
   }
 
-  response.complete()
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toHistoryForbidden(await readServerErrorMessage(response.value, '히스토리를 등록할 권한이 없습니다.'))
+    }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toHistoryForbidden('히스토리를 등록할 권한이 없습니다.')
-  }
-
-  return {
-    kind: 'server-error',
-    message: '히스토리 등록 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '히스토리 등록 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }
 
@@ -230,15 +236,17 @@ export async function updateHistory(input: HistoryUpdateInput): Promise<HistoryM
     return readHistoryMutationResponseBody(response)
   }
 
-  response.complete()
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toHistoryForbidden(await readServerErrorMessage(response.value, '히스토리를 수정할 권한이 없습니다.'))
+    }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toHistoryForbidden('히스토리를 수정할 권한이 없습니다.')
-  }
-
-  return {
-    kind: 'server-error',
-    message: '히스토리 수정 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '히스토리 수정 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }
 
@@ -256,14 +264,16 @@ export async function removeHistory(input: HistoryDeleteInput): Promise<HistoryD
     }
   }
 
-  response.complete()
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toHistoryForbidden(await readServerErrorMessage(response.value, '히스토리를 삭제할 권한이 없습니다.'))
+    }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toHistoryForbidden('히스토리를 삭제할 권한이 없습니다.')
-  }
-
-  return {
-    kind: 'server-error',
-    message: '히스토리 삭제 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '히스토리 삭제 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }
