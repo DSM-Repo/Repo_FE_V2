@@ -57,7 +57,9 @@ async function postAuthRequest(path: AuthJsonRequestPath | AuthRefreshRequestPat
       method: 'POST',
       signal: controller.signal,
     })
-    const body = response.body === null ? null : await response.arrayBuffer()
+    const body = response.body === null || [204, 205, 304].includes(response.status)
+      ? null
+      : await response.arrayBuffer()
 
     return {
       kind: 'response',

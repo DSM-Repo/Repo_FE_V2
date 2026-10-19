@@ -1,5 +1,7 @@
 'use client'
 
+import { readServerErrorMessage } from '../../../shared/api/serverErrorMessage'
+
 import type {
   UserClassInfo,
   UserMajorUpdateInput,
@@ -174,18 +176,20 @@ export async function getUserMe(input: UserMeInput): Promise<UserMeResult> {
     return readUserResponseBody(response)
   }
 
-  response.complete()
-
-  if (response.value.status === 401 || response.value.status === 403) {
-    return {
-      kind: 'forbidden',
-      message: '내 정보를 조회할 권한이 없습니다. 다시 로그인해주세요.',
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return {
+        kind: 'forbidden',
+        message: await readServerErrorMessage(response.value, '내 정보를 조회할 권한이 없습니다. 다시 로그인해주세요.'),
+      }
     }
-  }
 
-  return {
-    kind: 'server-error',
-    message: '내 정보 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '내 정보 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }
 
@@ -196,23 +200,26 @@ export async function updateUserMajor(input: UserMajorUpdateInput): Promise<User
     return response
   }
 
-  response.complete()
-
   if (response.value.ok) {
+    response.complete()
     return {
       kind: 'success',
     }
   }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return {
-      kind: 'forbidden',
-      message: '전공을 변경할 권한이 없습니다. 다시 로그인해주세요.',
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return {
+        kind: 'forbidden',
+        message: await readServerErrorMessage(response.value, '전공을 변경할 권한이 없습니다. 다시 로그인해주세요.'),
+      }
     }
-  }
 
-  return {
-    kind: 'server-error',
-    message: '전공 변경 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '전공 변경 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }

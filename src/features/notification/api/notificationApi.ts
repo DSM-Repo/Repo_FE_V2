@@ -1,5 +1,7 @@
 'use client'
 
+import { readServerErrorMessage } from '../../../shared/api/serverErrorMessage'
+
 import type {
   NotificationAuthInput,
   NotificationDeleteInput,
@@ -211,15 +213,17 @@ export async function getNotifications(input: NotificationAuthInput): Promise<No
     return readNotificationListResponseBody(response)
   }
 
-  response.complete()
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toForbiddenResult(await readServerErrorMessage(response.value, '알림 목록을 조회할 권한이 없습니다. 다시 로그인해주세요.'))
+    }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toForbiddenResult('알림 목록을 조회할 권한이 없습니다. 다시 로그인해주세요.')
-  }
-
-  return {
-    kind: 'server-error',
-    message: '알림 목록 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '알림 목록 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }
 
@@ -234,15 +238,17 @@ export async function markNotificationRead(input: NotificationReadInput): Promis
     return readNotificationReadResponseBody(response)
   }
 
-  response.complete()
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toForbiddenResult(await readServerErrorMessage(response.value, '알림을 읽음 처리할 권한이 없습니다. 다시 로그인해주세요.'))
+    }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toForbiddenResult('알림을 읽음 처리할 권한이 없습니다. 다시 로그인해주세요.')
-  }
-
-  return {
-    kind: 'server-error',
-    message: '알림 읽음 처리 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '알림 읽음 처리 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }
 
@@ -253,20 +259,23 @@ export async function removeNotification(input: NotificationDeleteInput): Promis
     return response
   }
 
-  response.complete()
-
   if (response.value.status === 204) {
+    response.complete()
     return {
       kind: 'success',
     }
   }
 
-  if (response.value.status === 401 || response.value.status === 403) {
-    return toForbiddenResult('알림을 삭제할 권한이 없습니다. 다시 로그인해주세요.')
-  }
+  try {
+    if (response.value.status === 401 || response.value.status === 403) {
+      return toForbiddenResult(await readServerErrorMessage(response.value, '알림을 삭제할 권한이 없습니다. 다시 로그인해주세요.'))
+    }
 
-  return {
-    kind: 'server-error',
-    message: '알림 삭제 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    return {
+      kind: 'server-error',
+      message: await readServerErrorMessage(response.value, '알림 삭제 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+    }
+  } finally {
+    response.complete()
   }
 }

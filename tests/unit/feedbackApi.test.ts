@@ -11,6 +11,35 @@ test.afterEach(() => {
   globalThis.fetch = originalFetch
 })
 
+test('every feedback operation preserves server error.message for HTTP failures', async () => {
+  const feedbackInput = { accessToken: 'access-token', feedbackId: 'feedback-id' }
+  const operations = [
+    () => feedbackApi.createFeedback({ ...feedbackInput, comment: '내용', documentId: 'resume-id', pageId: 'page-id', x: 0.1, y: 0.2 }),
+    () => feedbackApi.applyFeedback({ accessToken: 'access-token', applied: true, feedbackIds: ['feedback-id'] }),
+    () => feedbackApi.completeFeedback(feedbackInput),
+    () => feedbackApi.pendingFeedback(feedbackInput),
+    () => feedbackApi.updateFeedback({ ...feedbackInput, comment: '내용', pageId: 'page-id', x: 0.1, y: 0.2 }),
+    () => feedbackApi.getFeedbackById(feedbackInput),
+    () => feedbackApi.getFeedbacks({ accessToken: 'access-token', documentId: 'resume-id' }),
+    () => feedbackApi.deleteFeedback(feedbackInput),
+  ]
+  const message = '  서버가 보낸 피드백 오류입니다.\n상세 사유를 확인해주세요.  '
+
+  for (const status of [403, 422, 500]) {
+    for (const operation of operations) {
+      globalThis.fetch = async () => new Response(JSON.stringify({ error: { message }, message: '대체하지 마세요.' }), { status })
+
+      assert.deepEqual(await operation(), {
+        kind: status === 403 ? 'forbidden' : 'server-error',
+        message,
+      })
+    }
+  }
+
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: { message } }), { status: 404 })
+  assert.deepEqual(await feedbackApi.getFeedbackById(feedbackInput), { kind: 'not-found', message })
+})
+
 test('createFeedback sends the feedback position with bearer auth and returns parsed creation data', async () => {
   let requestedUrl = ''
   let requestedMethod = ''

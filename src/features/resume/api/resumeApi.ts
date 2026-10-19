@@ -43,6 +43,7 @@ import {
   type ResumeRequestResponse,
 } from './resumeHttpClient'
 import { normalizeApiImageUrl } from '../../../shared/api/imageUrl'
+import { readServerErrorMessage } from '../../../shared/api/serverErrorMessage'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -76,7 +77,6 @@ const INVALID_STUDENT_STATUS_RESPONSE = {
   kind: 'server-error',
   message: '학생 이력서 제출 현황 응답 형식이 올바르지 않습니다.',
 } as const satisfies ResumeStudentStatusListResult
-const SERVER_MESSAGE_STATUS_CODES = new Set([400, 409, 410])
 
 type ResumeMutationFailure = {
   readonly kind: 'forbidden' | 'server-error'
@@ -403,58 +403,12 @@ async function readResumeResponseBody(response: ResumeHttpResponse): Promise<Res
   }
 }
 
-function toServerMessageFromRecord(value: JsonRecord) {
-  for (const key of ['message', 'error', 'detail', 'reason'] as const) {
-    const message = value[key]
-
-    if (typeof message === 'string' && message.trim()) {
-      return message.trim()
-    }
-  }
-
-  return JSON.stringify(value)
-}
-
 async function readServerMessage(response: ResumeHttpResponse, fallbackMessage: string) {
-  let responseText = ''
-
   try {
-    responseText = await response.value.text()
-  } catch (error) {
+    return await readServerErrorMessage(response.value, fallbackMessage)
+  } finally {
     response.complete()
-
-    if (error instanceof DOMException || error instanceof TypeError || error instanceof Error) {
-      return fallbackMessage
-    }
-
-    throw error
   }
-
-  response.complete()
-
-  const trimmedText = responseText.trim()
-
-  if (!trimmedText) {
-    return fallbackMessage
-  }
-
-  try {
-    const responseBody: unknown = JSON.parse(trimmedText)
-
-    if (isJsonRecord(responseBody)) {
-      return toServerMessageFromRecord(responseBody)
-    }
-
-    if (typeof responseBody === 'string' && responseBody.trim()) {
-      return responseBody.trim()
-    }
-  } catch (error) {
-    if (!(error instanceof SyntaxError)) {
-      throw error
-    }
-  }
-
-  return trimmedText
 }
 
 async function readResumeMutationFailure(
@@ -465,29 +419,16 @@ async function readResumeMutationFailure(
   const status = response.value.status
 
   if (status === 401 || status === 403) {
-    response.complete()
     return {
       kind: 'forbidden',
-      message: forbiddenMessage,
+      message: await readServerMessage(response, forbiddenMessage),
       status,
     }
   }
-
-  if (SERVER_MESSAGE_STATUS_CODES.has(status)) {
-    const serverMessage = await readServerMessage(response, fallbackMessage)
-
-    return {
-      kind: 'server-error',
-      message: serverMessage,
-      status,
-    }
-  }
-
-  response.complete()
 
   return {
     kind: 'server-error',
-    message: fallbackMessage,
+    message: await readServerMessage(response, fallbackMessage),
     status,
   }
 }
@@ -686,25 +627,23 @@ export async function getResumeById(input: ResumeDetailInput): Promise<ResumeDet
     return readResumeResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '이력서를 조회할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readServerMessage(response, '이력서를 조회할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   if (response.value.status === 404) {
     return {
       kind: 'not-found',
-      message: '이력서를 찾을 수 없습니다.',
+      message: await readServerMessage(response, '이력서를 찾을 수 없습니다.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '이력서 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readServerMessage(response, '이력서 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -721,18 +660,16 @@ export async function getStudentResumeStatuses(
     return readStudentStatusResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '학생 이력서 제출 현황을 조회할 권한이 없습니다.',
+      message: await readServerMessage(response, '학생 이력서 제출 현황을 조회할 권한이 없습니다.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '학생 이력서 제출 현황 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readServerMessage(response, '학생 이력서 제출 현황 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -747,25 +684,23 @@ export async function getStudentResumeById(input: ResumeStudentDetailInput): Pro
     return readResumeResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '학생 이력서를 조회할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readServerMessage(response, '학생 이력서를 조회할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   if (response.value.status === 404) {
     return {
       kind: 'not-found',
-      message: '학생 이력서를 찾을 수 없습니다.',
+      message: await readServerMessage(response, '학생 이력서를 찾을 수 없습니다.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '학생 이력서 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readServerMessage(response, '학생 이력서 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -825,18 +760,16 @@ export async function cancelResumeSubmission(input: ResumeSubmissionCancelInput)
     return readSubmissionResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '이력서 제출을 취소할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readServerMessage(response, '이력서 제출을 취소할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '이력서 제출 취소 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readServerMessage(response, '이력서 제출 취소 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -908,24 +841,22 @@ export async function uploadResumeImage(input: ResumeImageUploadInput): Promise<
     return readImageUploadResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 400) {
     return {
       kind: 'validation-error',
-      message: '이미지 파일을 확인해주세요.',
+      message: await readServerMessage(response, '이미지 파일을 확인해주세요.'),
     }
   }
 
   if (response.value.status === 401 || response.value.status === 403) {
     return {
       kind: 'forbidden',
-      message: '이미지를 업로드할 권한이 없습니다. 다시 로그인해주세요.',
+      message: await readServerMessage(response, '이미지를 업로드할 권한이 없습니다. 다시 로그인해주세요.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '이미지 업로드에 실패했습니다.',
+    message: await readServerMessage(response, '이미지 업로드에 실패했습니다.'),
   }
 }

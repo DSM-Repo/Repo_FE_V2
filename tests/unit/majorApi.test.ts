@@ -212,3 +212,71 @@ test('getMajors returns server-error when the response body is not a major list'
     message: '전공 API 응답 형식이 올바르지 않습니다.',
   })
 })
+
+test('getMajors preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await majorApi.getMajors({ accessToken: 'access-token' })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})
+
+test('getMajorStudents preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await majorApi.getMajorStudents({ accessToken: 'access-token', majorId: 1 })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})
+
+test('createMajor preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await majorApi.createMajor({ accessToken: 'access-token', name: '전공' })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})
+
+test('deleteMajor preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    const message = `  서버 원문 ${status}: \\n재시도 조건을 확인하세요.  `
+    globalThis.fetch = async () => new Response(
+      JSON.stringify({ error: { message }, message: '대체하면 안 되는 상위 메시지' }),
+      { headers: { 'Content-Type': 'application/json' }, status },
+    )
+
+    const result = await majorApi.deleteMajor({ accessToken: 'access-token', majorId: 1 })
+
+    assert.deepEqual(result, {
+      kind: status === 401 || status === 403 ? 'forbidden' : 'server-error',
+      message,
+    }, `HTTP ${status}`)
+  }
+})

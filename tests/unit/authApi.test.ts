@@ -7,6 +7,21 @@ const authApi = await import('../../src/features/auth/api/authApi.js')
 
 const originalFetch = globalThis.fetch
 
+for (const status of [400, 401, 403, 404, 409, 422, 429, 500, 503]) {
+  test(`all auth operations preserve server error.message for HTTP ${status}`, async () => {
+    const message = '  서버에서 전달한 메시지\n원문  '
+    globalThis.fetch = async () => Response.json({ error: { message }, message: 'ignored' }, { status })
+    const results = await Promise.all([
+      authApi.loginWithAuthApi({ email: 'student@dsm.hs.kr', password: 'password' }),
+      authApi.refreshAuthToken({ refreshToken: 'refresh' }),
+      authApi.signupWithAuthApi({ email: 'student@dsm.hs.kr', password: 'password', role: 'STUDENT', studentClass: 1, studentGrade: 1, studentName: 'student', studentNumber: 1 }),
+      authApi.sendEmailVerificationCode({ email: 'student@dsm.hs.kr' }),
+      authApi.verifyEmailCode({ email: 'student@dsm.hs.kr', code: '123456' }),
+    ])
+    for (const result of results) assert.equal(result.message, message)
+  })
+}
+
 test('refresh timeout covers a stalled response body', async (context) => {
   // Given: headers arrive but the body stays open until abort.
   context.mock.timers.enable({ apis: ['setTimeout'] })
@@ -36,6 +51,29 @@ function createAccessToken(role: string) {
 test.afterEach(() => {
   globalThis.fetch = originalFetch
 })
+
+for (const streamed of [false, true]) {
+  test(`email send and verification accept 204 with ${streamed ? 'an empty stream' : 'a null body'}`, async () => {
+    globalThis.fetch = async () => {
+      const response = new Response(null, { status: 204 })
+      if (streamed) {
+        Object.defineProperty(response, 'body', {
+          value: new ReadableStream<Uint8Array>({ start(controller) { controller.close() } }),
+        })
+      }
+      return response
+    }
+
+    assert.deepEqual(await authApi.sendEmailVerificationCode({ email: 'student@dsm.hs.kr' }), {
+      kind: 'success',
+      message: '인증 코드를 전송했습니다.',
+    })
+    assert.deepEqual(await authApi.verifyEmailCode({ email: 'student@dsm.hs.kr', code: '123456' }), {
+      kind: 'success',
+      message: '이메일 인증이 완료되었습니다.',
+    })
+  })
+}
 
 test('loginWithAuthApi returns the role encoded by the access token', async () => {
   // Given: the server returns a student JWT after login.

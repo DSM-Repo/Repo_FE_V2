@@ -22,6 +22,7 @@ import {
   type LibraryRequestResponse,
 } from './libraryHttpClient'
 import { normalizeApiImageUrl } from '../../../shared/api/imageUrl'
+import { readServerErrorMessage } from '../../../shared/api/serverErrorMessage'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -47,6 +48,14 @@ const LIBRARY_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
 
 type LibraryHttpResponse = Extract<LibraryRequestResponse, { readonly kind: 'response' }>
 type InvalidLibraryResponse = typeof INVALID_LIBRARY_RESPONSE | typeof INVALID_LIBRARY_SEARCH_RESPONSE | typeof INVALID_LIBRARY_RESUME_RESPONSE
+
+async function readLibraryErrorMessage(response: LibraryHttpResponse, fallback: string): Promise<string> {
+  try {
+    return await readServerErrorMessage(response.value, fallback)
+  } finally {
+    response.complete()
+  }
+}
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -361,11 +370,9 @@ export async function getLibraryBooks(input: LibraryBookListInput): Promise<Libr
     return readLibraryResponseBody(response)
   }
 
-  response.complete()
-
   return {
     kind: 'server-error',
-    message: '도서관 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readLibraryErrorMessage(response, '도서관 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -380,11 +387,9 @@ export async function searchLibraryStudents(input: LibrarySearchInput): Promise<
     return readLibrarySearchResponseBody(response)
   }
 
-  response.complete()
-
   return {
     kind: 'server-error',
-    message: '학생 검색 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readLibraryErrorMessage(response, '학생 검색 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }
 
@@ -399,17 +404,15 @@ export async function getLibraryResumeByStudentId(input: LibraryResumeInput): Pr
     return readLibraryResumeResponseBody(response)
   }
 
-  response.complete()
-
   if (response.value.status === 404) {
     return {
       kind: 'not-found',
-      message: '공개된 이력서를 찾을 수 없습니다.',
+      message: await readLibraryErrorMessage(response, '공개된 이력서를 찾을 수 없습니다.'),
     }
   }
 
   return {
     kind: 'server-error',
-    message: '이력서 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    message: await readLibraryErrorMessage(response, '이력서 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
   }
 }

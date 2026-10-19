@@ -11,6 +11,29 @@ test.afterEach(() => {
   globalThis.fetch = originalFetch
 })
 
+test('every library operation preserves server error.message for HTTP failures', async () => {
+  const operations = [
+    () => libraryApi.getLibraryBooks({ accessToken: 'access-token' }),
+    () => libraryApi.searchLibraryStudents({ accessToken: 'access-token', date: 2026 }),
+    () => libraryApi.getLibraryResumeByStudentId({ accessToken: 'access-token', studentId: 1 }),
+  ]
+  const message = '  서버가 보낸 도서관 오류입니다.\n상세 사유를 확인해주세요.  '
+
+  for (const status of [403, 422, 500]) {
+    for (const operation of operations) {
+      globalThis.fetch = async () => new Response(JSON.stringify({ error: { message }, message: '대체하지 마세요.' }), { status })
+
+      assert.deepEqual(await operation(), { kind: 'server-error', message })
+    }
+  }
+
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: { message } }), { status: 404 })
+  assert.deepEqual(await libraryApi.getLibraryResumeByStudentId({ accessToken: 'access-token', studentId: 1 }), {
+    kind: 'not-found',
+    message,
+  })
+})
+
 test('getLibraryBooks requests public library groups and returns parsed books', async () => {
   let requestedAuthorization = ''
   let requestedUrl = ''
