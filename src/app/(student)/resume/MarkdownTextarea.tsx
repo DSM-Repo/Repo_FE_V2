@@ -203,6 +203,18 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
         document.execCommand('formatBlock', false, command)
         break
       case 'bold':
+        {
+          const previousWeight = editor.style.fontWeight
+
+          try {
+            // Keep inherited 600 weight from being mistaken for an existing semantic bold mark.
+            editor.style.fontWeight = '400'
+            document.execCommand(command, false)
+          } finally {
+            editor.style.fontWeight = previousWeight
+          }
+        }
+        break
       case 'italic':
       case 'underline':
         document.execCommand(command, false)
