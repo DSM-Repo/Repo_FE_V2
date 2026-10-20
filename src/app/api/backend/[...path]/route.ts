@@ -1,6 +1,7 @@
 const DEFAULT_BACKEND_API_BASE_URL = 'http://52.78.201.218'
 const MAX_BODY_BYTES = 55 * 1024 * 1024
 const UPSTREAM_TIMEOUT_MS = 30_000
+const TCP_WRITE_CHUNK_BYTES = 16 * 1024
 const textDecoder = new TextDecoder()
 const textEncoder = new TextEncoder()
 
@@ -129,7 +130,7 @@ function withAbort<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
   })
 }
 
-async function readAllBytes(stream: ReadableStream<Uint8Array>, signal: AbortSignal) {
+async function readAllBytes(stream: ReadableStream<Uint8Array>, signal: AbortSignal, onChunk?: () => void) {
   const reader = stream.getReader()
   const chunks: Uint8Array[] = []
   let length = 0
@@ -147,6 +148,7 @@ async function readAllBytes(stream: ReadableStream<Uint8Array>, signal: AbortSig
       length += value.byteLength
       if (length > MAX_BODY_BYTES) throw new BodyLimitError('Body exceeds 55 MiB.')
       chunks.push(value)
+      onChunk?.()
     }
   } finally {
     if (!complete) {
@@ -224,11 +226,24 @@ async function fetchBackendViaTcp(targetUrl: URL, method: string, headers: Heade
   try {
     await withAbort(writer.write(textEncoder.encode(requestHead)), signal)
 
+    let uploadError: unknown
+    let responseReceived = false
     if (body) {
-      await withAbort(writer.write(body), signal)
+      // The backend can reject an upload before consuming its body. Read its
+      // response while writing so backpressure cannot hide that response.
+      const upload = async () => {
+        for (let offset = 0; offset < body.byteLength && !responseReceived; offset += TCP_WRITE_CHUNK_BYTES) {
+          await withAbort(writer.write(body.subarray(offset, offset + TCP_WRITE_CHUNK_BYTES)), signal)
+        }
+      }
+      void upload().catch((error: unknown) => { uploadError = error })
     }
 
-    return createHttpResponseFromBytes(await readAllBytes(socket.readable, signal))
+    try {
+      return createHttpResponseFromBytes(await readAllBytes(socket.readable, signal, () => { responseReceived = true }))
+    } catch (error) {
+      throw uploadError ?? error
+    }
   } finally {
     writer.releaseLock()
     void Promise.resolve(socket.close()).catch((error: unknown) => console.error('Backend socket close failed.', error))

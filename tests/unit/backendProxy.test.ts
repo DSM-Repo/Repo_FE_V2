@@ -115,6 +115,122 @@ test('TCP write failure releases writer and closes socket', async () => {
   assert.equal(socket.writable.locked, false)
 })
 
+for (const rejectWrite of [false, true]) test(`TCP preserves an early 403 while a large upload write ${rejectWrite ? 'fails' : 'stalls'}`, async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  socketFixture(null)
+  const message = JSON.stringify({ error: { message: '인증 없음' } })
+  let stopWrite: (() => void) | undefined
+  let closes = 0
+  let writes = 0
+  const readable = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      controller.enqueue(encoder.encode(`HTTP/1.1 403 Forbidden\r\nContent-Length: ${encoder.encode(message).length}\r\n\r\n${message}`))
+      controller.close()
+    },
+  }, { highWaterMark: 0 })
+  const writable = new WritableStream<Uint8Array>({
+    write() {
+      writes += 1
+      if (writes === 1) return
+      if (rejectWrite) throw new Error('Backend stopped accepting the upload.')
+      return new Promise<void>((_resolve, reject) => { stopWrite = () => reject(new Error('Socket closed.')) })
+    },
+  })
+  Reflect.set(globalThis, socketKey, () => ({ readable, writable, close() { closes += 1; stopWrite?.() } }))
+  let settled = false
+  const pending = POST(new Request('http://app/api/backend/image', {
+    method: 'POST', body: new Uint8Array(70 * 1024),
+  }), context).then((response) => { settled = true; return response })
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  const completedBeforeTimeout = settled
+  if (!settled) t.mock.timers.tick(30_001)
+  const response = await pending
+  assert.equal(response.status, 403)
+  assert.equal(await response.text(), message)
+  assert.equal(completedBeforeTimeout, true)
+  assert.equal(closes, 1)
+  assert.equal(readable.locked, false)
+  assert.equal(writable.locked, false)
+})
+
+test('TCP forwards a complete large binary upload before a successful response', async () => {
+  socketFixture(null)
+  const body = Uint8Array.from({ length: 1024 * 1024 }, (_, index) => index % 256)
+  let responseController: ReadableStreamDefaultController<Uint8Array> | undefined
+  const received: Uint8Array[] = []
+  let receivedBytes = 0
+  const readable = new ReadableStream<Uint8Array>({ start(controller) { responseController = controller } })
+  const writable = new WritableStream<Uint8Array>({
+    write(chunk) {
+      received.push(chunk)
+      if (received.length > 1) receivedBytes += chunk.byteLength
+      if (receivedBytes === body.length) {
+        responseController?.enqueue(encoder.encode('HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok'))
+        responseController?.close()
+      }
+    },
+  })
+  Reflect.set(globalThis, socketKey, () => ({ readable, writable, close() {} }))
+  const response = await POST(new Request('http://app/api/backend/image', { method: 'POST', body }), context)
+  assert.equal(response.status, 200)
+  assert.equal(await response.text(), 'ok')
+  assert.match(new TextDecoder().decode(received[0]), /content-length: 1048576\r\n/)
+  assert.deepEqual(Buffer.concat(received.slice(1)), Buffer.from(body))
+  assert.ok(received.slice(1).every((chunk) => chunk.byteLength <= 16 * 1024))
+  assert.equal(readable.locked, false)
+  assert.equal(writable.locked, false)
+})
+
+test('TCP stops sending remaining upload chunks when the backend responds', async () => {
+  socketFixture(null)
+  let responseController: ReadableStreamDefaultController<Uint8Array> | undefined
+  let writes = 0
+  let uploadedBytes = 0
+  const readable = new ReadableStream<Uint8Array>({ start(controller) { responseController = controller } })
+  const writable = new WritableStream<Uint8Array>({
+    write(chunk) {
+      writes += 1
+      if (writes === 1) return
+      uploadedBytes += chunk.byteLength
+      if (writes === 2) {
+        responseController?.enqueue(encoder.encode('HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n'))
+        setImmediate(() => responseController?.close())
+      }
+    },
+  })
+  Reflect.set(globalThis, socketKey, () => ({ readable, writable, close() {} }))
+  const body = new Uint8Array(1024 * 1024)
+  const response = await POST(new Request('http://app/api/backend/image', { method: 'POST', body }), context)
+  assert.equal(response.status, 403)
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  assert.ok(uploadedBytes > 0 && uploadedBytes < body.byteLength)
+})
+
+for (const rejectWrite of [false, true]) test(`TCP times out without a response when the upload ${rejectWrite ? 'fails' : 'stalls'}`, async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const socket = socketFixture(null)
+  let stopWrite: (() => void) | undefined
+  let closes = 0
+  let writes = 0
+  const writable = new WritableStream<Uint8Array>({
+    write() {
+      writes += 1
+      if (writes === 1) return
+      if (rejectWrite) throw new Error('Upload failed.')
+      return new Promise<void>((_resolve, reject) => { stopWrite = () => reject(new Error('Socket closed.')) })
+    },
+  })
+  Reflect.set(globalThis, socketKey, () => ({ readable: socket.readable, writable, close() { closes += 1; stopWrite?.() } }))
+  const pending = POST(new Request('http://app/api/backend/image', { method: 'POST', body: new Uint8Array(70 * 1024) }), context)
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  t.mock.timers.tick(30_001)
+  assert.equal((await pending).status, 502)
+  assert.equal(closes, 1)
+  assert.equal(socket.cancelled, true)
+  assert.equal(socket.readable.locked, false)
+  assert.equal(writable.locked, false)
+})
+
 test('TCP stalled response times out and cancels reader', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const socket = socketFixture(null)
