@@ -7,12 +7,8 @@ import { getSavedAccessToken, getSavedAuthRole, type AuthLoginRole } from '@/fea
 import { getDepartmentFromSchoolNumber } from '@/app/(student)/resume/ResumeEditorSheet'
 import {
   getLibraryBooks,
-  getRecentLibraryBookGroups,
-  getRecentLibraryStudents,
-  mergeLibraryBookGroups,
-  mergeLibrarySearchStudents,
+  clearLegacyLibraryCache,
   getLibraryResumeByStudentId,
-  getRecentLibraryResume,
   searchLibraryStudents,
   type LibraryBookGroup,
   type LibraryResume,
@@ -342,6 +338,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     let ignoresResult = false
 
     async function loadLibraryBooks() {
+      clearLegacyLibraryCache()
       if (!accessToken) {
         setLoadState({
           kind: 'failure',
@@ -351,7 +348,6 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
       }
 
       const result = await getLibraryBooks({ accessToken })
-      const recentLibraryBooks = getRecentLibraryBookGroups()
 
       if (ignoresResult) {
         return
@@ -359,15 +355,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
 
       if (result.kind === 'success') {
         setLoadState({
-          books: mergeLibraryBookGroups(result.books, getRecentLibraryBookGroups()),
-          kind: 'success',
-        })
-        return
-      }
-
-      if (recentLibraryBooks.length > 0) {
-        setLoadState({
-          books: recentLibraryBooks,
+          books: result.books,
           kind: 'success',
         })
         return
@@ -428,7 +416,6 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
         page: 0,
         size: LIBRARY_STUDENT_FETCH_SIZE,
       })
-      const recentStudents = getRecentLibraryStudents({ date: selectedLibraryDate, keyword: normalizedSearchKeyword })
 
       if (ignoresResult) {
         return
@@ -461,21 +448,10 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
           return
         }
 
-        const mergedStudents = mergeLibrarySearchStudents(searchedStudents, recentStudents)
-
         setStudentSearchState({
           kind: 'success',
-          students: mergedStudents,
-          totalElements: Math.max(result.totalElements, mergedStudents.length),
-        })
-        return
-      }
-
-      if (recentStudents.length > 0) {
-        setStudentSearchState({
-          kind: 'success',
-          students: recentStudents,
-          totalElements: recentStudents.length,
+          students: searchedStudents,
+          totalElements: result.totalElements,
         })
         return
       }
@@ -527,7 +503,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
             return { resume: result.resume, message: undefined }
           }
 
-          return { resume: getRecentLibraryResume(student.studentId), message: result.message }
+          return { resume: undefined, message: result.message }
         }),
       )
 

@@ -107,6 +107,24 @@ test.describe('teacher student portfolio review', () => {
     )
   })
 
+  for (const isPublic of [false, true]) {
+    test(`uses server visibility ${isPublic} instead of an opposite legacy override`, async ({ page }) => {
+      await mockTeacherResumeReview(page, { isPublic })
+      await page.addInitScript(({ visibility }) => {
+        localStorage.setItem('repo.resume.visibilityOverrides', JSON.stringify([{ studentId: 1, isPublic: !visibility }]))
+        localStorage.setItem('repo.library.recentResumes', JSON.stringify([{ introduce: '민감한 본문' }]))
+        localStorage.setItem('repo.library.recentStudents', '[]')
+        localStorage.setItem('repo.library.recentGroups', '[]')
+      }, { visibility: isPublic })
+
+      await page.goto('/students/1')
+
+      await expect(page.getByLabel('김학생 이력서 1쪽')).toBeVisible()
+      await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeChecked({ checked: isPublic })
+      expect(await page.evaluate(() => ['repo.library.recentResumes', 'repo.library.recentStudents', 'repo.library.recentGroups', 'repo.resume.visibilityOverrides'].map((key) => localStorage.getItem(key)))).toEqual([null, null, null, null])
+    })
+  }
+
   test('loads a student resume, publishes it, and opens feedback with the student resume API', async ({ page }) => {
     const mocks = await mockTeacherResumeReview(page)
     await page.route(`${apiBaseUrl}/library`, async (route) => {
@@ -162,15 +180,16 @@ test.describe('teacher student portfolio review', () => {
     await page.getByRole('switch', { name: '이력서 공개' }).click()
     await expect.poll(() => mocks.getVisibilityRequestBody()).toBe(JSON.stringify({ isPublic: true }))
     await expect(page.getByText('이력서를 도서관에 공개했습니다.')).toBeVisible()
+    await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeChecked()
+    expect(await page.evaluate(() => ['repo.library.recentResumes', 'repo.library.recentStudents', 'repo.library.recentGroups', 'repo.resume.visibilityOverrides'].map((key) => localStorage.getItem(key)))).toEqual([null, null, null, null])
 
     await expect(feedbackPanel).toBeVisible()
     await expect(feedbackPanel.getByRole('button', { name: /프로젝트 성과를 숫자로 표현해보세요/ })).toBeVisible()
     await page.reload()
-    await expect(page.getByRole('switch', { name: '이력서 공개' })).toBeChecked()
+    await expect(page.getByRole('switch', { name: '이력서 공개' })).not.toBeChecked()
     await page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link', { name: '도서관' }).click()
-    await page.getByRole('link', { name: '2026 11기 2학년 포트폴리오 열람' }).click()
-    await expect(page.getByLabel('김학생 이력서 1쪽')).toBeVisible()
-    await expect(page.getByText('기술스택과 활동을 정리했습니다.')).toBeVisible()
+    await expect(page.getByText('공개된 포트폴리오 책이 없습니다.')).toBeVisible()
+    await expect(page.getByRole('link', { name: '2026 11기 2학년 포트폴리오 열람' })).toHaveCount(0)
   })
 
   test('keeps the resume sheets clear of the feedback button on short desktop viewports', async ({ page }) => {

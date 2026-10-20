@@ -5,19 +5,9 @@ import { useParams } from 'next/navigation'
 
 import { getSavedAccessToken } from '@/features/auth/api'
 import { createFeedback, getFeedbacks, type FeedbackListItem } from '@/features/feedback/api'
-import {
-  removeRecentLibraryBookGroup,
-  removeRecentLibraryResume,
-  removeRecentLibraryStudent,
-  saveRecentLibraryBookGroup,
-  saveRecentLibraryResume,
-  saveRecentLibraryStudent,
-  toReleasedLibraryBookGroup,
-} from '@/features/library/api'
+import { clearLegacyLibraryCache } from '@/features/library/api'
 import {
   getStudentResumeById,
-  getSavedResumeVisibility,
-  saveResumeVisibility,
   updateResumeVisibility,
   type Resume,
   type ResumePage,
@@ -140,6 +130,7 @@ export default function TeacherStudentReviewPage() {
     let active = true
 
     async function loadResume() {
+      clearLegacyLibraryCache()
       if (!studentId) {
         setLoadState({ kind: 'failure', message: '학생 정보를 찾을 수 없습니다.' })
         return
@@ -164,10 +155,9 @@ export default function TeacherStudentReviewPage() {
         return
       }
 
-      const savedVisibility = getSavedResumeVisibility(studentId)
       setLoadState({
         kind: 'success',
-        resume: savedVisibility === undefined ? result.resume : { ...result.resume, isPublic: savedVisibility },
+        resume: result.resume,
       })
       setSpreadStartIndex(0)
       setFeedbackLoadState({ kind: 'idle' })
@@ -215,43 +205,6 @@ export default function TeacherStudentReviewPage() {
         return
       }
 
-      const libraryBookGroup = toReleasedLibraryBookGroup(resume.savedAt)
-
-      if (result.isPublic) {
-        saveRecentLibraryBookGroup(libraryBookGroup)
-        saveRecentLibraryResume({
-          ...libraryBookGroup,
-          email: resume.email,
-          introduce: resume.introduce,
-          majorName: resume.majorName || '전공미정',
-          name: resume.name,
-          pages: resume.pages.map((page) => ({
-            content: page.content,
-            id: page.id,
-            index: page.index,
-            ...(page.project ? { project: page.project } : {}),
-            type: page.type,
-          })),
-          portfolioUrl: resume.portfolioUrl,
-          profileImageUrl: resume.profileImageUrl,
-          releasedAt: new Date().toISOString(),
-          resumeId: resume.id,
-          studentId,
-          studentNumber: '',
-        })
-        saveRecentLibraryStudent({
-          date: libraryBookGroup.date,
-          major: resume.majorName || '전공미정',
-          studentId,
-          studentName: resume.name,
-        })
-      } else {
-        removeRecentLibraryBookGroup(libraryBookGroup)
-        removeRecentLibraryResume(studentId)
-        removeRecentLibraryStudent({ date: libraryBookGroup.date, studentId })
-      }
-
-      saveResumeVisibility({ isPublic: result.isPublic, studentId })
       setLoadState({ kind: 'success', resume: { ...resume, isPublic: result.isPublic } })
       setActionFeedback({
         message: result.isPublic ? '이력서를 도서관에 공개했습니다.' : '이력서를 비공개로 전환했습니다.',

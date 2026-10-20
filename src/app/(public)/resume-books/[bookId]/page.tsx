@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation'
 import { getSavedAccessToken } from '@/features/auth/api'
 import {
   getLibraryResumeByStudentId,
-  getRecentLibraryResume,
+  clearLegacyLibraryCache,
   type LibraryResume,
   type LibraryResumePage,
 } from '@/features/library/api'
@@ -119,6 +119,7 @@ export default function ResumeBookPage() {
     const validStudentId = studentId
 
     async function loadResume() {
+      clearLegacyLibraryCache()
       if (!accessToken) {
         setLoadState({
           kind: 'failure',
@@ -138,16 +139,6 @@ export default function ResumeBookPage() {
         setLoadState({
           kind: 'success',
           resume: result.resume,
-        })
-        return
-      }
-
-      const recentResume = getRecentLibraryResume(validStudentId)
-
-      if (recentResume) {
-        setLoadState({
-          kind: 'success',
-          resume: recentResume,
         })
         return
       }

@@ -93,28 +93,31 @@ test.describe('public route smoke', () => {
     await expect(page.getByText('공개된 포트폴리오 책이 없습니다.')).toHaveCount(0)
   })
 
-  test('keeps a newly published library group visible while the library API catches up', async ({ page }) => {
-    await page.addInitScript(
-      ({ accessKey, groupKey, value }) => {
-        window.localStorage.setItem(accessKey, value)
-        window.localStorage.setItem(groupKey, JSON.stringify([{ cohort: 11, date: 2026, year: 2 }]))
-      },
-      { accessKey: accessTokenStorageKey, groupKey: 'repo.library.recentGroups', value: testAccessToken },
-    )
-    await page.route(`${apiBaseUrl}/library`, async (route) => {
-      await route.fulfill({
-        json: { message: '도서관 반영 중입니다.' },
-        status: 500,
+  for (const status of [200, 500]) {
+    test(`does not expose cached library groups for server HTTP ${status}`, async ({ page }) => {
+      await page.addInitScript(
+        ({ accessKey, groupKey, value }) => {
+          window.localStorage.setItem(accessKey, value)
+          window.localStorage.setItem(groupKey, JSON.stringify([{ cohort: 11, date: 2026, year: 2 }]))
+        },
+        { accessKey: accessTokenStorageKey, groupKey: 'repo.library.recentGroups', value: testAccessToken },
+      )
+      await page.route(`${apiBaseUrl}/library`, async (route) => {
+        await route.fulfill({
+          json: status === 200 ? [] : { message: '도서관 반영 중입니다.' },
+          status,
+        })
       })
+
+      await page.goto('/library')
+
+      await expect(page.getByRole('link', { name: '2026 11기 2학년 포트폴리오 열람' })).toHaveCount(0)
+      await expect(page.getByText(status === 200 ? '공개된 포트폴리오 책이 없습니다.' : '도서관 반영 중입니다.')).toBeVisible()
+      expect(await page.evaluate(() => localStorage.getItem('repo.library.recentGroups'))).toBeNull()
     })
+  }
 
-    await page.goto('/library')
-
-    await expect(page.getByRole('link', { name: '2026 11기 2학년 포트폴리오 열람' })).toBeVisible()
-    await expect(page.getByText('도서관 반영 중입니다.')).toHaveCount(0)
-  })
-
-  test('keeps a newly published student visible in the selected library date while search catches up', async ({ page }) => {
+  test('does not add cached students or bodies to an empty server search', async ({ page }) => {
     await page.addInitScript(
       ({ accessKey, resumeKey, studentKey, value }) => {
         window.localStorage.setItem(accessKey, value)
@@ -168,9 +171,40 @@ test.describe('public route smoke', () => {
 
     await page.goto('/library?date=2026')
 
-    await expect(page.getByLabel('김학생 이력서 1쪽')).toBeVisible()
-    await expect(page.getByText('공개된 학생 이력서가 없습니다.')).toHaveCount(0)
+    await expect(page.getByText('공개된 학생 이력서가 없습니다.')).toBeVisible()
+    await expect(page.getByLabel('김학생 이력서 1쪽')).toHaveCount(0)
+    expect(await page.evaluate(() => localStorage.getItem('repo.library.recentResumes'))).toBeNull()
+    expect(await page.evaluate(() => localStorage.getItem('repo.library.recentStudents'))).toBeNull()
   })
+
+  for (const { path, status } of ['/resume-books/1', '/library?date=2026'].flatMap(
+    (path) => [200, 403, 404, 500].map((status) => ({ path, status })),
+  )) {
+    test(`uses the server detail response instead of a cached private body for HTTP ${status} at ${path}`, async ({ page }) => {
+      const cachedResume = createLibraryResume({ name: '비공개 학생', studentId: 1 })
+      await page.addInitScript(({ resume, token }) => {
+        localStorage.setItem('repo.auth.accessToken', token)
+        localStorage.setItem('repo.library.recentResumes', JSON.stringify([resume]))
+        localStorage.setItem('repo.library.recentStudents', JSON.stringify([{ date: 2026, studentId: 1, studentName: resume.name, major: '백엔드' }]))
+        localStorage.setItem('repo.library.recentGroups', JSON.stringify([{ cohort: 9, date: 2026, year: 3 }]))
+        localStorage.setItem('repo.resume.visibilityOverrides', JSON.stringify([{ studentId: 1, isPublic: true }]))
+      }, { resume: cachedResume, token: testAccessToken })
+      await page.route(`${apiBaseUrl}/library/1`, (route) => route.fulfill({
+        status,
+        json: status === 200 ? createLibraryResume({ name: '서버 학생', studentId: 1 }) : { error: { message: '현재 공개된 이력서가 없습니다.' } },
+      }))
+      await page.route(`${apiBaseUrl}/library`, (route) => route.fulfill({ json: [{ cohort: 9, date: 2026, year: 3 }] }))
+      await page.route(`${apiBaseUrl}/library/search?*`, (route) => route.fulfill({ json: {
+        content: [{ studentId: 1, studentName: '서버 학생', major: '백엔드' }], totalElements: 1,
+      } }))
+
+      await page.goto(path)
+
+      await expect(page.getByText(status === 200 ? '서버 학생 자기소개입니다.' : '현재 공개된 이력서가 없습니다.')).toBeVisible()
+      await expect(page.getByLabel('비공개 학생 이력서 1쪽')).toHaveCount(0)
+      expect(await page.evaluate(() => ['repo.library.recentResumes', 'repo.library.recentStudents', 'repo.library.recentGroups', 'repo.resume.visibilityOverrides'].map((key) => localStorage.getItem(key)))).toEqual([null, null, null, null])
+    })
+  }
 
   test('allows scrolling when the library API returns multiple rows on desktop', async ({ page }) => {
     const groups = Array.from({ length: 12 }, (_, index) => ({
