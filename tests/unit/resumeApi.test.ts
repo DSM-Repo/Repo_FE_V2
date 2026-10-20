@@ -171,7 +171,7 @@ test('getStudentResumeStatuses sends class filters and returns parsed submission
             resumeId: null,
             schoolNumber: '1202',
             studentId: 12,
-            submissionStatus: 'ONGOING',
+            submissionStatus: null,
             submitted: false,
             submittedAt: null,
           },
@@ -226,12 +226,44 @@ test('getStudentResumeStatuses sends class filters and returns parsed submission
         number: 2,
         schoolNumber: '1202',
         studentId: 12,
-        submissionStatus: 'ONGOING',
+        submissionStatus: null,
         submitted: false,
       },
     ],
   })
 })
+
+for (const hasStudent of [false, true]) test(`getStudentResumeStatuses accepts a null update time ${hasStudent ? 'with students without resumes' : 'for an empty class'}`, async () => {
+  const student = {
+    classNumber: 2, grade: 1, majorName: null, name: '미작성 학생', number: 1,
+    resumeId: null, schoolNumber: '1201', studentId: 11, submissionStatus: null,
+    submitted: false, submittedAt: null,
+  }
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    classNumber: 2, grade: 1, schoolYear: null, lastUpdatedAt: null,
+    numberOfData: hasStudent ? 1 : 0, students: hasStudent ? [student] : [],
+  }))
+  const result = await resumeApi.getStudentResumeStatuses({ accessToken: 'teacher-token', grade: 1, classNumber: 2 })
+  assert.equal(result.kind, 'success')
+  if (result.kind !== 'success') throw new Error('Expected a valid student status response')
+  assert.equal(result.lastUpdatedAt, null)
+  assert.equal(result.students.length, hasStudent ? 1 : 0)
+  assert.equal(result.numberOfData, hasStudent ? 1 : 0)
+  if (hasStudent) assert.equal(result.students[0].submissionStatus, null)
+})
+
+for (const invalidField of [{ submissionStatus: 'UNKNOWN' }, { submissionStatus: 0 }, { lastUpdatedAt: 0 }, { lastUpdatedAt: undefined }]) {
+  test(`getStudentResumeStatuses rejects malformed nullable fields ${JSON.stringify(invalidField)}`, async () => {
+    const { submissionStatus = null, ...listFields } = invalidField
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      lastUpdatedAt: null, numberOfData: 1, ...listFields,
+      students: [{ classNumber: 1, grade: 1, majorName: null, name: '학생', number: 1,
+        resumeId: null, schoolNumber: '1101', studentId: 1, submissionStatus, submitted: false, submittedAt: null }],
+    }))
+    const result = await resumeApi.getStudentResumeStatuses({ accessToken: 'teacher-token' })
+    assert.equal(result.kind, 'server-error')
+  })
+}
 
 test('getResumeById sends the resume id with bearer auth and returns parsed resume data', async () => {
   let requestedUrl = ''

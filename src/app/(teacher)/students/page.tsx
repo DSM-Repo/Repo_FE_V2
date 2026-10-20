@@ -39,13 +39,13 @@ type StudentLoadState =
   | { readonly kind: 'failure'; readonly message: string }
   | {
       readonly kind: 'success';
-      readonly lastUpdatedAt: string;
+      readonly lastUpdatedAt: string | null;
       readonly schoolYear: number | undefined;
       readonly students: readonly ResumeStudentStatus[];
     };
 
 const submissionLabels: Record<
-  ResumeStudentStatus['submissionStatus'],
+  NonNullable<ResumeStudentStatus['submissionStatus']>,
   string
 > = {
   DELETED: '삭제됨',
@@ -61,6 +61,12 @@ function getStudentTone(student: ResumeStudentStatus): LinkRowTone {
 
 function getStudentActionLabel(student: ResumeStudentStatus) {
   return student.resumeId ? '레주메 보러가기' : '이력서 없음';
+}
+
+function getStudentStatusLabel(student: ResumeStudentStatus) {
+  return student.submissionStatus === null
+    ? '이력서 없음'
+    : submissionLabels[student.submissionStatus];
 }
 
 function getStudentMeta(student: ResumeStudentStatus, includeClass = false) {
@@ -272,7 +278,7 @@ function TeacherStudentsContent() {
                         className: styles.studentRow,
                         key: student.studentId,
                         meta: getStudentMeta(student, true),
-                        status: submissionLabels[student.submissionStatus],
+                        status: getStudentStatusLabel(student),
                         title: `${student.schoolNumber} ${student.name}`,
                         tone: getStudentTone(student),
                       } as const;
@@ -344,7 +350,7 @@ function TeacherStudentsContent() {
                 <h2 className={styles.dialogTitle} id="class-dialog-title">
                   {selectedClassLabel}
                 </h2>
-                {loadState.kind === 'success' ? (
+                {loadState.kind === 'success' && loadState.lastUpdatedAt !== null ? (
                   <p className={styles.updatedAt}>
                     최근 갱신 {formatUpdatedAt(loadState.lastUpdatedAt)}
                   </p>
@@ -382,7 +388,7 @@ function TeacherStudentsContent() {
                         className: styles.studentRow,
                         key: student.studentId,
                         meta: getStudentMeta(student),
-                        status: submissionLabels[student.submissionStatus],
+                        status: getStudentStatusLabel(student),
                         title: `${student.schoolNumber} ${student.name}`,
                         tone: getStudentTone(student),
                       } as const;

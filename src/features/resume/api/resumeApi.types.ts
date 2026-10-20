@@ -126,7 +126,7 @@ export type ResumeStudentStatus = {
   readonly resumeId?: string
   readonly schoolNumber: string
   readonly studentId: number
-  readonly submissionStatus: ResumeSubmissionStatus
+  readonly submissionStatus: ResumeSubmissionStatus | null
   readonly submitted: boolean
   readonly submittedAt?: string
 }
@@ -136,7 +136,7 @@ export type ResumeStudentStatusListResult =
       readonly classNumber: number | undefined
       readonly grade: number | undefined
       readonly kind: 'success'
-      readonly lastUpdatedAt: string
+      readonly lastUpdatedAt: string | null
       readonly numberOfData: number
       readonly schoolYear: number | undefined
       readonly students: readonly ResumeStudentStatus[]

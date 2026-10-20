@@ -319,7 +319,7 @@ function parseResumeStudentStatus(value: unknown): ResumeStudentStatus | undefin
     typeof value['number'] !== 'number' ||
     typeof value['schoolNumber'] !== 'string' ||
     typeof value['studentId'] !== 'number' ||
-    !isResumeSubmissionStatus(value['submissionStatus']) ||
+    (value['submissionStatus'] !== null && !isResumeSubmissionStatus(value['submissionStatus'])) ||
     typeof value['submitted'] !== 'boolean'
   ) {
     return undefined
@@ -590,7 +590,7 @@ async function readStudentStatusResponseBody(response: ResumeHttpResponse): Prom
       responseBody['classNumber'] !== null &&
       typeof responseBody['classNumber'] !== 'number') ||
     (responseBody['grade'] !== undefined && responseBody['grade'] !== null && typeof responseBody['grade'] !== 'number') ||
-    typeof responseBody['lastUpdatedAt'] !== 'string' ||
+    (responseBody['lastUpdatedAt'] !== null && typeof responseBody['lastUpdatedAt'] !== 'string') ||
     typeof responseBody['numberOfData'] !== 'number' ||
     (responseBody['schoolYear'] !== undefined &&
       responseBody['schoolYear'] !== null &&

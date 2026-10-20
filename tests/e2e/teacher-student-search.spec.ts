@@ -104,6 +104,42 @@ test('renders API student statuses and filters the selected class by name', asyn
   await expect(dialog.getByText('3304 김제출연')).toHaveCount(0)
 })
 
+for (const hasExistingResume of [false, true]) test(`keeps students without resumes visible ${hasExistingResume ? 'alongside submitted students' : 'with a null update time'}`, async ({ page }) => {
+  const students = [{
+    classNumber: 1, grade: 1, majorName: null, name: '미작성학생', number: 1,
+    resumeId: null, schoolNumber: '1101', studentId: 1, submissionStatus: null,
+    submitted: false, submittedAt: null,
+  }, ...(hasExistingResume ? [{
+    classNumber: 1, grade: 1, majorName: '프론트엔드', name: '제출학생', number: 2,
+    resumeId: 'resume-2', schoolNumber: '1102', studentId: 2, submissionStatus: 'SUBMITTED',
+    submitted: true, submittedAt: '2026-10-01T09:00:00.000Z',
+  }] : [])]
+  await page.route(`${apiBaseUrl}/resume/students`, (route) => route.fulfill({ json: {
+    classNumber: null, grade: null, schoolYear: null,
+    lastUpdatedAt: hasExistingResume ? '2026-10-01T09:00:00.000Z' : null,
+    numberOfData: students.length, students,
+  } }))
+  await page.goto('/students')
+  await page.getByRole('button', { name: new RegExp(`1반 ${students.length}명`) }).first().click()
+  const dialog = page.getByRole('dialog')
+  const missingResume = dialog.getByRole('button', { name: /1101 미작성학생/ })
+  await expect(missingResume).toBeVisible()
+  await expect(missingResume).toBeDisabled()
+  await expect(missingResume).toContainText('이력서 없음')
+  await expect(dialog.getByText('학생 이력서 제출 현황 응답 형식이 올바르지 않습니다.')).toHaveCount(0)
+  if (hasExistingResume) {
+    await expect(dialog.getByRole('link', { name: /1102 제출학생/ })).toBeVisible()
+    await expect(dialog.getByText(/최근 갱신/)).toBeVisible()
+  } else {
+    await expect(dialog.getByText(/최근 갱신/)).toHaveCount(0)
+  }
+  await page.getByRole('button', { name: '반 상세 닫기' }).click()
+  await page.getByRole('searchbox', { name: '학생 이름 검색' }).fill('미작성학생')
+  const results = page.getByRole('region', { name: '전체 학생 검색 결과' })
+  await expect(results.getByRole('button', { name: /1101 미작성학생/ })).toBeDisabled()
+  await expect(results.getByRole('alert')).toHaveCount(0)
+})
+
 test('searches all classes by name without selecting a class', async ({ page }) => {
   await page.goto('/students')
 
