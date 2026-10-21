@@ -15,7 +15,7 @@ export interface FeedbackBalloonProps extends Omit<HTMLAttributes<HTMLDivElement
 
 export function FeedbackBalloon({
   avatarAlt = '피드백 작성자 프로필',
-  avatarSrc = '/person.svg',
+  avatarSrc,
   buttonAriaLabel = '피드백 내용 보기',
   checked = false,
   className,
@@ -35,7 +35,15 @@ export function FeedbackBalloon({
       {...props}
     >
       <button aria-label={buttonAriaLabel} className={styles.avatar} onClick={onActivate} type="button">
-        <Image alt={avatarAlt} className={styles.avatarImage} height={48} src={avatarSrc} width={48} />
+        {avatarSrc ? (
+          <Image alt={avatarAlt} className={styles.avatarImage} height={48} src={avatarSrc} width={48} />
+        ) : (
+          <svg aria-label={avatarAlt} className={styles.avatarImage} role="img" viewBox="0 0 32 32">
+            <circle cx="16" cy="16" fill="var(--repo-gray-400)" r="16" />
+            <circle cx="16" cy="13" fill="var(--repo-gray-300)" r="6" />
+            <path d="M5 27.6a12 12 0 0 1 22 0 16 16 0 0 1-22 0Z" fill="var(--repo-gray-300)" />
+          </svg>
+        )}
       </button>
 
       <div className={styles.message}>

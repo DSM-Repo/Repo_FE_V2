@@ -159,9 +159,11 @@ test.describe('teacher student portfolio review', () => {
     await expect(page.getByRole('button', { name: /피드백 추가/ })).toBeEnabled()
 
     await page.getByRole('button', { name: /피드백 추가/ }).click()
-    await expect(page.getByRole('complementary', { name: '피드백 목록' })).toBeVisible()
-    await expect(page.getByLabel('새 피드백')).toBeFocused()
-    await page.getByLabel('새 피드백').fill('프로젝트 성과를 구체적으로 적어주세요.')
+    await expect(page.getByText('피드백을 남길 위치를 선택해주세요.')).toBeVisible()
+    await expect(page.getByRole('textbox', { name: '새 피드백', exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: '현재 페이지 중앙에 추가' }).click()
+    await expect(page.getByRole('textbox', { name: '새 피드백', exact: true })).toBeFocused()
+    await page.getByRole('textbox', { name: '새 피드백', exact: true }).fill('프로젝트 성과를 구체적으로 적어주세요.')
     await page.getByRole('button', { name: '피드백 저장' }).click()
     await expect.poll(() => {
       const body = mocks.getCreatedFeedbackRequestBody()

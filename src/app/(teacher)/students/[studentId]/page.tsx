@@ -4,7 +4,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useParams } from 'next/navigation'
 
 import { getSavedAccessToken } from '@/features/auth/api'
-import { createFeedback, getFeedbacks, type FeedbackListItem } from '@/features/feedback/api'
+import { createFeedback, deleteFeedback, getFeedbacks, type FeedbackListItem } from '@/features/feedback/api'
 import { clearLegacyLibraryCache } from '@/features/library/api'
 import {
   getStudentResumeById,
@@ -13,7 +13,7 @@ import {
   type ResumePage,
 } from '@/features/resume/api'
 import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
-import { AppHeader, Button, Icon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
+import { AppHeader, Icon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -118,6 +118,11 @@ export default function TeacherStudentReviewPage() {
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'loading' })
   const [feedbackLoadState, setFeedbackLoadState] = useState<FeedbackLoadState>({ kind: 'idle' })
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const [isPlacingFeedback, setIsPlacingFeedback] = useState(false)
+  const [expandedFeedbackId, setExpandedFeedbackId] = useState<string>()
+  const [isSelectingFeedback, setIsSelectingFeedback] = useState(false)
+  const [selectedFeedbackIds, setSelectedFeedbackIds] = useState<readonly string[]>([])
+  const [isDeletingFeedback, setIsDeletingFeedback] = useState(false)
   const [feedbackDraft, setFeedbackDraft] = useState('')
   const [feedbackTarget, setFeedbackTarget] = useState<FeedbackTarget>()
   const [feedbackSubmitState, setFeedbackSubmitState] = useState<FeedbackSubmitState>('idle')
@@ -125,6 +130,53 @@ export default function TeacherStudentReviewPage() {
   const [visibilitySubmitState, setVisibilitySubmitState] = useState<'idle' | 'pending'>('idle')
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback>()
   const feedbackTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const feedbackDialogRef = useRef<HTMLDialogElement | null>(null)
+  const feedbackAddButtonRef = useRef<HTMLButtonElement | null>(null)
+  const feedbackRowRefs = useRef(new Map<string, HTMLLIElement>())
+  const feedbackRequestVersionRef = useRef(0)
+  const feedbackSessionRef = useRef(0)
+  const feedbackMutationPendingRef = useRef(false)
+  const wasEditingFeedbackRef = useRef(false)
+
+  useEffect(() => {
+    if (actionFeedback?.tone !== 'success') return
+    const timeout = window.setTimeout(() => setActionFeedback(undefined), 5000)
+    return () => window.clearTimeout(timeout)
+  }, [actionFeedback])
+
+  const cancelFeedbackDraft = useCallback(() => {
+    if (feedbackMutationPendingRef.current) return
+    setIsPlacingFeedback(false)
+    setFeedbackTarget(undefined)
+    setFeedbackDraft('')
+    feedbackAddButtonRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    if (feedbackTarget) {
+      feedbackDialogRef.current?.showModal()
+      feedbackTextareaRef.current?.focus()
+    }
+  }, [feedbackTarget])
+
+  useEffect(() => {
+    const isEditing = isPlacingFeedback || Boolean(feedbackTarget)
+    if (wasEditingFeedbackRef.current && !isEditing) feedbackAddButtonRef.current?.focus()
+    wasEditingFeedbackRef.current = isEditing
+  }, [feedbackTarget, isPlacingFeedback])
+
+  useEffect(() => {
+    if (!isPlacingFeedback) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') cancelFeedbackDraft()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [cancelFeedbackDraft, isPlacingFeedback])
+
+  useEffect(() => {
+    if (expandedFeedbackId) feedbackRowRefs.current.get(expandedFeedbackId)?.scrollIntoView({ block: 'nearest' })
+  }, [expandedFeedbackId])
 
   useEffect(() => {
     let active = true
@@ -165,12 +217,21 @@ export default function TeacherStudentReviewPage() {
       setFeedbackTarget(undefined)
       setFeedbackSubmitState('idle')
       setIsFeedbackOpen(false)
+      setIsPlacingFeedback(false)
+      setExpandedFeedbackId(undefined)
+      setIsSelectingFeedback(false)
+      setSelectedFeedbackIds([])
+      setIsDeletingFeedback(false)
+      setActionFeedback(undefined)
+      feedbackMutationPendingRef.current = false
     }
 
     void loadResume()
 
     return () => {
       active = false
+      feedbackRequestVersionRef.current += 1
+      feedbackSessionRef.current += 1
     }
   }, [studentId])
 
@@ -180,7 +241,7 @@ export default function TeacherStudentReviewPage() {
   const canMovePrevious = spreadStartIndex > 0
   const canMoveNext = spreadStartIndex + 1 < pages.length - 1
   const canUpdateVisibility = Boolean(resume)
-  const currentFeedbackPage = pages.find((page) => page.id === feedbackTarget?.pageId) ?? pages[spreadStartIndex] ?? pages[0]
+  const currentFeedbackPage = pages[spreadStartIndex] ?? pages[0]
 
   const handleVisibilityChange = useCallback(
     async (isPublic: boolean) => {
@@ -226,91 +287,90 @@ export default function TeacherStudentReviewPage() {
       return
     }
 
-    setFeedbackLoadState({ kind: 'loading' })
+    const requestVersion = ++feedbackRequestVersionRef.current
+    setFeedbackLoadState((current) => current.kind === 'success' ? current : { kind: 'loading' })
     const result = await getFeedbacks({ accessToken, documentId: resume.id })
+
+    if (requestVersion !== feedbackRequestVersionRef.current) return
 
     if (result.kind !== 'success') {
       setFeedbackLoadState({ kind: 'failure', message: result.message })
       return
     }
 
-    setFeedbackLoadState((currentState) => {
-      if (currentState.kind !== 'success') {
-        return {
-          feedbacks: result.feedbacks,
-          kind: 'success',
-          numberOfData: result.numberOfData,
-        }
-      }
-
-      const loadedFeedbackIds = new Set(result.feedbacks.map((feedback) => feedback.feedbackId))
-      const localFeedbacks = currentState.feedbacks.filter((feedback) => !loadedFeedbackIds.has(feedback.feedbackId))
-
-      return {
-        feedbacks: [...localFeedbacks, ...result.feedbacks],
-        kind: 'success',
-        numberOfData: result.numberOfData + localFeedbacks.length,
-      }
-    })
+    setFeedbackLoadState({ feedbacks: result.feedbacks, kind: 'success', numberOfData: result.numberOfData })
   }, [resume])
 
   const handleFeedbackToggle = useCallback(
     async (checked: boolean) => {
+      if (feedbackMutationPendingRef.current) return
+      cancelFeedbackDraft()
       setIsFeedbackOpen(checked)
-
-      if (!checked || feedbackLoadState.kind === 'loading' || feedbackLoadState.kind === 'success') {
+      if (!checked) {
+        setIsSelectingFeedback(false)
+        setSelectedFeedbackIds([])
+        setExpandedFeedbackId(undefined)
         return
       }
-
       await loadFeedbacks()
     },
-    [feedbackLoadState.kind, loadFeedbacks],
+    [cancelFeedbackDraft, loadFeedbacks],
   )
 
   const handleFeedbackAddClick = useCallback(() => {
-    setIsFeedbackOpen(true)
+    if (feedbackMutationPendingRef.current) return
+    setIsPlacingFeedback(true)
+    setIsFeedbackOpen(false)
+    setIsSelectingFeedback(false)
+    setSelectedFeedbackIds([])
+    setExpandedFeedbackId(undefined)
 
     if (feedbackLoadState.kind !== 'loading' && feedbackLoadState.kind !== 'success') {
       void loadFeedbacks()
     }
-
-    window.setTimeout(() => feedbackTextareaRef.current?.focus(), 0)
   }, [feedbackLoadState.kind, loadFeedbacks])
 
   const handleFeedbackPointSelect = useCallback(
     (page: ResumePage | undefined, point: { readonly x: number; readonly y: number }) => {
-      if (!page) {
+      if (!page || !isPlacingFeedback || feedbackMutationPendingRef.current) {
         return
       }
 
       setFeedbackTarget({ pageId: page.id, x: point.x, y: point.y })
-      setIsFeedbackOpen(true)
-
-      if (feedbackLoadState.kind !== 'loading' && feedbackLoadState.kind !== 'success') {
-        void loadFeedbacks()
-      }
-
-      window.setTimeout(() => feedbackTextareaRef.current?.focus(), 0)
+      setIsPlacingFeedback(false)
     },
-    [feedbackLoadState.kind, loadFeedbacks],
+    [isPlacingFeedback],
   )
+
+  const openFeedback = useCallback((feedback: FeedbackListItem) => {
+    setExpandedFeedbackId(feedback.feedbackId)
+    if (feedback.pageDeleted) return
+    const pageIndex = pages.findIndex((page) => page.id === feedback.pageId)
+    if (pageIndex >= 0) setSpreadStartIndex(Math.min(pageIndex, Math.max(0, pages.length - 2)))
+  }, [pages])
 
   const toPageFeedbackMarkers = useCallback(
     (page: ResumePage | undefined): readonly ResumeBookSheetFeedbackMarker[] => {
-      if (!page) {
+      if (!page || (!isFeedbackOpen && !isPlacingFeedback && !feedbackTarget)) {
         return []
       }
 
       const savedMarkers =
         feedbackLoadState.kind === 'success'
           ? feedbackLoadState.feedbacks
-              .filter((feedback) => feedback.pageId === page.id)
+              .filter((feedback) => feedback.pageId === page.id && !feedback.pageDeleted)
               .map((feedback) => {
                 const title = toFeedbackSummary(feedback.content)
 
                 return {
                   checked: isCompletedFeedback(feedback),
                   id: feedback.feedbackId,
+                  onSelect: () => {
+                    setIsPlacingFeedback(false)
+                    setIsFeedbackOpen(true)
+                    openFeedback(feedback)
+                  },
+                  selected: expandedFeedbackId === feedback.feedbackId,
                   title,
                   x: feedback.x,
                   y: feedback.y,
@@ -334,7 +394,7 @@ export default function TeacherStudentReviewPage() {
         ...savedMarkers,
       ]
     },
-    [feedbackDraft, feedbackLoadState, feedbackTarget],
+    [expandedFeedbackId, feedbackDraft, feedbackLoadState, feedbackTarget, isFeedbackOpen, isPlacingFeedback, openFeedback],
   )
 
   const handleFeedbackCreate = useCallback(
@@ -343,7 +403,7 @@ export default function TeacherStudentReviewPage() {
 
       const comment = feedbackDraft.trim()
 
-      if (!resume || !currentFeedbackPage || feedbackSubmitState !== 'idle') {
+      if (!resume || !feedbackTarget || feedbackMutationPendingRef.current || feedbackLoadState.kind === 'loading') {
         return
       }
 
@@ -361,15 +421,20 @@ export default function TeacherStudentReviewPage() {
       }
 
       setActionFeedback(undefined)
+      feedbackMutationPendingRef.current = true
+      feedbackRequestVersionRef.current += 1
+      const session = feedbackSessionRef.current
       setFeedbackSubmitState('pending')
       const result = await createFeedback({
         accessToken,
         comment,
         documentId: resume.id,
-        pageId: currentFeedbackPage.id,
-        x: feedbackTarget?.pageId === currentFeedbackPage.id ? feedbackTarget.x : 0.5,
-        y: feedbackTarget?.pageId === currentFeedbackPage.id ? feedbackTarget.y : 0.5,
+        pageId: feedbackTarget.pageId,
+        x: feedbackTarget.x,
+        y: feedbackTarget.y,
       })
+      if (session !== feedbackSessionRef.current) return
+      feedbackMutationPendingRef.current = false
       setFeedbackSubmitState('idle')
 
       if (result.kind !== 'success') {
@@ -390,6 +455,8 @@ export default function TeacherStudentReviewPage() {
         y: result.y,
       }
 
+      feedbackRequestVersionRef.current += 1
+
       setFeedbackLoadState((currentState) => {
         if (currentState.kind !== 'success') {
           return {
@@ -407,17 +474,57 @@ export default function TeacherStudentReviewPage() {
       })
       setFeedbackDraft('')
       setFeedbackTarget(undefined)
+      setIsFeedbackOpen(true)
+      setExpandedFeedbackId(result.feedbackId)
+      feedbackAddButtonRef.current?.focus()
       setActionFeedback({ message: '피드백을 추가했습니다.', tone: 'success' })
     },
-    [currentFeedbackPage, feedbackDraft, feedbackSubmitState, feedbackTarget, resume],
+    [feedbackDraft, feedbackLoadState.kind, feedbackTarget, resume],
   )
 
+  const handleFeedbackDelete = async () => {
+    if (selectedFeedbackIds.length === 0 || feedbackMutationPendingRef.current) return
+    const accessToken = getSavedAccessToken()
+    if (!accessToken) {
+      setActionFeedback({ message: '로그인 후 피드백을 삭제할 수 있습니다.', tone: 'error' })
+      return
+    }
+    feedbackMutationPendingRef.current = true
+    feedbackRequestVersionRef.current += 1
+    setIsDeletingFeedback(true)
+    setActionFeedback(undefined)
+    const session = feedbackSessionRef.current
+    const results = await Promise.all(selectedFeedbackIds.map(async (feedbackId) => ({
+      feedbackId,
+      result: await deleteFeedback({ accessToken, feedbackId }),
+    })))
+    if (session !== feedbackSessionRef.current) return
+    feedbackMutationPendingRef.current = false
+    setIsDeletingFeedback(false)
+    feedbackRequestVersionRef.current += 1
+    const removedIds = new Set(results.filter(({ result }) => result.kind === 'success').map(({ feedbackId }) => feedbackId))
+    setFeedbackLoadState((current) => current.kind === 'success' ? {
+      kind: 'success',
+      feedbacks: current.feedbacks.filter((feedback) => !removedIds.has(feedback.feedbackId)),
+      numberOfData: Math.max(0, current.numberOfData - removedIds.size),
+    } : current)
+    setSelectedFeedbackIds((current) => current.filter((id) => !removedIds.has(id)))
+    setExpandedFeedbackId((current) => current && removedIds.has(current) ? undefined : current)
+    const failures = results.flatMap(({ result }) => result.kind === 'success' ? [] : [result.message])
+    if (failures.length > 0) {
+      setActionFeedback({ message: [...new Set(failures)].join('\n'), tone: 'error' })
+    } else {
+      setIsSelectingFeedback(false)
+      setActionFeedback({ message: '피드백을 삭제했습니다.', tone: 'success' })
+    }
+  }
+
   return (
-    <main className={styles.page} data-feedback-panel-open={isFeedbackOpen}>
+    <main className={styles.page} data-feedback-panel-open={isFeedbackOpen} data-feedback-placement={isPlacingFeedback}>
       <AppHeader activeItem="students" items={navigationItems} showLogout />
 
       <section className={styles.workspace} aria-label="학생 포트폴리오 검토">
-        {actionFeedback ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}
+        {actionFeedback && !feedbackTarget ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}
 
         <div className={styles.viewer} data-document-empty={loadState.kind !== 'success'}>
           {loadState.kind === 'loading' ? (
@@ -456,7 +563,7 @@ export default function TeacherStudentReviewPage() {
                       content={toSheetContent(resume, page)}
                       feedbackMarkers={toPageFeedbackMarkers(page)}
                       key={page?.id ?? pageIndex}
-                      onFeedbackPointSelect={(point) => handleFeedbackPointSelect(page, point)}
+                      onFeedbackPointSelect={isPlacingFeedback ? (point) => handleFeedbackPointSelect(page, point) : undefined}
                     />
                   )
                 })}
@@ -482,9 +589,20 @@ export default function TeacherStudentReviewPage() {
         ) : null}
 
         <div className={styles.bottomControls}>
-          <Button className={styles.feedbackButton} disabled={!resume || feedbackSubmitState === 'pending'} onClick={handleFeedbackAddClick}>
-            피드백 추가 <span aria-hidden="true">＋</span>
-          </Button>
+          {isPlacingFeedback ? (
+            <div className={styles.placementControls}>
+              <p role="status">피드백을 남길 위치를 선택해주세요.</p>
+              <div>
+                <button type="button" onClick={() => handleFeedbackPointSelect(currentFeedbackPage, { x: 0.5, y: 0.5 })}>
+                  현재 페이지 중앙에 추가
+                </button>
+                <button type="button" onClick={cancelFeedbackDraft}>취소</button>
+              </div>
+            </div>
+          ) : null}
+            <button className={styles.feedbackButton} disabled={!resume || pages.length === 0 || feedbackSubmitState === 'pending' || isDeletingFeedback} hidden={isPlacingFeedback} onClick={handleFeedbackAddClick} ref={feedbackAddButtonRef} type="button">
+              피드백 추가 <span aria-hidden="true">＋</span>
+            </button>
         </div>
 
         <div className={styles.reviewSettings} aria-label="학생 이력서 검토 설정">
@@ -505,7 +623,7 @@ export default function TeacherStudentReviewPage() {
               <Switch
                 aria-label="피드백 보기"
                 checked={isFeedbackOpen}
-                disabled={!resume}
+                disabled={!resume || feedbackSubmitState === 'pending' || isDeletingFeedback}
                 onCheckedChange={(checked) => void handleFeedbackToggle(checked)}
               />
             </span>
@@ -519,21 +637,111 @@ export default function TeacherStudentReviewPage() {
               <button
                 aria-label="피드백 목록 닫기"
                 className={styles.feedbackPanelClose}
-                onClick={() => setIsFeedbackOpen(false)}
+                disabled={isDeletingFeedback}
+                onClick={() => void handleFeedbackToggle(false)}
                 type="button"
               >
-                ×
+                <span aria-hidden="true">×</span>
               </button>
             </header>
             <div className={styles.feedbackPanelToolbar}>
-              <button disabled={feedbackLoadState.kind !== 'success' || feedbackLoadState.feedbacks.length === 0} type="button">
-                전체 완료 처리
-              </button>
+              {isSelectingFeedback ? <span>{selectedFeedbackIds.length}개 선택됨</span> : (
+                <button
+                  disabled={feedbackLoadState.kind !== 'success' || feedbackLoadState.feedbacks.length === 0}
+                  onClick={() => { setIsSelectingFeedback(true); setExpandedFeedbackId(undefined) }}
+                  type="button"
+                >선택하기</button>
+              )}
             </div>
+            <div className={styles.feedbackPanelBody}>
+            {feedbackLoadState.kind === 'loading' ? <p className={styles.feedbackEmpty}>피드백을 불러오는 중입니다.</p> : null}
+            {feedbackLoadState.kind === 'failure' ? (
+              <div className={styles.feedbackEmpty} role="alert">
+                <p>{feedbackLoadState.message}</p>
+                <button className={styles.feedbackSecondaryButton} onClick={() => void loadFeedbacks()} type="button">다시 시도</button>
+              </div>
+            ) : null}
+            {feedbackLoadState.kind === 'success' && feedbackLoadState.feedbacks.length === 0 ? (
+              <p className={styles.feedbackEmpty}>아직 받은 피드백이 없습니다.</p>
+            ) : null}
+            {feedbackLoadState.kind === 'success' && feedbackLoadState.feedbacks.length > 0 ? (
+              <ul className={styles.feedbackList}>
+                {feedbackLoadState.feedbacks.map((feedback) => (
+                  <li
+                    className={styles.feedbackItem}
+                    data-selected={isSelectingFeedback && selectedFeedbackIds.includes(feedback.feedbackId)}
+                    key={feedback.feedbackId}
+                    ref={(element) => {
+                      if (element) feedbackRowRefs.current.set(feedback.feedbackId, element)
+                      else feedbackRowRefs.current.delete(feedback.feedbackId)
+                    }}
+                  >
+                    <button
+                      aria-expanded={isSelectingFeedback ? undefined : expandedFeedbackId === feedback.feedbackId}
+                      aria-checked={isSelectingFeedback ? selectedFeedbackIds.includes(feedback.feedbackId) : undefined}
+                      aria-label={isSelectingFeedback ? `${toFeedbackSummary(feedback.content)} 선택` : undefined}
+                      className={styles.feedbackItemButton}
+                      disabled={isDeletingFeedback}
+                      role={isSelectingFeedback ? 'checkbox' : undefined}
+                      onClick={() => {
+                        if (isSelectingFeedback) {
+                          setSelectedFeedbackIds((current) => current.includes(feedback.feedbackId)
+                            ? current.filter((id) => id !== feedback.feedbackId)
+                            : [...current, feedback.feedbackId])
+                        } else if (expandedFeedbackId === feedback.feedbackId) {
+                          setExpandedFeedbackId(undefined)
+                        } else {
+                          openFeedback(feedback)
+                        }
+                      }}
+                      type="button"
+                    >
+                      <span className={styles.feedbackTitle}>
+                        <span className={styles.feedbackSummary}>{toFeedbackSummary(feedback.content)}</span>
+                        <span className={styles.feedbackMeta}>
+                          {feedback.teacherName || '선생님'} / {formatFeedbackDate(feedback.createdAt)}
+                        </span>
+                      </span>
+                      {!isSelectingFeedback ? <span className={expandedFeedbackId === feedback.feedbackId ? styles.feedbackChevronExpanded : undefined}><Icon name="chevron-right" /></span> : null}
+                    </button>
+                    {!isSelectingFeedback && expandedFeedbackId === feedback.feedbackId ? (
+                      <div className={styles.feedbackDetail}>
+                        <p>{feedback.content}</p>
+                        {feedback.pageDeleted ? <span className={styles.feedbackMeta}>삭제된 페이지의 피드백입니다.</span> : null}
+                      </div>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            </div>
+            {isSelectingFeedback ? (
+              <footer className={styles.feedbackPanelFooter}>
+                <button
+                  className={styles.feedbackSecondaryButton}
+                  disabled={isDeletingFeedback}
+                  onClick={() => { setIsSelectingFeedback(false); setSelectedFeedbackIds([]) }}
+                  type="button"
+                >취소</button>
+                <button
+                  className={styles.feedbackCreateButton}
+                  disabled={isDeletingFeedback || selectedFeedbackIds.length === 0}
+                  onClick={() => void handleFeedbackDelete()}
+                  type="button"
+                >{isDeletingFeedback ? '삭제 중' : '피드백 삭제'}</button>
+              </footer>
+            ) : null}
+          </aside>
+        ) : null}
+        {feedbackTarget ? (
+          <dialog
+            aria-label="피드백 작성"
+            className={styles.feedbackComposer}
+            onCancel={(event) => { event.preventDefault(); cancelFeedbackDraft() }}
+            ref={feedbackDialogRef}
+          >
             <form className={styles.feedbackCreateForm} onSubmit={(event) => void handleFeedbackCreate(event)}>
-              <label className={styles.feedbackCreateLabel} htmlFor="teacher-feedback-comment">
-                새 피드백
-              </label>
+              <label className={styles.feedbackCreateLabel} htmlFor="teacher-feedback-comment">새 피드백</label>
               <textarea
                 className={styles.feedbackCreateInput}
                 disabled={feedbackSubmitState === 'pending'}
@@ -544,40 +752,15 @@ export default function TeacherStudentReviewPage() {
                 rows={4}
                 value={feedbackDraft}
               />
-              <button
-                className={styles.feedbackCreateButton}
-                disabled={feedbackSubmitState === 'pending' || !feedbackDraft.trim() || !currentFeedbackPage}
-                type="submit"
-              >
-                {feedbackSubmitState === 'pending' ? '추가 중' : '피드백 저장'}
-              </button>
+              {actionFeedback?.tone === 'error' ? <p className={styles.feedbackCreateError} role="alert">{actionFeedback.message}</p> : null}
+              <div className={styles.feedbackComposerActions}>
+                <button aria-label="피드백 작성 취소" className={styles.feedbackSecondaryButton} disabled={feedbackSubmitState === 'pending'} onClick={cancelFeedbackDraft} type="button">취소</button>
+                <button className={styles.feedbackCreateButton} disabled={feedbackSubmitState === 'pending' || feedbackLoadState.kind === 'loading' || !feedbackDraft.trim()} type="submit">
+                  {feedbackSubmitState === 'pending' ? '추가 중' : '피드백 저장'}
+                </button>
+              </div>
             </form>
-            {feedbackLoadState.kind === 'loading' ? <p className={styles.feedbackEmpty}>피드백을 불러오는 중입니다.</p> : null}
-            {feedbackLoadState.kind === 'failure' ? (
-              <p className={styles.feedbackEmpty} role="alert">
-                {feedbackLoadState.message}
-              </p>
-            ) : null}
-            {feedbackLoadState.kind === 'success' && feedbackLoadState.feedbacks.length === 0 ? (
-              <p className={styles.feedbackEmpty}>아직 받은 피드백이 없습니다.</p>
-            ) : null}
-            {feedbackLoadState.kind === 'success' && feedbackLoadState.feedbacks.length > 0 ? (
-              <ul className={styles.feedbackList}>
-                {feedbackLoadState.feedbacks.map((feedback) => (
-                  <li className={styles.feedbackItem} key={feedback.feedbackId}>
-                    <button className={styles.feedbackItemButton} type="button">
-                      <span className={styles.feedbackTitle}>
-                        <span className={styles.feedbackSummary}>{toFeedbackSummary(feedback.content)}</span>
-                        <span className={styles.feedbackMeta}>
-                          {feedback.teacherName || '선생님'} / {formatFeedbackDate(feedback.createdAt)}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </aside>
+          </dialog>
         ) : null}
       </section>
     </main>

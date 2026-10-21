@@ -159,6 +159,14 @@ All spacing derives from 4px.
 - **Layout**: mirrors the resume preview density rather than form density; controls keep transparent document styling and use existing typography tokens
 - **Accessibility**: editable fields keep labels through visually hidden text, toolbar buttons expose action labels, and focus remains visible without changing sheet geometry
 
+### TeacherResumeFeedback
+- **Source**: Figma `okhxw8EuxX4OTiZDkXpCcT`, nodes `700:59455` (목록) and `700:59554` (선택 및 삭제)
+- **Layout**: desktop side panel follows the 341px reference width, with a 61px header, compact 44px rows and a separately scrolling list; selected feedback actions stay at the panel bottom.
+- **Typography**: row titles use body/small, dates use body/very-tiny and expanded content uses body/tiny.
+- **Markers**: teacher documents use a 42px balloon with a 32px author glyph; the shared component accepts size and typography variables so student surfaces retain their existing scale.
+- **States**: viewing, expanded detail, selection, deletion pending, deletion failure, placement, draft and creation pending are distinct. Viewing alone never places a new feedback marker.
+- **Accessibility**: list triggers expose expanded state, selection has labelled controls, placement has a keyboard-accessible page-center action, and Escape cancels drafting. Narrow viewports keep the composer and panel actions reachable.
+
 ## 6. Motion & Interaction
 
 | Type | Duration | Easing | Usage |
