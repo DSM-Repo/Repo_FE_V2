@@ -58,6 +58,7 @@
 }
 
 .feedbackLayer {
+  container-type: inline-size;
   position: absolute;
   z-index: 8;
   inset: 0;
@@ -70,7 +71,9 @@
   transform: translate(-50%, -50%);
 }
 
-.feedbackMarker[data-active='true'] {
+.feedbackMarker[data-active='true'],
+.feedbackMarker:hover,
+.feedbackMarker:focus-within {
   z-index: 2;
 }
 

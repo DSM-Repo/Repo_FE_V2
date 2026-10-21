@@ -592,7 +592,7 @@ test.describe('student resume management', () => {
     releaseResumeRequest.resolve()
   })
 
-  test('renders edit controls and feedback drawer state', async ({ page }) => {
+  test('renders edit controls and compact feedback without duplicating the expanded title', async ({ page }, testInfo) => {
     let applyRequestBody: unknown
 
     await page.route((url) => url.href === `${apiBaseUrl}/feedback?documentId=resume-id`, async (route) => {
@@ -613,14 +613,14 @@ test.describe('student resume management', () => {
             },
             {
               completedAt: '2026-09-22T10:00:00.000Z',
-              content: '프로젝트 성과를 숫자로 표현해보세요.',
+              content: '프로젝트 성과를 숫자로 표현해보세요.\n측정한 사용자 수와 개선 비율을 적어주세요.',
               createdAt: '2026-09-21T10:00:00.000Z',
               feedbackId: 'feedback-2',
               pageDeleted: false,
               pageId: 'server-page-2',
               status: 'COMPLETED',
               teacherName: '이선생',
-              x: 0.58,
+              x: 0.9,
               y: 0.36,
             },
           ],
@@ -666,8 +666,32 @@ test.describe('student resume management', () => {
     await expect(secondPageFeedbackMarker).toBeVisible()
     await secondPageFeedbackMarker.click()
     await expect(feedbackPanel.getByText('0개 선택됨 · 미완료 1개 · 완료 1개')).toBeVisible()
-    await expect(feedbackPanel.getByRole('paragraph').filter({ hasText: '프로젝트 성과를 숫자로 표현해보세요.' })).toBeVisible()
-    await feedbackPanel.getByRole('button', { name: /문장 근거를 한 줄 더 추가해보세요/ }).click()
+    await expect(feedbackPanel.getByText('프로젝트 성과를 숫자로 표현해보세요.', { exact: true })).toHaveCount(1)
+    await expect(feedbackPanel.getByRole('paragraph')).toHaveText('측정한 사용자 수와 개선 비율을 적어주세요.')
+    await secondPageFeedbackMarker.hover()
+    const hoverMessage = secondPageFeedbackMarker.locator('..').locator(':scope > div')
+    await expect(hoverMessage).toHaveCSS('opacity', '1')
+    const [markerBox, messageBox, pageBox] = await Promise.all([
+      secondPageFeedbackMarker.boundingBox(), hoverMessage.boundingBox(),
+      page.locator('article[aria-label="이력서 작성 2쪽"]').boundingBox(),
+    ])
+    expect(markerBox).not.toBeNull()
+    expect(messageBox).not.toBeNull()
+    expect(pageBox).not.toBeNull()
+    expect(markerBox!.width).toBeLessThanOrEqual(36)
+    expect(markerBox!.height).toBeLessThanOrEqual(36)
+    expect(messageBox!.width).toBeLessThanOrEqual(240)
+    expect(Math.abs(messageBox!.y - markerBox!.y)).toBeLessThanOrEqual(1)
+    expect(Math.abs(messageBox!.height - markerBox!.height)).toBeLessThanOrEqual(1)
+    expect(messageBox!.x + messageBox!.width).toBeLessThanOrEqual(markerBox!.x + 4.5)
+    expect(messageBox!.x).toBeGreaterThanOrEqual(pageBox!.x)
+    await page.screenshot({ path: testInfo.outputPath('student-feedback-expanded-hover.png'), fullPage: true })
+
+    const singleLineRow = feedbackPanel.getByRole('button', { name: /문장 근거를 한 줄 더 추가해보세요/ })
+    await singleLineRow.click()
+    await expect(singleLineRow).toHaveAttribute('aria-expanded', 'true')
+    await expect(feedbackPanel.getByText('문장 근거를 한 줄 더 추가해보세요.', { exact: true })).toHaveCount(1)
+    await expect(feedbackPanel.getByRole('paragraph').filter({ hasText: '문장 근거를 한 줄 더 추가해보세요.' })).toHaveCount(0)
 
     const headerBox = await page.locator('main > div > div > header').boundingBox()
     const feedbackPanelBox = await feedbackPanel.boundingBox()

@@ -161,9 +161,10 @@ All spacing derives from 4px.
 
 ### TeacherResumeFeedback
 - **Source**: Figma `okhxw8EuxX4OTiZDkXpCcT`, nodes `700:59455` (목록) and `700:59554` (선택 및 삭제)
-- **Layout**: desktop side panel follows the 341px reference width, with a 61px header, compact 44px rows and a separately scrolling list; selected feedback actions stay at the panel bottom.
-- **Typography**: row titles use body/small, dates use body/very-tiny and expanded content uses body/tiny.
-- **Markers**: teacher documents use a 42px balloon with a 32px author glyph; the shared component accepts size and typography variables so student surfaces retain their existing scale.
+- **Layout**: user-requested compact revision uses a 320px desktop panel, 52px header, 44px rows and 12px list gaps; selected feedback actions stay at the panel bottom.
+- **Typography**: student and teacher row titles and details use body/tiny (14px); dates use body/very-tiny (12px), below the title.
+- **Content**: the first line is the summary. Expanded content contains only subsequent lines; a single-line comment has no duplicate detail block.
+- **Markers**: student and teacher documents use a 36px balloon with a 26px author glyph. The hover message aligns to the same 36px height, sizes to its content up to 240px and opens toward the available document space. It never reserves a fixed minimum width.
 - **States**: viewing, expanded detail, selection, deletion pending, deletion failure, placement, draft and creation pending are distinct. Viewing alone never places a new feedback marker.
 - **Accessibility**: list triggers expose expanded state, selection has labelled controls, placement has a keyboard-accessible page-center action, and Escape cancels drafting. Narrow viewports keep the composer and panel actions reachable.
 

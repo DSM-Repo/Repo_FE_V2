@@ -2,8 +2,8 @@
   position: relative;
   display: inline-flex;
   align-items: flex-start;
-  width: var(--feedback-balloon-size, 64px);
-  min-height: var(--feedback-balloon-size, 64px);
+  width: var(--feedback-balloon-size, 36px);
+  min-height: var(--feedback-balloon-size, 36px);
   overflow: visible;
 }
 
@@ -11,7 +11,7 @@
 .message {
   background: var(--repo-bg-main-point);
   border-radius: var(--repo-radius-pill) var(--repo-radius-pill) var(--repo-radius-pill) 0;
-  box-shadow: var(--feedback-balloon-shadow, var(--repo-shadow-book));
+  box-shadow: var(--feedback-balloon-shadow, 0 2px 6px color-mix(in srgb, var(--repo-text-black) 16%, transparent));
 }
 
 .avatar {
@@ -19,8 +19,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--feedback-balloon-size, 64px);
-  height: var(--feedback-balloon-size, 64px);
+  width: var(--feedback-balloon-size, 36px);
+  height: var(--feedback-balloon-size, 36px);
   padding: 0;
   overflow: hidden;
   border: 0;
@@ -30,22 +30,17 @@
 }
 
 .avatar:focus-visible {
-  box-shadow:
-    var(--feedback-balloon-shadow, var(--repo-shadow-book)),
-    0 0 0 2px var(--repo-gray-50);
+  box-shadow: 0 0 0 2px var(--repo-gray-50);
 }
 
 .balloon[data-active='true'] .avatar {
   box-shadow:
-    var(--feedback-balloon-shadow, var(--repo-shadow-book)),
-    0 0 0 3px var(--repo-gray-50);
+    0 0 0 2px var(--repo-gray-400);
 }
 
 .balloon[data-selected='true'] .avatar {
   box-shadow:
-    var(--feedback-balloon-shadow, var(--repo-shadow-book)),
-    0 0 0 3px var(--repo-gray-50),
-    0 0 0 6px var(--repo-bg-main-point);
+    0 0 0 2px var(--repo-gray-400);
 }
 
 .balloon[data-completed='true'] .avatar,
@@ -54,8 +49,8 @@
 }
 
 .avatarImage {
-  width: var(--feedback-balloon-avatar-size, 48px);
-  height: var(--feedback-balloon-avatar-size, 48px);
+  width: var(--feedback-balloon-avatar-size, 26px);
+  height: var(--feedback-balloon-avatar-size, 26px);
   flex: 0 0 auto;
   object-fit: cover;
   border-radius: var(--repo-radius-pill);
@@ -64,15 +59,17 @@
 .message {
   position: absolute;
   top: 0;
-  left: calc(var(--feedback-balloon-size, 64px) - 10px);
+  left: calc(100% - 4px);
   display: inline-flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-2);
   width: max-content;
-  min-width: 280px;
-  min-height: var(--feedback-balloon-size, 64px);
-  max-width: 420px;
-  padding: var(--space-4) var(--space-6) var(--space-4) var(--space-12);
+  min-width: 0;
+  height: var(--feedback-balloon-size, 36px);
+  max-width: min(240px, var(--feedback-message-max-width, 240px));
+  padding: 0 var(--space-3) 0 var(--space-4);
+  box-sizing: border-box;
+  border-radius: var(--repo-radius-pill);
   color: var(--repo-gray-50);
   clip-path: inset(0 100% 0 0);
   opacity: 0;
@@ -81,6 +78,13 @@
   transition:
     clip-path 160ms ease,
     opacity 120ms ease;
+}
+
+.balloon[data-message-side='left'] .message {
+  right: calc(100% - 4px);
+  left: auto;
+  padding: 0 var(--space-4) 0 var(--space-3);
+  transform-origin: right center;
 }
 
 .balloon:hover .message,
@@ -96,9 +100,9 @@
   max-width: 240px;
   min-width: 0;
   color: var(--repo-gray-50);
-  font-size: var(--feedback-balloon-font-size, var(--repo-font-title-small-size));
-  font-weight: var(--feedback-balloon-weight, var(--repo-font-title-small-weight));
-  line-height: var(--feedback-balloon-line-height, var(--repo-font-title-small-line-height));
+  font-size: var(--feedback-balloon-font-size, var(--repo-font-body-tiny-size));
+  font-weight: var(--feedback-balloon-weight, var(--repo-font-body-tiny-weight));
+  line-height: var(--feedback-balloon-line-height, var(--repo-font-body-tiny-line-height));
   white-space: nowrap;
   word-break: normal;
   overflow-wrap: normal;
@@ -108,7 +112,7 @@
 
 .status {
   flex: 0 0 auto;
-  padding: 4px 8px;
+  padding: 2px 6px;
   border: 1px solid var(--repo-gray-600);
   border-radius: var(--repo-radius-pill);
   color: var(--repo-gray-50);
@@ -130,8 +134,8 @@
 
 .checkIcon {
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
+  width: 16px;
+  height: 16px;
   color: var(--repo-gray-300);
 }
 

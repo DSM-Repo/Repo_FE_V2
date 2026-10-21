@@ -385,13 +385,7 @@ function isCompletedFeedback(feedback: FeedbackListItem) {
 }
 
 function toFeedbackSummary(content: string) {
-  const trimmedContent = content.trim()
-
-  if (!trimmedContent) {
-    return '내용 없는 피드백'
-  }
-
-  return trimmedContent.length > 28 ? `${trimmedContent.slice(0, 28)}...` : trimmedContent
+  return content.trim().split(/\r?\n/)[0] || '내용 없는 피드백'
 }
 
 function formatFeedbackDate(value: string) {
@@ -1678,6 +1672,7 @@ export function StudentResumePageContent() {
                   const isOpen = openFeedbackId === item.feedbackId
                   const isCompleted = isCompletedFeedback(item)
                   const isSelected = selectedFeedbackIds.has(item.feedbackId) && !isCompleted
+                  const detail = item.content.trim().split(/\r?\n/).slice(1).join('\n').trim()
 
                   return (
                     <li
@@ -1712,9 +1707,9 @@ export function StudentResumePageContent() {
                           <Icon name="chevron-right" />
                         </span>
                       </button>
-                      {isOpen ? (
+                      {isOpen && detail ? (
                         <div className={styles.feedbackDetail}>
-                          <p>{item.content || '내용 없는 피드백입니다.'}</p>
+                          <p>{detail}</p>
                         </div>
                       ) : null}
                     </li>

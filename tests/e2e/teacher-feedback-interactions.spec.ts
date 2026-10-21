@@ -5,12 +5,16 @@ import { authenticateAs } from './auth-fixtures'
 const firstComment = '소개를 구체적으로 작성해주세요.\n두 번째 줄도 전체 내용으로 확인할 수 있어야 합니다.'
 const lastComment = '마지막 페이지의 경험을 보완해주세요.\n맡은 역할과 결과를 함께 적어주세요.'
 
-async function mockFeedbackReview(page: Page, options: { readonly failLastDelete?: boolean } = {}) {
+async function mockFeedbackReview(page: Page, options: {
+  readonly failLastDelete?: boolean
+  readonly firstComment?: string
+  readonly firstX?: number
+} = {}) {
   const createdBodies: Record<string, unknown>[] = []
   const deletedIds: string[] = []
   let failLastDelete = options.failLastDelete ?? false
   let feedbacks = [
-    { id: 'feedback-first', pageId: 'profile-page', comment: firstComment, x: 0.3, y: 0.3 },
+    { id: 'feedback-first', pageId: 'profile-page', comment: options.firstComment ?? firstComment, x: options.firstX ?? 0.3, y: 0.3 },
     { id: 'feedback-last', pageId: 'last-page', comment: lastComment, x: 0.4, y: 0.5 },
   ].map((feedback) => ({
     ...feedback,
@@ -96,8 +100,8 @@ test('only composes after placement is requested and hides markers with feedback
   await expect(page.getByRole('textbox', { name: '새 피드백', exact: true })).toHaveCount(0)
   const markerBox = await marker.boundingBox()
   expect(markerBox).not.toBeNull()
-  expect(markerBox!.width).toBeLessThanOrEqual(44)
-  expect(markerBox!.height).toBeLessThanOrEqual(44)
+  expect(markerBox!.width).toBeLessThanOrEqual(36)
+  expect(markerBox!.height).toBeLessThanOrEqual(36)
   await expect(marker.locator('svg')).toHaveCount(1)
   await expect(marker.locator('img')).toHaveCount(0)
 
@@ -152,7 +156,7 @@ test('cancels placement and discards a composer draft with Escape or the cancel 
   expect(mocks.createdBodies).toHaveLength(0)
 })
 
-test('expands complete multiline feedback and navigates to a marker on an offscreen page', async ({ page }, testInfo) => {
+test('expands only feedback details without repeating the title and navigates to an offscreen page', async ({ page }, testInfo) => {
   await mockFeedbackReview(page)
   await page.getByRole('switch', { name: '피드백 보기' }).click()
   const panel = page.getByRole('complementary', { name: '피드백 목록' })
@@ -160,16 +164,20 @@ test('expands complete multiline feedback and navigates to a marker on an offscr
   await expect(firstRow).toHaveAttribute('aria-expanded', 'false')
   await firstRow.click()
   await expect(firstRow).toHaveAttribute('aria-expanded', 'true')
-  await expect(panel.getByText(firstComment, { exact: true })).toBeVisible()
+  await expect(panel.getByText(firstComment.split('\n')[0], { exact: true })).toHaveCount(1)
+  await expect(panel.getByRole('paragraph')).toHaveText(firstComment.split('\n').slice(1).join('\n'))
+  await expect(panel.getByText(firstComment, { exact: true })).toHaveCount(0)
   await firstRow.click()
   await expect(firstRow).toHaveAttribute('aria-expanded', 'false')
-  await expect(panel.getByText(firstComment, { exact: true })).toHaveCount(0)
+  await expect(panel.getByRole('paragraph')).toHaveCount(0)
 
   await expect(page.getByLabel('테스트 학생 이력서 3쪽')).toHaveCount(0)
   const lastRow = panel.getByRole('button', { name: /마지막 페이지의 경험을 보완해주세요/ })
   await lastRow.click()
   await expect(lastRow).toHaveAttribute('aria-expanded', 'true')
-  await expect(panel.getByText(lastComment, { exact: true })).toBeVisible()
+  await expect(panel.getByText(lastComment.split('\n')[0], { exact: true })).toHaveCount(1)
+  await expect(panel.getByRole('paragraph')).toHaveText(lastComment.split('\n').slice(1).join('\n'))
+  await expect(panel.getByText(lastComment, { exact: true })).toHaveCount(0)
   const lastSheet = page.getByLabel('테스트 학생 이력서 3쪽')
   await expect(lastSheet).toBeVisible()
   const marker = lastSheet.getByRole('button', { name: '피드백 위치: 마지막 페이지의 경험을 보완해주세요.' })
@@ -177,6 +185,52 @@ test('expands complete multiline feedback and navigates to a marker on an offscr
   await expect(marker.locator('..')).toHaveAttribute('data-selected', 'true')
   await page.screenshot({ path: testInfo.outputPath('desktop-feedback-expanded.png'), fullPage: true })
 })
+
+for (const firstX of [0.3, 0.9]) {
+  test(`keeps compact hover content aligned and a single-line comment unduplicated at x=${firstX}`, async ({ page }, testInfo) => {
+    await mockFeedbackReview(page, { firstComment: '2345', firstX })
+    await page.getByRole('switch', { name: '피드백 보기' }).click()
+    const panel = page.getByRole('complementary', { name: '피드백 목록' })
+    const row = panel.getByRole('button', { name: /2345/ })
+    await row.click()
+    await expect(row).toHaveAttribute('aria-expanded', 'true')
+    await expect(panel.getByText('2345', { exact: true })).toHaveCount(1)
+    await expect(panel.getByRole('paragraph')).toHaveCount(0)
+
+    const sheet = page.getByLabel('테스트 학생 이력서 1쪽')
+    const marker = sheet.getByRole('button', { name: '피드백 위치: 2345' })
+    await marker.hover()
+    const tooltip = marker.locator('..').locator(':scope > div')
+    await expect(tooltip).toHaveCSS('opacity', '1')
+    const [avatarBox, glyphBox, tooltipBox, titleBox, statusBox, sheetBox] = await Promise.all([
+      marker.boundingBox(), marker.locator('svg').boundingBox(), tooltip.boundingBox(),
+      tooltip.getByText('2345', { exact: true }).boundingBox(),
+      tooltip.getByText('선택됨', { exact: true }).boundingBox(), sheet.boundingBox(),
+    ])
+    expect(avatarBox).not.toBeNull()
+    expect(glyphBox).not.toBeNull()
+    expect(tooltipBox).not.toBeNull()
+    expect(titleBox).not.toBeNull()
+    expect(statusBox).not.toBeNull()
+    expect(sheetBox).not.toBeNull()
+    expect(avatarBox!.width).toBeLessThanOrEqual(36)
+    expect(avatarBox!.height).toBeLessThanOrEqual(36)
+    expect(glyphBox!.width).toBeLessThanOrEqual(26)
+    expect(glyphBox!.height).toBeLessThanOrEqual(26)
+    expect(tooltipBox!.width).toBeLessThanOrEqual(240)
+    expect(Math.abs(tooltipBox!.y - avatarBox!.y)).toBeLessThanOrEqual(1)
+    expect(Math.abs(tooltipBox!.height - avatarBox!.height)).toBeLessThanOrEqual(1)
+    expect(titleBox!.x + titleBox!.width).toBeLessThanOrEqual(statusBox!.x)
+    expect(tooltipBox!.x).toBeGreaterThanOrEqual(sheetBox!.x)
+    expect(tooltipBox!.x + tooltipBox!.width).toBeLessThanOrEqual(sheetBox!.x + sheetBox!.width)
+    if (firstX > 0.5) {
+      expect(tooltipBox!.x + tooltipBox!.width).toBeLessThanOrEqual(avatarBox!.x + 4.5)
+    } else {
+      expect(tooltipBox!.x).toBeGreaterThanOrEqual(avatarBox!.x + avatarBox!.width - 4.5)
+    }
+    await page.screenshot({ path: testInfo.outputPath(`desktop-feedback-hover-${firstX > 0.5 ? 'left' : 'right'}.png`), fullPage: true })
+  })
+}
 
 for (const partialFailure of [false, true]) {
   test(`deletes selected feedback and ${partialFailure ? 'retains failed selections with the server message for retry' : 'removes all successful rows and markers'}`, async ({ page }, testInfo) => {

@@ -96,6 +96,10 @@ function toFeedbackSummary(content: string) {
   return firstLine.trim() || '내용 없는 피드백'
 }
 
+function toFeedbackDetail(content: string) {
+  return content.replace(/\r/g, '').split('\n').slice(1).join('\n').trim()
+}
+
 function formatFeedbackDate(value: string) {
   const date = new Date(value)
 
@@ -704,9 +708,9 @@ export default function TeacherStudentReviewPage() {
                       </span>
                       {!isSelectingFeedback ? <span className={expandedFeedbackId === feedback.feedbackId ? styles.feedbackChevronExpanded : undefined}><Icon name="chevron-right" /></span> : null}
                     </button>
-                    {!isSelectingFeedback && expandedFeedbackId === feedback.feedbackId ? (
+                    {!isSelectingFeedback && expandedFeedbackId === feedback.feedbackId && (toFeedbackDetail(feedback.content) || feedback.pageDeleted) ? (
                       <div className={styles.feedbackDetail}>
-                        <p>{feedback.content}</p>
+                        {toFeedbackDetail(feedback.content) ? <p>{toFeedbackDetail(feedback.content)}</p> : null}
                         {feedback.pageDeleted ? <span className={styles.feedbackMeta}>삭제된 페이지의 피드백입니다.</span> : null}
                       </div>
                     ) : null}

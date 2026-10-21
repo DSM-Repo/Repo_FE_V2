@@ -1,4 +1,4 @@
-import { Fragment, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import Image from 'next/image'
 
 import { FeedbackBalloon } from '@/shared/ui/FeedbackBalloon'
@@ -335,12 +335,14 @@ function renderFeedbackMarkers(feedbackMarkers: readonly ResumeBookSheetFeedback
           className={styles.feedbackMarker}
           data-active={marker.active ? 'true' : undefined}
           key={marker.id}
+          messageSide={parseFloat(toFeedbackPosition(marker.x, 'x')) > 50 ? 'left' : 'right'}
           onActivate={marker.onSelect}
           selected={marker.selected}
           style={{
+            '--feedback-message-max-width': `calc(${Math.max(parseFloat(toFeedbackPosition(marker.x, 'x')), 100 - parseFloat(toFeedbackPosition(marker.x, 'x')))}cqw - var(--feedback-balloon-size, 36px) / 2)`,
             left: toFeedbackPosition(marker.x, 'x'),
             top: toFeedbackPosition(marker.y, 'y'),
-          }}
+          } as CSSProperties}
           title={marker.title}
         />
       ))}

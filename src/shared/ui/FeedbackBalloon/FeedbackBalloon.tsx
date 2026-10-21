@@ -8,6 +8,7 @@ export interface FeedbackBalloonProps extends Omit<HTMLAttributes<HTMLDivElement
   avatarSrc?: string
   buttonAriaLabel?: string
   checked?: boolean
+  messageSide?: 'left' | 'right'
   selected?: boolean
   onActivate?: () => void
   title: ReactNode
@@ -18,6 +19,7 @@ export function FeedbackBalloon({
   avatarSrc,
   buttonAriaLabel = '피드백 내용 보기',
   checked = false,
+  messageSide = 'right',
   className,
   onActivate,
   selected = false,
@@ -31,6 +33,7 @@ export function FeedbackBalloon({
     <div
       className={balloonClassName}
       data-completed={checked ? 'true' : undefined}
+      data-message-side={messageSide}
       data-selected={selected ? 'true' : undefined}
       {...props}
     >
