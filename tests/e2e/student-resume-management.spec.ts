@@ -369,7 +369,7 @@ test.describe('student resume management', () => {
   })
 
   for (const query of ['mode=feedback', 'mode=edit&panel=writing']) {
-    test(`race: same document ${query} navigation keeps dirty input and its idle deadline`, async ({ page }) => {
+    test(`race: same document ${query} navigation keeps dirty input while background autosave is paused`, async ({ page }) => {
       let lookups = 0
       let autoSaves = 0
       await page.clock.install()
@@ -395,13 +395,15 @@ test.describe('student resume management', () => {
       await page.clock.fastForward(89_000)
       expect(autoSaves).toBe(0)
       await page.clock.fastForward(1_000)
-      await expect.poll(() => autoSaves).toBe(1)
-      await expect(page.getByRole('status')).toContainText('변경사항을 자동 저장했습니다.')
+      await page.clock.fastForward(360_000)
+      await expect(page.getByRole('status').filter({ hasText: '자동 저장했습니다.' })).toHaveCount(0)
+      expect(autoSaves).toBe(0)
+      await expect(page.getByLabel('자기소개 제목')).toHaveValue('유지할 미저장 입력')
       expect(lookups).toBe(initialLookups)
     })
   }
 
-  test('race: typing resets the 180 second idle deadline and pending manual save excludes autosave', async ({ page }) => {
+  test('race: paused background autosave stays off across typing and pending manual save', async ({ page }) => {
     const manualSave = Promise.withResolvers<void>()
     const started = Promise.withResolvers<void>()
     let autoSaves = 0
@@ -412,6 +414,7 @@ test.describe('student resume management', () => {
       await route.fulfill({ json: { autoSaved: true, resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
     })
     await page.route('**/resume/save', async (route) => {
+      expect(route.request().postDataJSON()).toMatchObject({ introduce: '수동 저장' })
       started.resolve()
       await manualSave.promise
       await route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
@@ -425,17 +428,17 @@ test.describe('student resume management', () => {
     await page.clock.fastForward(179_000)
     expect(autoSaves).toBe(0)
     await page.clock.fastForward(1_000)
-    await expect.poll(() => autoSaves).toBe(1)
-    await expect(page.getByRole('status')).toContainText('변경사항을 자동 저장했습니다.')
+    await expect(page.getByRole('status').filter({ hasText: '자동 저장했습니다.' })).toHaveCount(0)
+    expect(autoSaves).toBe(0)
     await page.getByLabel('자기소개 제목').fill('수동 저장')
     await page.getByRole('button', { exact: true, name: '저장' }).click()
     await started.promise
     await page.clock.fastForward(7_000)
-    expect(autoSaves).toBe(1)
+    expect(autoSaves).toBe(0)
     manualSave.resolve()
     await expect(page.getByLabel('이력서 미리보기')).toBeVisible()
     await page.clock.fastForward(180_000)
-    expect(autoSaves).toBe(1)
+    expect(autoSaves).toBe(0)
   })
 
   test('opens resume management in preview mode before editing', async ({ page }) => {
@@ -1248,6 +1251,80 @@ test.describe('student resume management', () => {
     await expect.poll(() => savedActivityContent).toBe('**안녕**')
   })
 
+  for (const modifier of ['Meta', 'Control']) {
+    test(`${modifier}+B makes normal text heavier, toggles bold and saves markdown`, async ({ page }) => {
+      let savedActivityContent = ''
+      await page.route('**/resume/save', async (route) => {
+        const requestBody = route.request().postDataJSON() as { pages: Array<{ content: string }> }
+        savedActivityContent = requestBody.pages[0]?.content ?? ''
+        await route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
+      })
+      await page.goto('/resume?mode=edit')
+
+      const editor = page.getByRole('textbox', { name: '1쪽 추가 내용' })
+      await editor.fill('단축키 강조')
+      const normalWeight = await editor.evaluate((element) => Number(getComputedStyle(element).fontWeight))
+      await editor.press('ControlOrMeta+A')
+      await editor.press(`${modifier}+b`)
+      const boldText = editor.locator('strong, b')
+      await expect(boldText).toHaveText('단축키 강조')
+      const boldWeight = await boldText.evaluate((element) => Number(getComputedStyle(element).fontWeight))
+      expect(boldWeight).toBeGreaterThan(normalWeight)
+
+      await editor.press(`${modifier}+b`)
+      await expect(boldText).toHaveCount(0)
+      await expect(editor).toHaveText('단축키 강조')
+      await editor.press(`${modifier}+b`)
+      await expect(boldText).toHaveText('단축키 강조')
+      await page.getByRole('button', { exact: true, name: '저장' }).click()
+      await expect.poll(() => savedActivityContent).toBe('**단축키 강조**')
+    })
+  }
+
+  test('fills the profile circle with a non-square image in editing and preview', async ({ page }, testInfo) => {
+    const imageUrl = `${apiBaseUrl}/profile-landscape.svg`
+    await page.route(imageUrl, async (route) => {
+      await route.fulfill({
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" fill="#2563eb"/><rect x="40" width="40" height="80" fill="#e11d48"/></svg>',
+        contentType: 'image/svg+xml',
+      })
+    })
+    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+      await route.fulfill({ json: { ...raceResume('resume-id', ''), name: '프로필 테스트', profileImageUrl: imageUrl } })
+    })
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+    const button = page.getByRole('button', { name: '프로필 이미지 변경' })
+    const image = button.locator('img')
+    await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(120)
+    await expect(image).toHaveCSS('object-fit', 'cover')
+    await expect(button).toHaveCSS('padding', '0px')
+    await expect(button).toHaveCSS('border-width', '0px')
+    const buttonBox = await button.boundingBox()
+    const imageBox = await image.boundingBox()
+    expect(buttonBox).not.toBeNull()
+    expect(imageBox).not.toBeNull()
+    if (!buttonBox || !imageBox) {
+      throw new Error('The loaded profile image and circle must be measurable.')
+    }
+    expect(imageBox.x).toBeCloseTo(buttonBox.x, 1)
+    expect(imageBox.y).toBeCloseTo(buttonBox.y, 1)
+    expect(imageBox.width).toBeCloseTo(buttonBox.width, 1)
+    expect(imageBox.height).toBeCloseTo(buttonBox.height, 1)
+    expect(imageBox.width).toBeCloseTo(imageBox.height, 1)
+    await testInfo.attach('profile-circle-edit', { body: await button.screenshot(), contentType: 'image/png' })
+
+    await page.getByRole('button', { name: '작성 취소' }).click()
+    const previewImage = page.getByRole('img', { name: '프로필 테스트 프로필 이미지' })
+    await expect(previewImage).toBeVisible()
+    await expect.poll(() => previewImage.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(120)
+    await expect(previewImage).toHaveCSS('object-fit', 'cover')
+    await expect(previewImage).toHaveCSS('display', 'block')
+    const previewBox = await previewImage.boundingBox()
+    expect(previewBox).not.toBeNull()
+    expect(previewBox?.width).toBeCloseTo(previewBox?.height ?? 0, 1)
+    await testInfo.attach('profile-circle-preview', { body: await previewImage.screenshot(), contentType: 'image/png' })
+  })
+
   test('pastes Notion formatted content with images into free pages before the project template', async ({ page }) => {
     let savedPages: Array<{ content: string; index: number; type: string }> = []
     const pastedParagraphs = Array.from(
@@ -2009,7 +2086,8 @@ test.describe('student resume management', () => {
     await expect(page.getByLabel('1쪽 추가 내용')).toContainText('레거시 활동')
   })
 
-  test('shows a fixed toast after manual save', async ({ page }) => {
+  test('dismisses a fixed success toast after five seconds and resets its timer for a later save', async ({ page }) => {
+    await page.clock.install()
     await page.route('**/resume/save', async (route) => {
       await route.fulfill({
         body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' }),
@@ -2026,22 +2104,43 @@ test.describe('student resume management', () => {
     const toast = page.getByRole('status')
     await expect(toast).toContainText('이력서를 저장했습니다.')
     await expect(toast.locator('..')).toHaveCSS('position', 'fixed')
+    await page.clock.fastForward(4_000)
+    await expect(toast).toBeVisible()
+    await page.getByRole('button', { name: '이력서 수정하기' }).click()
+    await page.getByLabel('자기소개 제목').fill('두 번째 저장')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect(toast).toContainText('이력서를 저장했습니다.')
+    await page.clock.fastForward(1_000)
+    await expect(toast).toBeVisible()
+    await page.clock.fastForward(3_000)
+    await expect(toast).toBeVisible()
+    await page.clock.fastForward(1_000)
+    await expect(toast).toHaveCount(0)
   })
 
-  test('auto-saves all resume fields after three minutes without user input', async ({ page }) => {
+  test('keeps all edited fields unsaved across idle deadlines until manual save', async ({ page }) => {
     let autoSaveRequestCount = 0
+    let manualSaveRequestCount = 0
 
     await page.clock.install()
     await page.route('**/resume/auto-save', async (route) => {
       autoSaveRequestCount += 1
+      await route.fulfill({
+        body: JSON.stringify({ autoSaved: true, resumeId: 'resume-id', savedAt: '2026-09-20T10:03:00.000Z' }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+    await page.route('**/resume/save', async (route) => {
+      manualSaveRequestCount += 1
       expect(route.request().postDataJSON()).toMatchObject({
         email: 'student@example.com',
-        introduce: '3분 뒤 저장되는 한줄소개',
+        introduce: '수동으로 저장할 한줄소개',
         portfolioUrl: '',
         skills: [],
       })
       await route.fulfill({
-        body: JSON.stringify({ autoSaved: true, resumeId: 'resume-id', savedAt: '2026-09-20T10:03:00.000Z' }),
+        body: JSON.stringify({ resumeId: 'resume-id', savedAt: '2026-09-20T10:03:00.000Z' }),
         contentType: 'application/json',
         status: 200,
       })
@@ -2049,18 +2148,26 @@ test.describe('student resume management', () => {
     await page.goto('/resume?mode=edit')
 
     await page.getByLabel('이메일').first().fill('student@example.com')
-    await page.getByLabel('자기소개 제목').fill('3분 뒤 저장되는 한줄소개')
+    await page.getByLabel('자기소개 제목').fill('수동으로 저장할 한줄소개')
     await page.clock.runFor(0)
 
     await page.clock.fastForward(179_000)
     expect(autoSaveRequestCount).toBe(0)
 
     await page.clock.fastForward(1_000)
-    await expect.poll(() => autoSaveRequestCount).toBe(1)
-    await expect(page.getByRole('status')).toContainText('변경사항을 자동 저장했습니다.')
+    await page.clock.fastForward(360_000)
+    await expect(page.getByRole('status').filter({ hasText: '자동 저장했습니다.' })).toHaveCount(0)
+    expect(autoSaveRequestCount).toBe(0)
+    expect(manualSaveRequestCount).toBe(0)
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('수동으로 저장할 한줄소개')
+    await expect(page.getByLabel('이메일').first()).toHaveValue('student@example.com')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    await expect(page.getByRole('status')).toContainText('이력서를 저장했습니다.')
+    expect(manualSaveRequestCount).toBe(1)
+    expect(autoSaveRequestCount).toBe(0)
   })
 
-  test('stops auto-save after a released resume conflict', async ({ page }) => {
+  test('preserves a released resume conflict from explicit temporary save without background retries', async ({ page }) => {
     let autoSaveRequestCount = 0
 
     await page.clock.install()
@@ -2075,14 +2182,19 @@ test.describe('student resume management', () => {
     await page.goto('/resume?mode=edit')
 
     await page.getByLabel('자기소개 제목').fill('공개 후 수정 시도')
-    await page.clock.fastForward(180_000)
+    await page.getByRole('button', { name: '포트폴리오 URL 추가' }).click()
+    await page.getByRole('textbox', { name: '메인 URL' }).fill('https://example.com/portfolio')
+    await page.getByRole('button', { name: '확인' }).click()
 
     await expect.poll(() => autoSaveRequestCount).toBe(1)
+    await expect(page.getByRole('alert').filter({ hasText: '공개된 이력서는 수정할 수 없습니다.' })).toBeVisible()
+    await page.clock.fastForward(6_000)
     await expect(page.getByRole('alert').filter({ hasText: '공개된 이력서는 수정할 수 없습니다.' })).toBeVisible()
 
     await page.getByLabel('이메일').first().fill('blocked@example.com')
     await page.clock.fastForward(180_000)
 
     expect(autoSaveRequestCount).toBe(1)
+    await expect(page.getByRole('status').filter({ hasText: '저장했습니다.' })).toHaveCount(0)
   })
 })

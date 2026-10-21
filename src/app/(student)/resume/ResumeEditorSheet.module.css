@@ -122,8 +122,13 @@
 .profileImageButton {
   width: var(--resume-book-sheet-avatar-size, 56px);
   height: var(--resume-book-sheet-avatar-size, 56px);
+  padding: 0;
   border-radius: var(--repo-radius-pill);
   overflow: hidden;
+}
+
+.profileImageFilled {
+  border: 0;
 }
 
 .projectImageButton,
@@ -151,6 +156,7 @@
 
 .profileImageButton img,
 .projectImageButton img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;

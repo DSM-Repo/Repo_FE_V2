@@ -304,6 +304,12 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key.toLowerCase() === 'b' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault()
+      applyCommand('bold')
+      return
+    }
+
     if (event.key !== ' ' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.nativeEvent.isComposing) {
       return
     }

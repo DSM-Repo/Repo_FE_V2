@@ -414,7 +414,7 @@ export function ResumeEditorSheet({
         />
         <button
           aria-busy={isUploadingTarget('profile')}
-          className={styles.profileImageButton}
+          className={`${styles.profileImageButton} ${draft.profileImageUrl ? styles.profileImageFilled : ''}`}
           disabled={isUploadingTarget('profile') || !onImageUpload}
           onClick={() => profileImageInputRef.current?.click()}
           type="button"

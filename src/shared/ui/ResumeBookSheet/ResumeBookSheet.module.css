@@ -49,6 +49,7 @@
 }
 
 .profileImage {
+  display: block;
   width: var(--resume-book-sheet-avatar-size, 47px);
   height: var(--resume-book-sheet-avatar-size, 47px);
   border-radius: var(--repo-radius-pill);

@@ -46,6 +46,8 @@ const navigationItems = [
 ] satisfies readonly AppHeaderItem[]
 
 const AUTO_SAVE_IDLE_MS = 180_000
+const AUTO_SAVE_ENABLED = false
+const SUCCESS_FEEDBACK_DURATION_MS = 5_000
 const MAX_RESUME_PAGE_COUNT = 5
 const PROFILE_PASTE_PAGE_UNITS = 18
 const FREE_PASTE_PAGE_UNITS = 30
@@ -476,6 +478,18 @@ export function StudentResumePageContent() {
   const isAutoSaveBlockedRef = useRef(false)
   const pendingSaveModeRef = useRef<SaveMode | undefined>(undefined)
   const saveOperationRef = useRef(0)
+
+  useEffect(() => {
+    if (actionFeedback?.tone !== 'success') {
+      return
+    }
+
+    const timerId = window.setTimeout(() => {
+      setActionFeedback(undefined)
+    }, SUCCESS_FEEDBACK_DURATION_MS)
+
+    return () => window.clearTimeout(timerId)
+  }, [actionFeedback])
 
   useEffect(() => {
     let isActive = true
@@ -1079,7 +1093,7 @@ export function StudentResumePageContent() {
 
   const handleSave = useCallback(
     async (mode: SaveMode, options: SaveOptions = {}) => {
-      if (mode === 'auto' && isAutoSaveBlockedRef.current) {
+      if (mode === 'auto' && (!AUTO_SAVE_ENABLED || isAutoSaveBlockedRef.current)) {
         return undefined
       }
 
@@ -1427,7 +1441,7 @@ export function StudentResumePageContent() {
   }, [draft, isResumeActionPending, isResumeReady, loadState])
 
   useEffect(() => {
-    if (!isDraftDirty || !isEditing || isResumeActionPending || savePendingRef.current) {
+    if (!AUTO_SAVE_ENABLED || !isDraftDirty || !isEditing || isResumeActionPending || savePendingRef.current) {
       return
     }
 
