@@ -172,7 +172,7 @@
   );
   --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 551 / 780);
   --resume-book-sheet-padding: clamp(14px, calc(var(--resume-book-sheet-width) * 0.043), var(--space-6));
-  --resume-book-sheet-avatar-size: clamp(34px, calc(var(--resume-book-sheet-width) * 0.09), 48px);
+  --resume-book-sheet-avatar-size: clamp(40px, calc(var(--resume-book-sheet-width) * 0.105), 56px);
   --resume-book-sheet-name-size: clamp(14px, calc(var(--resume-book-sheet-width) * 0.039), 22px);
   --resume-book-sheet-major-size: clamp(9px, calc(var(--resume-book-sheet-width) * 0.024), var(--repo-font-body-tiny-size));
   --resume-book-sheet-meta-size: clamp(9px, calc(var(--resume-book-sheet-width) * 0.025), var(--repo-font-body-tiny-size));
