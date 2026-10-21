@@ -140,6 +140,11 @@ All spacing derives from 4px.
 - **States**: default, error, pending through disabled actions
 - **Accessibility**: dialog role and labelled title
 
+### StudentClassDialog
+- **Scroll ownership**: a viewport-bounded flex column keeps the class heading, update time, divider and close button visible; only the student list scrolls, with `min-height: 0` and `overflow-y: auto`.
+- **Responsive**: the panel fits the overlay's available height on desktop, short windows and mobile; its usual minimum height shrinks when the viewport requires it.
+- **Reference**: frontend layout mechanics `scroll-body-shell`; the StyleGallery reference host was unavailable during this targeted scroll repair.
+
 ### AuthCard
 - **Structure**: 340px dark brand panel + 470px light form panel
 - **Variants**: login, signup step, reversed teacher login

@@ -159,6 +159,8 @@
   z-index: 10;
   inset: var(--repo-size-header-min-height) 0 0;
   display: grid;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
   place-items: center;
   padding: var(--space-10);
   background: color-mix(in srgb, var(--repo-bg-main) 76%, transparent);
@@ -166,8 +168,12 @@
 
 .dialog {
   position: relative;
+  display: flex;
+  box-sizing: border-box;
   width: min(900px, calc(100vw - 128px));
-  min-height: 562px;
+  min-height: min(562px, 100%);
+  max-height: 100%;
+  flex-direction: column;
   padding: 52px 56px 56px;
   border: 1px solid var(--repo-bg-main-point);
   border-radius: var(--repo-radius-panel);
@@ -199,6 +205,7 @@
 }
 
 .dialogHeader {
+  flex-shrink: 0;
   padding-right: var(--space-12);
 }
 
@@ -222,12 +229,19 @@
 
 .dialogDivider {
   height: 1px;
+  flex-shrink: 0;
   margin-top: var(--space-4);
   background: var(--repo-bg-main-point);
 }
 
 .studentRows {
   display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding-bottom: var(--space-2);
   gap: var(--space-2);
   margin-top: var(--space-8);
 }
@@ -317,7 +331,6 @@
   .dialogLayer {
     inset: 0;
     align-items: start;
-    overflow-y: auto;
     padding: var(--space-6);
   }
 
