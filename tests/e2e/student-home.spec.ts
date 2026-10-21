@@ -84,6 +84,24 @@ test.describe('student home page', () => {
     )
   })
 
+  test('renders a new student with a null introduction without a profile error', async ({ page }) => {
+    await page.route(`${apiBaseUrl}/user`, async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({ ...defaultUser, introduce: null }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    })
+
+    await page.goto('/home')
+
+    await expect(page.getByRole('heading', { level: 1, name: /테스트 학생/ })).toBeVisible()
+    await expect(page.getByText('이력서를 저장하면 홈에서 내 정보를 확인할 수 있습니다.')).toBeVisible()
+    await expect(page.getByRole('progressbar', { name: '이력서 완성도 0%' })).toHaveAttribute('aria-valuenow', '0')
+    await expect(page.getByText('내 정보를 불러오지 못했습니다.')).toHaveCount(0)
+    await expect(page.getByText('내 정보 조회 응답 형식이 올바르지 않습니다.')).toHaveCount(0)
+  })
+
   test('centers the desktop dashboard content within the viewport', async ({ page }) => {
     await page.setViewportSize({ height: 1000, width: 1680 })
     await page.goto('/home')

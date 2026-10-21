@@ -105,7 +105,7 @@ function parseProgress(value: unknown): UserProgress | undefined {
 function parseUserMe(value: unknown): UserMe | undefined {
   if (
     !isJsonRecord(value) ||
-    typeof value['introduce'] !== 'string' ||
+    !isNullableString(value['introduce']) ||
     !isNullableString(value['major']) ||
     typeof value['name'] !== 'string' ||
     !isNullableString(value['profileImageUrl'])

@@ -19,7 +19,7 @@ export type UserProgress = {
 
 export type UserMe = {
   readonly classInfo: UserClassInfo
-  readonly introduce: string
+  readonly introduce: string | null
   readonly major: string | null
   readonly name: string
   readonly profileImageUrl: string | null

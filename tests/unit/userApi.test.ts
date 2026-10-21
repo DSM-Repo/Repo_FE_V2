@@ -144,7 +144,7 @@ test('getUserMe accepts nullable optional profile fields from user info', async 
           number: 10,
           schoolNumber: '2110',
         },
-        introduce: '새벽자습너무 졸립니다.',
+        introduce: null,
         major: null,
         name: '오혜민',
         profileImageUrl: null,
@@ -178,7 +178,7 @@ test('getUserMe accepts nullable optional profile fields from user info', async 
         number: 10,
         schoolNumber: '2110',
       },
-      introduce: '새벽자습너무 졸립니다.',
+      introduce: null,
       major: null,
       name: '오혜민',
       profileImageUrl: null,
@@ -196,6 +196,25 @@ test('getUserMe accepts nullable optional profile fields from user info', async 
     },
   })
 })
+
+for (const introduce of [undefined, 123, false, {}, []]) {
+  test(`getUserMe rejects invalid introduce ${JSON.stringify(introduce)}`, async () => {
+    globalThis.fetch = async () =>
+      Response.json({
+        classInfo: { classNumber: 1, grade: 1, number: 1, schoolNumber: '1101' },
+        introduce,
+        major: null,
+        name: '신규 학생',
+        profileImageUrl: null,
+        progress: { sections: [], totalPercent: 0 },
+      })
+
+    assert.deepEqual(await userApi.getUserMe({ accessToken: 'access-token' }), {
+      kind: 'server-error',
+      message: '내 정보 조회 응답 형식이 올바르지 않습니다.',
+    })
+  })
+}
 
 test('getUserMe refreshes an expired access token and retries user info', async () => {
   const { assignedLocations, values } = installBrowserAuthState('refresh-token')
