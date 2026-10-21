@@ -709,3 +709,42 @@ test('deleteFeedback returns server-error when the response body is not deletion
     message: '피드백 삭제 응답 형식이 올바르지 않습니다.',
   })
 })
+
+test('deleteFeedback accepts empty successful responses including 204 without parsing JSON', async () => {
+  for (const status of [200, 202, 204, 205]) {
+    globalThis.fetch = async () => new Response(null, { status })
+
+    assert.deepEqual(await feedbackApi.deleteFeedback({ accessToken: 'access-token', feedbackId: 'feedback-id' }), {
+      kind: 'success',
+      message: '',
+    }, `empty ${status} response must preserve successful deletion`)
+  }
+
+  globalThis.fetch = async () => new Response(' \n\t ', { status: 200 })
+  assert.deepEqual(await feedbackApi.deleteFeedback({ accessToken: 'access-token', feedbackId: 'feedback-id' }), {
+    kind: 'success',
+    message: '',
+  })
+})
+
+test('deleteFeedback still rejects malformed nonempty JSON in successful responses', async () => {
+  globalThis.fetch = async () => new Response('{broken', { status: 200 })
+
+  assert.deepEqual(await feedbackApi.deleteFeedback({ accessToken: 'access-token', feedbackId: 'feedback-id' }), {
+    kind: 'server-error',
+    message: '피드백 삭제 응답 형식이 올바르지 않습니다.',
+  })
+})
+
+test('deleteFeedback does not treat an unreadable response stream as an empty success', async () => {
+  globalThis.fetch = async () => new Response(new ReadableStream({
+    start(controller) {
+      controller.error(new TypeError('Response stream interrupted'))
+    },
+  }), { status: 200 })
+
+  assert.deepEqual(await feedbackApi.deleteFeedback({ accessToken: 'access-token', feedbackId: 'feedback-id' }), {
+    kind: 'network-error',
+    message: '피드백 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
+  })
+})

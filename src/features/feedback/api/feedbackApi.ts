@@ -581,7 +581,13 @@ async function readDeleteResponseBody(response: FeedbackHttpResponse): Promise<F
   let responseBody: unknown
 
   try {
-    responseBody = await response.value.json()
+    const responseText = (await response.value.text()).trim()
+
+    if (!responseText) {
+      return { kind: 'success', message: '' }
+    }
+
+    responseBody = JSON.parse(responseText)
   } catch (error) {
     return toResponseBodyReadFailure(error, INVALID_DELETE_RESPONSE)
   } finally {
