@@ -5,6 +5,7 @@ import { apiBaseUrl, expect, test } from './test-fixtures'
 import { authenticateAs } from './auth-fixtures'
 
 const studentResumeIdStorageKey = 'repo.resume.id.student%40dsm.hs.kr'
+const validProfilePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lH9fWAAAAABJRU5ErkJggg==', 'base64')
 
 async function expectLocatorsDoNotOverlap(first: Locator, second: Locator) {
   const [firstBox, secondBox] = await Promise.all([first.boundingBox(), second.boundingBox()])
@@ -84,7 +85,8 @@ test.describe('student resume management', () => {
       await page.goto('/resume?mode=edit')
       const chooser = page.waitForEvent('filechooser')
       await page.getByRole('button', { name: `${target} 이미지 추가` }).click()
-      await (await chooser).setFiles({ buffer: Buffer.from('png'), mimeType: 'image/png', name: 'race.png' })
+      await (await chooser).setFiles({ buffer: validProfilePng, mimeType: 'image/png', name: 'race.png' })
+      if (target === '프로필') await page.getByRole('button', { name: '적용하기' }).click()
       await started.promise
       await page.getByLabel('자기소개 제목').fill('업로드 중 최신 입력')
       await page.getByLabel('프로젝트 이름').fill('최신 프로젝트')
@@ -195,7 +197,8 @@ test.describe('student resume management', () => {
     await page.goto('/resume?resumeId=resume-id&mode=edit')
     const chooser = page.waitForEvent('filechooser')
     await page.getByRole('button', { name: '프로필 이미지 추가' }).click()
-    await (await chooser).setFiles({ buffer: Buffer.from('png'), mimeType: 'image/png', name: 'race.png' })
+    await (await chooser).setFiles({ buffer: validProfilePng, mimeType: 'image/png', name: 'race.png' })
+    await page.getByRole('button', { name: '적용하기' }).click()
     await started.promise
     await page.evaluate(() => window.history.pushState(null, '', '/resume?resumeId=race-b&mode=edit'))
     await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
@@ -296,7 +299,8 @@ test.describe('student resume management', () => {
     for (const attempt of [0, 1]) {
       const chooser = page.waitForEvent('filechooser')
       await page.getByRole('button', { name: '프로필 이미지 추가' }).click()
-      await (await chooser).setFiles({ buffer: Buffer.from('png'), mimeType: 'image/png', name: 'race.png' })
+      await (await chooser).setFiles({ buffer: validProfilePng, mimeType: 'image/png', name: 'race.png' })
+      await page.getByRole('button', { name: '적용하기' }).click()
       if (attempt === 0) {
         await expect(page.getByRole('alert').filter({ hasText: '이미지 업로드에 실패했습니다' })).toBeVisible()
         await expect(page.getByRole('button', { name: '프로필 이미지 추가' })).toBeEnabled()

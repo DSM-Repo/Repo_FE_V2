@@ -1,0 +1,42 @@
+.dialog {
+  width: min(440px, calc(100vw - var(--space-8)));
+  max-height: calc(100dvh - var(--space-8));
+  margin: auto;
+  padding: var(--space-6);
+  overflow-y: auto;
+  border: 1px solid var(--repo-bg-main-point);
+  border-radius: var(--repo-radius-panel);
+  color: var(--repo-gray-50);
+  background: var(--repo-bg-main-lighter);
+  box-shadow: var(--repo-shadow-modal);
+  font-size: var(--repo-font-body-tiny-size);
+  font-weight: var(--repo-font-body-tiny-weight);
+  line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.dialog::backdrop { background: color-mix(in srgb, var(--repo-bg-main) 75%, transparent); }
+.content { display: grid; gap: var(--space-5); }
+.title { margin: 0; font-size: var(--repo-font-title-tiny-size); font-weight: var(--repo-font-title-tiny-weight); line-height: var(--repo-font-title-tiny-line-height); }
+.description { margin: var(--space-2) 0 0; color: var(--repo-gray-400); }
+.preview {
+  position: relative;
+  width: min(280px, 100%);
+  aspect-ratio: 1;
+  justify-self: center;
+  overflow: hidden;
+  background: var(--repo-bg-main);
+  cursor: grab;
+  touch-action: none;
+}
+.preview:active { cursor: grabbing; }
+.preview:focus-visible { outline: 2px solid var(--repo-gray-50); outline-offset: 4px; }
+.preview img { position: absolute; max-width: none; pointer-events: none; user-select: none; }
+.guide { position: absolute; inset: 0; border: 1px solid var(--repo-gray-50); border-radius: 50%; box-shadow: 0 0 0 100px color-mix(in srgb, var(--repo-bg-main) 65%, transparent); pointer-events: none; }
+.controls { display: grid; gap: var(--space-3); }
+.control { display: grid; grid-template-columns: 72px 1fr 44px; align-items: center; gap: var(--space-3); }
+.control input { min-width: 0; width: 100%; accent-color: var(--repo-gray-50); }
+.control output { text-align: right; color: var(--repo-gray-400); font-variant-numeric: tabular-nums; }
+.actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
+.actions button { min-width: 0; padding: var(--space-3) var(--space-5); font-size: var(--repo-font-body-tiny-size); line-height: var(--repo-font-body-tiny-line-height); }
+.error { margin: 0; color: var(--repo-state-error); }
+.loading { min-height: 160px; display: grid; place-items: center; color: var(--repo-gray-400); }

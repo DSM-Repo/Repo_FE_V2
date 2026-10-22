@@ -140,6 +140,12 @@ All spacing derives from 4px.
 - **States**: default, error, pending through disabled actions
 - **Accessibility**: dialog role and labelled title
 
+### ProfileImageCrop
+- **Structure**: a native modal dialog, at most 440px wide, contains a square preview up to 280px, a circular profile guide, three labelled range controls and cancel/apply actions. Charcoal surfaces and existing body/tiny typography keep it compact.
+- **Interaction**: drag the photo or use arrow keys to move it; zoom ranges from 1× to 3×. Horizontal and vertical sliders provide keyboard and touch alternatives. The preview and exported square use the same crop geometry and preserve the original image ratio.
+- **States**: loading, ready, conversion pending and readable error; applying uploads a 512px square PNG, while cancel/Escape uploads nothing. Object URLs are released on close.
+- **Accessibility**: native dialog focus trapping and restoration, labelled controls, visible focus and an announced error. The panel scrolls within the viewport on small screens; movement is immediate without animation.
+
 ### StudentClassDialog
 - **Scroll ownership**: a viewport-bounded flex column keeps the class heading, update time, divider and close button visible; only the student list scrolls, with `min-height: 0` and `overflow-y: auto`.
 - **Responsive**: the panel fits the overlay's available height on desktop, short windows and mobile; its usual minimum height shrinks when the viewport requires it.

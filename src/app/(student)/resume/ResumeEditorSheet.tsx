@@ -7,6 +7,7 @@ import type { ResumePageType } from '@/features/resume/api'
 import { Dropdown, FeedbackBalloon, Icon, QrCode, type DropdownOption, type ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 
 import { MarkdownTextarea } from './MarkdownTextarea'
+import { ProfileImagePicker } from './ProfileImagePicker'
 import styles from './ResumeEditorSheet.module.css'
 
 export type ResumeDraftActivity = {
@@ -163,7 +164,6 @@ export function ResumeEditorSheet({
 }: ResumeEditorSheetProps) {
   const fileInputId = useId()
   const [skillInput, setSkillInput] = useState('')
-  const profileImageInputRef = useRef<HTMLInputElement>(null)
   const projectImageInputRef = useRef<HTMLInputElement>(null)
   const introBodyRef = useRef<HTMLTextAreaElement>(null)
   const isSkillComposingRef = useRef(false)
@@ -406,31 +406,11 @@ export function ResumeEditorSheet({
     <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
       {renderPageActions()}
       <header className={styles.profileHeader}>
-        <input
-          accept="image/jpeg,image/png,image/webp"
-          className={styles.fileInput}
-          id={`${fileInputId}-profile-image`}
-          onChange={(event) => handleImageFileChange(event, 'profile')}
-          ref={profileImageInputRef}
-          type="file"
+        <ProfileImagePicker
+          imageUrl={draft.profileImageUrl}
+          isUploading={isUploadingTarget('profile')}
+          onUpload={onImageUpload ? (file) => onImageUpload({ file, target: 'profile' }) : undefined}
         />
-        <button
-          aria-busy={isUploadingTarget('profile')}
-          className={`${styles.profileImageButton} ${draft.profileImageUrl ? styles.profileImageFilled : ''}`}
-          disabled={isUploadingTarget('profile') || !onImageUpload}
-          onClick={() => profileImageInputRef.current?.click()}
-          type="button"
-          aria-label={draft.profileImageUrl ? '프로필 이미지 변경' : '프로필 이미지 추가'}
-        >
-          {draft.profileImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- The uploaded URL is provided by the API and may be outside configured Next image hosts.
-            <img src={draft.profileImageUrl} alt="" />
-          ) : isUploadingTarget('profile') ? (
-            <span>업로드</span>
-          ) : (
-            <Icon name="plus" />
-          )}
-        </button>
         <div className={styles.identity}>
           <div className={styles.nameRow}>
             <label className={styles.srOnly} htmlFor="resume-name">
