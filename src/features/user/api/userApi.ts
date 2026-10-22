@@ -10,9 +10,10 @@ import type {
   UserMeInput,
   UserMeResult,
   UserProgress,
+  UserProgressResult,
   UserProgressSection,
 } from './userApi.types'
-import { getUserMeRequest, patchUserMajorRequest, type UserRequestFailure, type UserRequestResponse } from './userHttpClient'
+import { getUserMeRequest, getUserProgressRequest, patchUserMajorRequest, type UserRequestFailure, type UserRequestResponse } from './userHttpClient'
 
 type JsonRecord = {
   readonly [key: string]: unknown
@@ -22,6 +23,10 @@ const INVALID_USER_RESPONSE = {
   kind: 'server-error',
   message: '내 정보 조회 응답 형식이 올바르지 않습니다.',
 } as const satisfies UserMeResult
+const INVALID_PROGRESS_RESPONSE = {
+  kind: 'server-error',
+  message: '이력서 완성도 조회 응답 형식이 올바르지 않습니다.',
+} as const satisfies UserProgressResult
 const RESPONSE_BODY_STREAM_FAILURE = {
   kind: 'network-error',
   message: '내 정보 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
@@ -57,17 +62,23 @@ function parseClassInfo(value: unknown): UserClassInfo | undefined {
 }
 
 function parseProgressSection(value: unknown): UserProgressSection | undefined {
-  if (!isJsonRecord(value) || typeof value['completed'] !== 'boolean' || typeof value['key'] !== 'string' || typeof value['name'] !== 'string') {
+  if (
+    !isJsonRecord(value) ||
+    typeof value['completed'] !== 'boolean' ||
+    !['PROFILE', 'ACTIVITY', 'PROJECT'].some((key) => key === value['key']) ||
+    typeof value['key'] !== 'string' ||
+    typeof value['name'] !== 'string' ||
+    typeof value['percent'] !== 'number' ||
+    !Number.isInteger(value['percent'])
+  ) {
     return undefined
   }
-
-  const percent = typeof value['percent'] === 'number' ? value['percent'] : value['completed'] ? 100 : 0
 
   return {
     completed: value['completed'],
     key: value['key'],
     name: value['name'],
-    percent,
+    percent: value['percent'],
   }
 }
 
@@ -86,7 +97,7 @@ function parseProgressSections(value: unknown): readonly UserProgressSection[] |
 }
 
 function parseProgress(value: unknown): UserProgress | undefined {
-  if (!isJsonRecord(value) || typeof value['totalPercent'] !== 'number') {
+  if (!isJsonRecord(value) || typeof value['totalPercent'] !== 'number' || !Number.isInteger(value['totalPercent'])) {
     return undefined
   }
 
@@ -114,9 +125,7 @@ function parseUserMe(value: unknown): UserMe | undefined {
   }
 
   const classInfo = parseClassInfo(value['classInfo'])
-  const progress = parseProgress(value['progress'])
-
-  if (!classInfo || !progress) {
+  if (!classInfo) {
     return undefined
   }
 
@@ -126,7 +135,6 @@ function parseUserMe(value: unknown): UserMe | undefined {
     major: value['major'],
     name: value['name'],
     profileImageUrl: value['profileImageUrl'],
-    progress,
   }
 }
 
@@ -188,6 +196,48 @@ export async function getUserMe(input: UserMeInput): Promise<UserMeResult> {
       kind: 'server-error',
       message: await readServerErrorMessage(response.value, '내 정보 조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.'),
     }
+  } finally {
+    response.complete()
+  }
+}
+
+export async function getUserProgress(input: UserMeInput): Promise<UserProgressResult> {
+  const response = await getUserProgressRequest(input)
+
+  if (response.kind !== 'response') {
+    return response
+  }
+
+  try {
+    if (!response.value.ok) {
+      return {
+        kind: response.value.status === 401 || response.value.status === 403 ? 'forbidden' : 'server-error',
+        message: await readServerErrorMessage(response.value, '이력서 완성도를 조회하지 못했습니다. 잠시 후 다시 시도해주세요.'),
+      }
+    }
+
+    let responseBody: unknown
+
+    try {
+      responseBody = await response.value.json()
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return INVALID_PROGRESS_RESPONSE
+      }
+
+      if (error instanceof Error) {
+        return {
+          kind: 'network-error',
+          message: '이력서 완성도 API 응답을 읽지 못했습니다. 잠시 후 다시 시도해주세요.',
+        }
+      }
+
+      throw error
+    }
+
+    const progress = parseProgress(responseBody)
+
+    return progress ? { kind: 'success', progress } : INVALID_PROGRESS_RESPONSE
   } finally {
     response.complete()
   }

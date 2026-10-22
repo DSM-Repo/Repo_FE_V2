@@ -16,12 +16,12 @@ test.describe('auth login route', () => {
           major: null,
           name: '테스트 학생',
           profileImageUrl: null,
-          progress: { sections: [], totalPercent: 0 },
         }),
         contentType: 'application/json',
         status: 200,
       })
     })
+    await page.route(`${apiBaseUrl}/user/progress`, (route) => route.fulfill({ json: { sections: [], totalPercent: 0 } }))
     await page.route('**/resume/students', async (route) => {
       await route.fulfill({
         body: JSON.stringify({

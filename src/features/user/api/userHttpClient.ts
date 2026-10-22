@@ -38,7 +38,7 @@ function buildUserUrl(baseUrl: string, path: string) {
   return buildClientApiUrl(baseUrl, path).href
 }
 
-async function sendUserRequest(path: string, init: RequestInit): Promise<UserRequestResponse> {
+async function sendUserRequest(path: string, init: RequestInit, resource = '내 정보'): Promise<UserRequestResponse> {
   const config = getUserApiConfig()
 
   if (config.kind === 'invalid') {
@@ -50,7 +50,7 @@ async function sendUserRequest(path: string, init: RequestInit): Promise<UserReq
 
   return sendAuthenticatedRequest({
     init,
-    networkErrorMessage: '내 정보 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    networkErrorMessage: `${resource} API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.`,
     timeoutMs: USER_REQUEST_TIMEOUT_MS,
     url: buildUserUrl(config.baseUrl, path),
   })
@@ -63,6 +63,15 @@ export async function getUserMeRequest(input: UserMeInput): Promise<UserRequestR
     },
     method: 'GET',
   })
+}
+
+export async function getUserProgressRequest(input: UserMeInput): Promise<UserRequestResponse> {
+  return sendUserRequest('user/progress', {
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+    },
+    method: 'GET',
+  }, '이력서 완성도')
 }
 
 export async function patchUserMajorRequest(input: UserMajorUpdateInput): Promise<UserRequestResponse> {

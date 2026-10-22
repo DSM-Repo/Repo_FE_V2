@@ -140,6 +140,10 @@ All spacing derives from 4px.
 - **States**: default, error, pending through disabled actions
 - **Accessibility**: dialog role and labelled title
 
+### StudentHomeProgress
+- **Data**: user information, resume progress and notifications load independently from `/user`, `/user/progress` and `/alram`.
+- **States**: the progress panel announces loading and displays the server error message on failure. Only a successful response displays a progress bar; an unknown value is never shown as 0%. Other home sections remain usable when one request fails.
+
 ### ProfileImageCrop
 - **Structure**: a native modal dialog, at most 440px wide, contains a square preview up to 280px, a circular profile guide, three labelled range controls and cancel/apply actions. Charcoal surfaces and existing body/tiny typography keep it compact.
 - **Interaction**: drag the photo or use arrow keys to move it; zoom ranges from 1× to 3×. Horizontal and vertical sliders provide keyboard and touch alternatives. The preview and exported square use the same crop geometry and preserve the original image ratio.

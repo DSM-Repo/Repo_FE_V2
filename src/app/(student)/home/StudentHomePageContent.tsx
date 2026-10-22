@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactElement, ty
 
 import { getSavedAccessToken } from '@/features/auth/api'
 import { StudentHomeShortcutCard } from '@/features/student-home'
-import { getUserMe, type UserMe, type UserMeResult } from '@/features/user/api'
+import { getUserMe, getUserProgress, type UserMe, type UserMeResult, type UserProgress } from '@/features/user/api'
 import type { AppHeaderItem } from '@/shared/ui'
 import { AppHeader } from '@/shared/ui'
 
@@ -16,12 +16,6 @@ const navigationItems = [
   { href: '/resume', label: '이력서 관리', value: 'resume' },
   { href: '/library', label: '도서관', value: 'library' },
 ] satisfies readonly AppHeaderItem[]
-
-const defaultProgressItems = [
-  { completed: false, key: 'PROFILE', name: '내 정보', percent: 0 },
-  { completed: false, key: 'ACTIVITY', name: '활동', percent: 0 },
-  { completed: false, key: 'PROJECT', name: '프로젝트', percent: 0 },
-] as const
 
 const shortcutCards = [
   {
@@ -66,6 +60,11 @@ type UserLoadState =
       readonly message: string
     }
 
+type ProgressLoadState =
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'success'; readonly progress: UserProgress }
+  | { readonly kind: 'failure'; readonly message: string }
+
 function toFailureMessage(result: Exclude<UserMeResult, { readonly kind: 'success' }>) {
   return result.message
 }
@@ -90,6 +89,7 @@ function renderSectionPercent(percent: number): ReactNode {
 
 export function StudentHomePageContent(): ReactElement {
   const [userState, setUserState] = useState<UserLoadState>({ kind: 'idle' })
+  const [progressState, setProgressState] = useState<ProgressLoadState>({ kind: 'loading' })
 
   useEffect(() => {
     const accessToken = getSavedAccessToken()
@@ -119,6 +119,20 @@ export function StudentHomePageContent(): ReactElement {
 
     void loadUser()
 
+    const loadProgress = async () => {
+      const result = await getUserProgress({ accessToken })
+
+      if (!isActive) {
+        return
+      }
+
+      setProgressState(result.kind === 'success'
+        ? { kind: 'success', progress: result.progress }
+        : { kind: 'failure', message: result.message })
+    }
+
+    void loadProgress()
+
     return () => {
       isActive = false
     }
@@ -126,8 +140,8 @@ export function StudentHomePageContent(): ReactElement {
 
   const user = userState.kind === 'success' ? userState.user : undefined
   const isUserLoading = userState.kind === 'idle' || userState.kind === 'loading'
-  const progressPercent = toProgressPercent(user?.progress.totalPercent ?? 0)
-  const progressSections = user?.progress.sections.length ? user.progress.sections : defaultProgressItems
+  const progress = progressState.kind === 'success' ? progressState.progress : undefined
+  const progressPercent = toProgressPercent(progress?.totalPercent ?? 0)
   const progressRingStyle = useMemo(() => toProgressRingStyle(progressPercent), [progressPercent])
 
   return (
@@ -157,32 +171,40 @@ export function StudentHomePageContent(): ReactElement {
         </header>
 
         <div className={styles.dashboard}>
-          <section className={styles.progressPanel} aria-labelledby="resume-progress-title">
-            <div
-              aria-label={`이력서 완성도 ${progressPercent}%`}
-              aria-valuemax={100}
-              aria-valuemin={0}
-              aria-valuenow={progressPercent}
-              className={styles.progressRing}
-              role="progressbar"
-              style={progressRingStyle}
-            >
-              <span>{progressPercent}%</span>
-            </div>
+          <section className={styles.progressPanel} aria-labelledby="resume-progress-title" aria-busy={progressState.kind === 'loading'}>
+            <h2 className={styles.visuallyHidden} id="resume-progress-title">
+              이력서 완성도
+            </h2>
+            {progress ? (
+              <>
+                <div
+                  aria-label={`이력서 완성도 ${progressPercent}%`}
+                  aria-valuemax={100}
+                  aria-valuemin={0}
+                  aria-valuenow={progressPercent}
+                  className={styles.progressRing}
+                  role="progressbar"
+                  style={progressRingStyle}
+                >
+                  <span>{progressPercent}%</span>
+                </div>
 
-            <div className={styles.progressDetails}>
-              <h2 className={styles.visuallyHidden} id="resume-progress-title">
-                이력서 완성도
-              </h2>
-              <ul className={styles.progressList}>
-                {progressSections.map((item) => (
-                  <li key={item.key}>
-                    <span>{item.name}</span>
-                    {renderSectionPercent(item.percent)}
-                  </li>
-                ))}
-              </ul>
-            </div>
+                <div className={styles.progressDetails}>
+                  <ul className={styles.progressList}>
+                    {progress.sections.map((item) => (
+                      <li key={item.key}>
+                        <span>{item.name}</span>
+                        {renderSectionPercent(item.percent)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </>
+            ) : (
+              <p className={styles.progressMessage} role={progressState.kind === 'failure' ? 'alert' : 'status'}>
+                {progressState.kind === 'failure' ? progressState.message : '이력서 완성도를 불러오는 중입니다.'}
+              </p>
+            )}
           </section>
 
           <section className={styles.shortcuts} aria-label="바로가기">

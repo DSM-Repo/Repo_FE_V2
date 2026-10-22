@@ -130,6 +130,20 @@
   min-width: 0;
 }
 
+.progressMessage {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--repo-gray-500);
+  font-size: var(--repo-font-body-small-size);
+  line-height: var(--repo-font-body-small-line-height);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.progressMessage[role='alert'] {
+  color: var(--repo-state-error);
+}
+
 .visuallyHidden {
   position: absolute;
   width: 1px;

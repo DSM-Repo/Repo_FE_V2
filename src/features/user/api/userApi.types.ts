@@ -23,7 +23,6 @@ export type UserMe = {
   readonly major: string | null
   readonly name: string
   readonly profileImageUrl: string | null
-  readonly progress: UserProgress
 }
 
 export type UserMeInput = {
@@ -38,6 +37,16 @@ export type UserMeResult =
   | {
       readonly kind: 'success'
       readonly user: UserMe
+    }
+  | {
+      readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'
+      readonly message: string
+    }
+
+export type UserProgressResult =
+  | {
+      readonly kind: 'success'
+      readonly progress: UserProgress
     }
   | {
       readonly kind: 'configuration-error' | 'forbidden' | 'network-error' | 'server-error'

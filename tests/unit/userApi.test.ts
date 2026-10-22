@@ -59,7 +59,7 @@ function installBrowserAuthState(refreshToken: string) {
   }
 }
 
-test('getUserMe requests logged-in user info with bearer auth', async () => {
+test('getUserMe accepts the separate user response without progress with bearer auth', async () => {
   let requestedUrl = ''
   let requestedMethod = ''
   let requestedAuthorization = ''
@@ -81,16 +81,6 @@ test('getUserMe requests logged-in user info with bearer auth', async () => {
         major: '인공지능소프트웨어과',
         name: '홍길동',
         profileImageUrl: 'https://cdn.example.test/profile.png',
-        progress: {
-          sections: [
-            {
-              completed: true,
-              key: 'PROFILE',
-              name: '내 정보',
-            },
-          ],
-          totalPercent: 35,
-        },
       }),
       {
         headers: {
@@ -119,17 +109,6 @@ test('getUserMe requests logged-in user info with bearer auth', async () => {
       major: '인공지능소프트웨어과',
       name: '홍길동',
       profileImageUrl: 'https://cdn.example.test/profile.png',
-      progress: {
-        sections: [
-          {
-            completed: true,
-            key: 'PROFILE',
-            name: '내 정보',
-            percent: 100,
-          },
-        ],
-        totalPercent: 35,
-      },
     },
   })
 })
@@ -148,16 +127,6 @@ test('getUserMe accepts nullable optional profile fields from user info', async 
         major: null,
         name: '오혜민',
         profileImageUrl: null,
-        progress: {
-          sections: [
-            {
-              completed: true,
-              key: 'PROFILE',
-              name: '프로필',
-            },
-          ],
-          totalPercent: 33,
-        },
       }),
       {
         headers: {
@@ -182,17 +151,6 @@ test('getUserMe accepts nullable optional profile fields from user info', async 
       major: null,
       name: '오혜민',
       profileImageUrl: null,
-      progress: {
-        sections: [
-          {
-            completed: true,
-            key: 'PROFILE',
-            name: '프로필',
-            percent: 100,
-          },
-        ],
-        totalPercent: 33,
-      },
     },
   })
 })
@@ -206,7 +164,6 @@ for (const introduce of [undefined, 123, false, {}, []]) {
         major: null,
         name: '신규 학생',
         profileImageUrl: null,
-        progress: { sections: [], totalPercent: 0 },
       })
 
     assert.deepEqual(await userApi.getUserMe({ accessToken: 'access-token' }), {
@@ -253,10 +210,6 @@ test('getUserMe refreshes an expired access token and retries user info', async 
         major: null,
         name: '오혜민',
         profileImageUrl: null,
-        progress: {
-          sections: [],
-          totalPercent: 33,
-        },
       }),
       {
         headers: {
@@ -336,4 +289,132 @@ test('updateUserMajor preserves server error.message for every HTTP error status
       message,
     }, `HTTP ${status}`)
   }
+})
+
+test('getUserProgress reads total and section percentages independently with bearer auth', async () => {
+  // Given: the separate progress response contains partially completed sections.
+  const progress = {
+    sections: [
+      { completed: true, key: 'PROFILE', name: '내 정보', percent: 100 },
+      { completed: false, key: 'ACTIVITY', name: '활동', percent: 40 },
+      { completed: false, key: 'PROJECT', name: '프로젝트', percent: 10 },
+    ],
+    totalPercent: 50,
+  }
+  const requests: { url: string; method: string; authorization: string }[] = []
+  globalThis.fetch = async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method ?? '',
+      authorization: new Headers(init?.headers).get('Authorization') ?? '',
+    })
+    return Response.json(progress)
+  }
+
+  // When: progress is requested without a user-info response.
+  const result = await userApi.getUserProgress({ accessToken: 'access-token' })
+
+  // Then: the response percentages survive rather than becoming boolean-derived values.
+  assert.deepEqual(result, { kind: 'success', progress })
+  assert.deepEqual(requests, [{ url: 'https://api.example.test/user/progress', method: 'GET', authorization: 'Bearer access-token' }])
+})
+
+test('getUserProgress accepts all-zero percentages for a new student', async () => {
+  // Given: a student has not created a resume.
+  const progress = {
+    sections: [
+      { completed: false, key: 'PROFILE', name: '내 정보', percent: 0 },
+      { completed: false, key: 'ACTIVITY', name: '활동', percent: 0 },
+      { completed: false, key: 'PROJECT', name: '프로젝트', percent: 0 },
+    ],
+    totalPercent: 0,
+  }
+  globalThis.fetch = async () => Response.json(progress)
+
+  // When: the separate progress endpoint is read.
+  const result = await userApi.getUserProgress({ accessToken: 'access-token' })
+
+  // Then: zero is valid progress, not an invalid or missing response.
+  assert.deepEqual(result, { kind: 'success', progress })
+})
+
+for (const section of [
+  { completed: true, key: 'PROFILE', name: '내 정보' },
+  { completed: true, key: 'PROFILE', name: '내 정보', percent: null },
+  { completed: true, key: 'PROFILE', name: '내 정보', percent: '100' },
+  { completed: true, key: 'PROFILE', name: '내 정보', percent: 42.5 },
+  { completed: true, key: 'UNKNOWN', name: '내 정보', percent: 100 },
+]) {
+  test(`getUserProgress rejects malformed sections: ${JSON.stringify(section)}`, async () => {
+    // Given: the API violates its section schema.
+    globalThis.fetch = async () => Response.json({ sections: [section], totalPercent: 50 })
+
+    // When: that response is parsed.
+    const result = await userApi.getUserProgress({ accessToken: 'access-token' })
+
+    // Then: the client does not invent a completion percentage.
+    assert.deepEqual(result, { kind: 'server-error', message: '이력서 완성도 조회 응답 형식이 올바르지 않습니다.' })
+  })
+}
+
+test('getUserProgress refreshes an expired access token and retries only progress', async () => {
+  // Given: the progress request requires a refreshed access token.
+  const { assignedLocations, values } = installBrowserAuthState('refresh-token')
+  const requests: { url: string; authorization: string }[] = []
+  globalThis.fetch = async (input, init) => {
+    const url = String(input)
+    requests.push({ url, authorization: new Headers(init?.headers).get('Authorization') ?? '' })
+    if (requests.length === 1) return new Response(null, { status: 401 })
+    if (url.endsWith('/user/refresh')) return Response.json({ accessToken: 'refreshed-progress-token' })
+    return Response.json({ sections: [], totalPercent: 0 })
+  }
+
+  // When: progress is loaded with an expired token.
+  const result = await userApi.getUserProgress({ accessToken: 'expired-token' })
+
+  // Then: the retried endpoint uses the new token without requesting user info.
+  assert.equal(result.kind, 'success')
+  assert.deepEqual(requests, [
+    { url: 'https://api.example.test/user/progress', authorization: 'Bearer expired-token' },
+    { url: 'https://api.example.test/user/refresh', authorization: '' },
+    { url: 'https://api.example.test/user/progress', authorization: 'Bearer refreshed-progress-token' },
+  ])
+  assert.equal(values.get('repo.auth.accessToken'), 'refreshed-progress-token')
+  assert.deepEqual(assignedLocations, [])
+})
+
+test('getUserProgress preserves server error.message for every HTTP error status', async () => {
+  for (let status = 400; status <= 599; status += 1) {
+    // Given: each rejected HTTP response carries a server-owned message.
+    const message = `  완성도 서버 원문 ${status}\n다시 확인하세요.  `
+    globalThis.fetch = async () => Response.json({ error: { message }, message: '대체 메시지' }, { status })
+
+    // When: progress fails independently.
+    const result = await userApi.getUserProgress({ accessToken: 'access-token' })
+
+    // Then: the exact server message is retained for the progress panel.
+    assert.deepEqual(result, { kind: status === 401 || status === 403 ? 'forbidden' : 'server-error', message }, `HTTP ${status}`)
+  }
+})
+
+test('getUserProgress reports malformed JSON without masking it as zero progress', async () => {
+  // Given: the endpoint returned an invalid JSON document.
+  globalThis.fetch = async () => new Response('{', { status: 200 })
+
+  // When: the progress response is read.
+  const result = await userApi.getUserProgress({ accessToken: 'access-token' })
+
+  // Then: a schema error is returned rather than successful zero values.
+  assert.deepEqual(result, { kind: 'server-error', message: '이력서 완성도 조회 응답 형식이 올바르지 않습니다.' })
+})
+
+test('getUserProgress reports a failed network request separately from user information', async () => {
+  // Given: the progress endpoint cannot be reached.
+  globalThis.fetch = async () => { throw new TypeError('Failed to fetch') }
+
+  // When: progress is requested.
+  const result = await userApi.getUserProgress({ accessToken: 'access-token' })
+
+  // Then: the failure identifies the progress endpoint.
+  assert.deepEqual(result, { kind: 'network-error', message: '이력서 완성도 API에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.' })
 })

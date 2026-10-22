@@ -1,4 +1,4 @@
-export { getUserMe, updateUserMajor } from './userApi'
+export { getUserMe, getUserProgress, updateUserMajor } from './userApi'
 export type {
   UserClassInfo,
   UserMajorUpdateInput,
@@ -7,5 +7,6 @@ export type {
   UserMeInput,
   UserMeResult,
   UserProgress,
+  UserProgressResult,
   UserProgressSection,
 } from './userApi.types'

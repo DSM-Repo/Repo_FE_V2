@@ -46,6 +46,18 @@ src/
 
 ## 실행 및 배포 구성
 
+### 학생 홈 API 계약 (2026-10-22 확인)
+
+[백엔드 Swagger](http://52.78.201.218/swagger-ui/index.html#/)의 OpenAPI 명세 기준으로 홈 조회는 세 요청으로 나뉩니다.
+
+| 요청 | 응답 | 프론트 처리 |
+| --- | --- | --- |
+| `GET /user` | `name`, `profileImageUrl`, `introduce`, `major`, `classInfo` | `progress`를 요구하지 않습니다. 미작성 자기소개와 전공·이미지의 `null`을 허용합니다. |
+| `GET /user/progress` | `totalPercent`, `sections` (`key`, `name`, `percent`, `completed`) | 완성도를 별도로 조회합니다. 이력서가 없으면 서버의 0% 응답을 표시합니다. |
+| `GET /alram` | 알림 배열 | 기존 알림 조회·읽음·삭제 계약을 유지합니다. |
+
+각 영역은 독립적으로 로딩·성공·실패를 처리합니다. 한 요청의 실패가 다른 영역의 정상 응답을 가리지 않으며, 서버가 반환한 오류 메시지를 표시합니다. 완성도 조회 실패나 대기 상태를 실제 0%로 표시하지 않습니다.
+
 - [package.json](../package.json)의 `dev`/`build`/`start`는 Next를 실행합니다. `pnpm build`의 `postbuild`는 `vinext build && next typegen`도 실행합니다.
 - [playwright.config.ts](../playwright.config.ts)는 Next 서버에서 E2E를 실행합니다. Workers 동작 검증과는 별개입니다.
 - [vite.config.ts](../vite.config.ts)는 vinext, Cloudflare plugin, KV/CDN cache, images optimizer를 사용하는 현재 배포 설정입니다. 초기 Vite SPA scaffold의 잔재가 아닙니다.

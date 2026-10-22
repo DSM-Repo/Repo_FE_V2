@@ -15,15 +15,21 @@ const defaultUser = {
   major: null,
   name: '테스트 학생',
   profileImageUrl: null,
-  progress: {
-    sections: [],
-    totalPercent: 0,
-  },
+} as const
+
+const defaultProgress = {
+  sections: [
+    { completed: false, key: 'PROFILE', name: '내 정보', percent: 0 },
+    { completed: false, key: 'ACTIVITY', name: '활동', percent: 0 },
+    { completed: false, key: 'PROJECT', name: '프로젝트', percent: 0 },
+  ],
+  totalPercent: 0,
 } as const
 
 test.describe('student home page', () => {
   test.beforeEach(async ({ page }) => {
     await authenticateWithAccessToken(page, studentAccessToken)
+    await page.route(`${apiBaseUrl}/user/progress`, (route) => route.fulfill({ json: defaultProgress }))
     await page.route(`${apiBaseUrl}/user`, async (route) => {
       await route.fulfill({
         body: JSON.stringify(defaultUser),
@@ -139,18 +145,22 @@ test.describe('student home page', () => {
           major: '인공지능소프트웨어과',
           name: '홍길동',
           profileImageUrl: '',
-          progress: {
-            sections: [
-              { completed: true, key: 'PROFILE', name: '내 정보', percent: 100 },
-              { completed: false, key: 'ACTIVITY', name: '활동', percent: 40 },
-              { completed: false, key: 'PROJECT', name: '프로젝트', percent: 0 },
-            ],
-            totalPercent: 35,
-          },
         }),
         contentType: 'application/json',
         status: 200,
       })
+    })
+
+    await page.route(`${apiBaseUrl}/user/progress`, async (route) => {
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${studentAccessToken}`)
+      await route.fulfill({ json: {
+        sections: [
+          { completed: true, key: 'PROFILE', name: '내 정보', percent: 100 },
+          { completed: false, key: 'ACTIVITY', name: '활동', percent: 40 },
+          { completed: false, key: 'PROJECT', name: '프로젝트', percent: 0 },
+        ],
+        totalPercent: 35,
+      } })
     })
 
     await page.goto('/home')
@@ -163,6 +173,58 @@ test.describe('student home page', () => {
     await expect(page.getByText('100%', { exact: true })).toBeVisible()
     await expect(page.getByText('40%', { exact: true })).toBeVisible()
     await expect(page.getByText('0%', { exact: true })).toBeVisible()
+  })
+
+  test('shows profile and notifications while the independent progress request is pending', async ({ page }) => {
+    let releaseProgress: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => { releaseProgress = resolve })
+    await page.route(`${apiBaseUrl}/user/progress`, async (route) => {
+      await gate
+      await route.fulfill({ json: defaultProgress })
+    })
+    try {
+      await page.goto('/home')
+      await expect(page.getByRole('heading', { level: 1, name: /테스트 학생/ })).toBeVisible()
+      await expect(page.getByText('새 알림이 없습니다.')).toBeVisible()
+      await expect(page.getByRole('progressbar')).toHaveCount(0)
+    } finally {
+      releaseProgress()
+    }
+    await expect(page.getByRole('progressbar', { name: '이력서 완성도 0%' })).toBeVisible()
+  })
+
+  test('preserves profile and notifications when progress fails with a server message', async ({ page }) => {
+    await page.route(`${apiBaseUrl}/user/progress`, (route) => route.fulfill({
+      status: 503,
+      json: { error: { message: '완성도 집계 점검 중입니다.' } },
+    }))
+    await page.goto('/home')
+    await expect(page.getByRole('heading', { level: 1, name: /테스트 학생/ })).toBeVisible()
+    await expect(page.getByText('새 알림이 없습니다.')).toBeVisible()
+    await expect(page.getByRole('alert').filter({ hasText: '완성도 집계 점검 중입니다.' })).toHaveText('완성도 집계 점검 중입니다.')
+    await expect(page.getByRole('progressbar')).toHaveCount(0)
+  })
+
+  test('preserves progress and notifications when user info fails', async ({ page }) => {
+    await page.route(`${apiBaseUrl}/user`, (route) => route.fulfill({
+      status: 500,
+      json: { error: { message: '사용자 정보 점검 중입니다.' } },
+    }))
+    await page.goto('/home')
+    await expect(page.getByText('사용자 정보 점검 중입니다.')).toBeVisible()
+    await expect(page.getByRole('progressbar', { name: '이력서 완성도 0%' })).toBeVisible()
+    await expect(page.getByText('새 알림이 없습니다.')).toBeVisible()
+  })
+
+  test('preserves profile and progress when notifications fail', async ({ page }) => {
+    await page.route(`${apiBaseUrl}/alram`, (route) => route.fulfill({
+      status: 503,
+      json: { error: { message: '알림 조회 점검 중입니다.' } },
+    }))
+    await page.goto('/home')
+    await expect(page.getByRole('heading', { level: 1, name: /테스트 학생/ })).toBeVisible()
+    await expect(page.getByRole('progressbar', { name: '이력서 완성도 0%' })).toBeVisible()
+    await expect(page.getByRole('region', { name: '알림 목록' }).getByText('알림 조회 점검 중입니다.')).toBeVisible()
   })
 
   test('redirects to login when auth reissue fails after protected API rejection', async ({ page }) => {

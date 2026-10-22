@@ -18,6 +18,9 @@ function createExpiredAccessToken(role: TestAuthRole) {
 }
 
 test.describe('protected route authorization', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route(`${apiBaseUrl}/user/progress`, (route) => route.fulfill({ json: { sections: [], totalPercent: 0 } }))
+  })
   for (const failure of ['network', 'server'] as const) {
     test(`retains refresh credentials and offers retry after ${failure} failure`, async ({ page }) => {
       await authenticateWithAccessToken(page, createExpiredAccessToken('STUDENT'), 'retained-refresh')
@@ -125,7 +128,6 @@ test.describe('protected route authorization', () => {
           major: null,
           name: '오혜민',
           profileImageUrl: null,
-          progress: { sections: [], totalPercent: 0 },
         }),
         contentType: 'application/json',
         status: 200,
