@@ -687,7 +687,9 @@ test.describe('student resume management', () => {
     expect(messageBox!.width).toBeLessThanOrEqual(240)
     expect(Math.abs(messageBox!.y - markerBox!.y)).toBeLessThanOrEqual(1)
     expect(Math.abs(messageBox!.height - markerBox!.height)).toBeLessThanOrEqual(1)
-    expect(messageBox!.x + messageBox!.width).toBeLessThanOrEqual(markerBox!.x + 4.5)
+    expect(markerBox!.x - messageBox!.x - messageBox!.width).toBeCloseTo(markerBox!.width * 0.4, 0)
+    await expect(hoverMessage).toHaveText('프로젝트 성과를 숫자로 표현해보세요.')
+    await expect(hoverMessage).toHaveCSS('border-bottom-left-radius', '0px')
     expect(messageBox!.x).toBeGreaterThanOrEqual(pageBox!.x)
     await page.screenshot({ path: testInfo.outputPath('student-feedback-expanded-hover.png'), fullPage: true })
 

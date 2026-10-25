@@ -27,7 +27,6 @@ export function FeedbackBalloon({
   ...props
 }: FeedbackBalloonProps) {
   const balloonClassName = [styles.balloon, className].filter(Boolean).join(' ')
-  const statusLabel = checked ? '완료' : selected ? '선택됨' : '미완료'
 
   return (
     <div
@@ -51,36 +50,7 @@ export function FeedbackBalloon({
 
       <div className={styles.message}>
         <span className={styles.title}>{title}</span>
-        <span className={styles.status}>{statusLabel}</span>
-        {checked ? <CheckCircleIcon className={styles.checkIcon} /> : null}
       </div>
     </div>
-  )
-}
-
-type CheckCircleIconProps = {
-  className?: string
-}
-
-function CheckCircleIcon({ className }: CheckCircleIconProps) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      height="32"
-      viewBox="0 0 24 24"
-      width="32"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.4" />
-      <path
-        d="M8 12.2L10.7 14.9L16.2 9.4"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2.4"
-      />
-    </svg>
   )
 }
