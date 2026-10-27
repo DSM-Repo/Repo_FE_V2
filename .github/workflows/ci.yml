@@ -12,7 +12,7 @@ permissions:
 jobs:
   verify:
     name: Lint, unit, typecheck, build, and E2E
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NEXT_PUBLIC_API_BASE_URL: http://api.repo.test
 
