@@ -1428,6 +1428,8 @@ test.describe('student resume management', () => {
       editor.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
     }, pastedHtml)
 
+    await expect(page.getByRole('textbox', { name: '4쪽 추가 내용', exact: true })).toBeFocused()
+    await page.getByRole('button', { name: '이전 페이지' }).click()
     await expect(firstPageContent.locator('h2')).toHaveText('노션 활동 정리')
     await expect(firstPageContent.locator('strong')).toHaveText('강조된 성과')
     await expect(firstPageContent.locator('u')).toHaveText('밑줄 메모')

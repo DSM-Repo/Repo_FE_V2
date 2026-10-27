@@ -474,6 +474,8 @@ export function StudentResumePageContent() {
   const [openFeedbackId, setOpenFeedbackId] = useState<string>()
   const [selectedFeedbackIds, setSelectedFeedbackIds] = useState<ReadonlySet<string>>(() => new Set())
   const [spreadStartIndex, setSpreadStartIndex] = useState(0)
+  const [contentFocus, setContentFocus] = useState<{ readonly pageIndex: number; readonly offset: number }>()
+  const handleContentFocused = useCallback(() => setContentFocus(undefined), [])
   const userRef = useRef<UserMe | undefined>(undefined)
   const viewedResumeIdRef = useRef<string | undefined>(undefined)
   const documentSessionRef = useRef(0)
@@ -884,7 +886,7 @@ export function StudentResumePageContent() {
   }, [])
 
   const handlePageRichPaste = useCallback(
-    ({ content, pageIndex }: { readonly content: string; readonly pageIndex: number }) => {
+    ({ content, pageIndex, readCaretOffset }: { readonly content: string; readonly pageIndex: number; readonly readCaretOffset: () => number | undefined }) => {
       const page = draft.pages[pageIndex]
       if (!page) return
       const firstPageUnits = page.type === 'FREE' ? FREE_PASTE_PAGE_UNITS
@@ -894,6 +896,21 @@ export function StudentResumePageContent() {
       if (draft.pages.length + chunks.length - 1 > MAX_RESUME_PAGE_COUNT) {
         setActionFeedback({ message: '이력서는 최대 5쪽입니다. 붙여넣은 내용은 유지되며, 내용을 줄이면 페이지를 나눌 수 있습니다.', tone: 'error' })
         return
+      }
+
+      const caretOffset = readCaretOffset()
+      if (caretOffset !== undefined) {
+        let searchStart = 0
+        for (const [chunkIndex, chunk] of chunks.entries()) {
+          const start = content.indexOf(chunk, searchStart)
+          const end = start + chunk.length
+          searchStart = end
+          if (caretOffset > end && chunkIndex < chunks.length - 1) continue
+          const targetPageIndex = pageIndex + chunkIndex
+          setContentFocus({ pageIndex: targetPageIndex, offset: Math.max(0, Math.min(chunk.length, caretOffset - start)) })
+          setSpreadStartIndex(Math.floor(targetPageIndex / pageSize) * pageSize)
+          break
+        }
       }
 
       handleDraftChange((currentDraft) => {
@@ -913,7 +930,7 @@ export function StudentResumePageContent() {
         ]) }
       })
     },
-    [draft.pages, handleDraftChange],
+    [draft.pages, handleDraftChange, pageSize],
   )
 
   const handleCancelEditing = useCallback(() => {
@@ -1559,6 +1576,7 @@ export function StudentResumePageContent() {
                 return isEditing ? (
                   <ResumeEditorSheet
                     className={styles.documentSheet}
+                    contentFocusOffset={contentFocus?.pageIndex === pageIndex ? contentFocus.offset : undefined}
                     draft={draft}
                     feedbackMarkers={feedbackMarkers}
                     imageUploadTarget={imageUploadState.kind === 'uploading' ? imageUploadState.target : undefined}
@@ -1568,6 +1586,7 @@ export function StudentResumePageContent() {
                     key={page?.index ?? pageIndex}
                     majors={majors}
                     onChange={handleDraftChange}
+                    onContentFocused={handleContentFocused}
                     onInlineImagePasteUpload={handleInlineImagePasteUpload}
                     onImageUpload={handleImageUpload}
                     onMajorChange={(majorId) => void handleMajorChange(majorId)}

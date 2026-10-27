@@ -159,6 +159,178 @@ for (const viewer of viewers) {
 
 const projectParagraphs = Array.from({ length: 40 }, (_, index) => `프로젝트 기록 ${String(index + 1).padStart(2, '0')}: 구현 과정과 결과를 정리했습니다.`)
 
+for (const width of [390, 1280]) {
+  for (const input of ['typing', 'composition', 'paste']) {
+    test(`${input}: pagination continues typing at the original caret at ${width}px`, async ({ page }, testInfo) => {
+      await authenticateAs(page, 'STUDENT')
+      const pages = createPages(2)
+      pages[1].content = ''
+      const mocks = await mockResume(page, pages)
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/resume?resumeId=resume-id&mode=edit')
+      if (width === 390) await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+      const editor = page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })
+      await editor.focus()
+      if (input === 'composition') {
+        await editor.evaluate((element, paragraphs) => {
+          element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
+          element.textContent = paragraphs.join('\n')
+          const range = document.createRange()
+          range.selectNodeContents(element)
+          range.collapse(false)
+          window.getSelection()!.removeAllRanges()
+          window.getSelection()!.addRange(range)
+          element.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true, inputType: 'insertCompositionText' }))
+        }, projectParagraphs)
+        await expect(editor).toBeFocused()
+        await expect(editor).toContainText(projectParagraphs.at(-1)!)
+        await expect(page.getByRole('textbox', { name: '4쪽 추가 내용', exact: true })).toHaveCount(0)
+        await editor.dispatchEvent('compositionend', { data: '했습니다.' })
+      } else if (input === 'paste') {
+        await pasteProject(page)
+      } else {
+        await editor.fill(projectParagraphs.join('\n'))
+      }
+      const continuation = page.getByRole('textbox', { name: '4쪽 추가 내용', exact: true })
+      await expect(continuation).toBeFocused()
+      await page.keyboard.insertText('계속입력')
+      await expect(continuation).toContainText(`${projectParagraphs.at(-1)}계속입력`)
+      if (input === 'typing' && width === 390) {
+        await page.screenshot({ path: testInfo.outputPath('mobile-continuation-caret.png'), fullPage: true })
+      }
+      await page.getByRole('button', { name: '저장', exact: true }).click()
+      await expect.poll(() => mocks.getSavedPages()?.length).toBe(4)
+      const savedText = mocks.getSavedPages()!.slice(1).map(item => item.content).join('\n')
+      for (const paragraph of projectParagraphs) expect(savedText.split(paragraph)).toHaveLength(2)
+      expect(savedText.endsWith(`${projectParagraphs.at(-1)}계속입력`)).toBe(true)
+    })
+  }
+}
+
+for (const tag of ['strong', 'a']) {
+  test(`pagination preserves native typing behavior at a ${tag} boundary`, async ({ page }) => {
+    await authenticateAs(page, 'STUDENT')
+    const pages = createPages(2)
+    pages[1].content = ''
+    const mocks = await mockResume(page, pages)
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+    const editor = page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })
+    await editor.focus()
+    const paste = (paragraphs: readonly string[]) => editor.evaluate((element, { paragraphs, tag }) => {
+      const clipboardData = new DataTransfer()
+      clipboardData.setData('text/html', paragraphs.slice(0, -1).map(paragraph => `<p>${paragraph}</p>`).join('')
+        + `<p><${tag}${tag === 'a' ? ' href="https://example.test/details"' : ''}>서식 끝</${tag}></p>`)
+      element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
+    }, { paragraphs, tag })
+    await paste([])
+    await expect(editor.locator(tag)).toHaveText('서식 끝')
+    await page.keyboard.insertText('후속')
+    await expect(editor).toHaveAttribute('data-markdown-value', /후속/)
+    const baselineMarkdown = (await editor.getAttribute('data-markdown-value'))!
+    const baselineFormattedText = await editor.locator(tag).textContent()
+    await editor.fill('')
+    await paste(projectParagraphs)
+    const continuation = page.getByRole('textbox', { name: '4쪽 추가 내용', exact: true })
+    await expect(continuation).toBeFocused()
+    await page.keyboard.insertText('후속')
+    await expect(continuation.locator(tag)).toHaveText(baselineFormattedText!)
+    await expect(continuation).toContainText('서식 끝후속')
+    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await expect.poll(() => mocks.getSavedPages()?.length).toBe(4)
+    expect(mocks.getSavedPages()![3].content.endsWith(baselineMarkdown)).toBe(true)
+  })
+}
+
+test('pagination at a heading boundary preserves heading and divider blocks', async ({ page }) => {
+  await authenticateAs(page, 'STUDENT')
+  const pages = createPages(2)
+  pages[1].content = [...projectParagraphs.slice(0, 16), '## 경계 제목', '---', ...projectParagraphs.slice(16, 20)].join('\n')
+  const mocks = await mockResume(page, pages)
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.goto('/resume?resumeId=resume-id&mode=edit')
+  await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+  const editor = page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })
+  await editor.focus()
+  await editor.evaluate(element => {
+    const range = document.createRange()
+    range.setStartBefore(element.querySelector('h2')!)
+    range.collapse(true)
+    window.getSelection()!.removeAllRanges()
+    window.getSelection()!.addRange(range)
+    element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }))
+  })
+  const continuation = page.getByRole('textbox', { name: '3쪽 추가 내용', exact: true })
+  await expect(continuation).toBeFocused()
+  await page.keyboard.insertText('후속')
+  await expect(continuation.locator('h2')).toHaveText('후속경계 제목')
+  await expect(continuation.locator('hr')).toHaveCount(1)
+  await page.getByRole('button', { name: '저장', exact: true }).click()
+  await expect.poll(() => mocks.getSavedPages()?.length).toBe(3)
+  expect(mocks.getSavedPages()![2].content).toContain('## 후속경계 제목\n---')
+})
+
+test('image-only paste continues typing after the final image on the following page', async ({ page }) => {
+  await authenticateAs(page, 'STUDENT')
+  const pages = createPages(2)
+  pages[1].content = ''
+  const mocks = await mockResume(page, pages)
+  await page.route('**/image-*.png', route => route.fulfill({
+    contentType: 'image/png',
+    body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lH9fWAAAAABJRU5ErkJggg==', 'base64'),
+  }))
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.goto('/resume?resumeId=resume-id&mode=edit')
+  await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+  const editor = page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })
+  await editor.focus()
+  await editor.evaluate(element => {
+    const clipboardData = new DataTransfer()
+    clipboardData.setData('text/html', Array.from({ length: 2 }, (_, index) => `<p><img alt="그림${index}" src="/image-${index}.png"></p>`).join(''))
+    element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
+  })
+  const continuation = page.getByRole('textbox', { name: '3쪽 추가 내용', exact: true })
+  await expect(continuation).toBeFocused()
+  await page.keyboard.insertText('이미지 다음 내용')
+  await expect(continuation).toContainText('이미지 다음 내용')
+  await page.getByRole('button', { name: '저장', exact: true }).click()
+  await expect.poll(() => mocks.getSavedPages()?.length).toBe(3)
+  const saved = mocks.getSavedPages()!.slice(1).map(item => item.content).join('\n')
+  for (let index = 0; index < 2; index++) expect(saved.split(`![그림${index}]`)).toHaveLength(2)
+  expect(saved.endsWith('이미지 다음 내용')).toBe(true)
+})
+
+test('splitting in the middle of bold text preserves its caret and formatting', async ({ page }) => {
+  await authenticateAs(page, 'STUDENT')
+  const pages = createPages(2)
+  pages[1].content = projectParagraphs.map((paragraph, index) => index === 25 ? '**가나다라마바사**' : paragraph).join('\n')
+  const mocks = await mockResume(page, pages)
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.goto('/resume?resumeId=resume-id&mode=edit')
+  await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+  const editor = page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })
+  await editor.focus()
+  await editor.locator('strong').evaluate(element => {
+    const range = document.createRange()
+    range.setStart(element.firstChild!, 2)
+    range.collapse(true)
+    window.getSelection()!.removeAllRanges()
+    window.getSelection()!.addRange(range)
+  })
+  await page.keyboard.insertText('중간')
+  const continuation = page.getByRole('textbox', { name: '3쪽 추가 내용', exact: true })
+  await expect(continuation).toBeFocused()
+  await page.keyboard.insertText('후속')
+  await expect(continuation.locator('strong')).toHaveText('가나중간후속다라마바사')
+  await page.getByRole('button', { name: '이전 페이지', exact: true }).click()
+  const next = page.getByRole('button', { name: '다음 페이지', exact: true })
+  await next.click()
+  await expect(next).toBeFocused()
+  await page.getByRole('button', { name: '저장', exact: true }).click()
+  await expect.poll(() => mocks.getSavedPages()?.length).toBe(4)
+  expect(mocks.getSavedPages()![2].content).toContain('**가나중간후속다라마바사**')
+})
+
 async function pasteProject(page: Page) {
   const editor = page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })
   await editor.fill('')
@@ -168,7 +340,6 @@ async function pasteProject(page: Page) {
     clipboardData.setData('text/plain', paragraphs.join('\n\n'))
     element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
   }, projectParagraphs)
-  await expect(editor).toContainText(projectParagraphs[0])
 }
 
 test('long project paste becomes following pages without losing the next project or saved text', async ({ page }, testInfo) => {
@@ -178,6 +349,8 @@ test('long project paste becomes following pages without losing the next project
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('/resume?resumeId=resume-id&mode=edit')
   await pasteProject(page)
+  await expect(page.getByRole('textbox', { name: '4쪽 추가 내용', exact: true })).toBeFocused()
+  await page.getByRole('button', { name: '이전 페이지', exact: true }).click()
   const firstProjectContent = page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })
   await expect(firstProjectContent).not.toContainText(projectParagraphs.at(-1)!)
   await firstProjectContent.focus()
@@ -274,6 +447,8 @@ test('ordinary project input is split without a paste event and saves every para
   await page.goto('/resume?resumeId=resume-id&mode=edit')
   const editor = page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })
   await editor.fill(projectParagraphs.join('\n'))
+  await expect(page.getByRole('textbox', { name: '4쪽 추가 내용', exact: true })).toBeFocused()
+  await page.getByRole('button', { name: '이전 페이지', exact: true }).click()
   await expect(editor).toContainText(projectParagraphs[0])
   await expect(editor).not.toContainText(projectParagraphs.at(-1)!)
   await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
@@ -299,6 +474,8 @@ test('one long project paragraph spans pages while preserving all text', async (
   await page.goto('/resume?resumeId=resume-id&mode=edit')
   const editor = page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })
   await editor.fill(paragraph)
+  await expect(page.locator('[contenteditable="true"]:focus')).toHaveAttribute('id', /resume-page-content-[23]/)
+  await page.getByRole('button', { name: '이전 페이지', exact: true }).click()
   await expect.poll(() => editor.textContent()).not.toBe(paragraph)
   await expect(editor).toContainText('프로젝트 작업 내용을 확인했습니다.')
   await page.getByRole('button', { name: '다음 페이지', exact: true }).click()

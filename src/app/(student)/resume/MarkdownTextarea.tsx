@@ -2,6 +2,7 @@ import { Fragment, useId, useEffect, useRef, type ChangeEvent, type ClipboardEve
 
 import { MarkdownToolbarIcon } from './MarkdownToolbarIcon'
 import styles from './ResumeEditorSheet.module.css'
+import { focusMarkdownCaret, readMarkdownCaretOffset } from './markdownEditorSelection'
 import {
   applyMarkdownBlockShortcut,
   applyMarkdownBlockCommand,
@@ -16,10 +17,12 @@ import {
 type MarkdownTextareaProps = {
   readonly className: string
   readonly id: string
+  readonly focusOffset?: number
   readonly label: string
   readonly onChange: (value: string) => void
+  readonly onFocused?: () => void
   readonly onImagePasteUpload?: (file: File) => Promise<string | undefined>
-  readonly onRichPaste?: (value: string) => void
+  readonly onRichPaste?: (value: string, readCaretOffset: () => number | undefined) => void
   readonly placeholder: string
   readonly toolbarLabel: string
   readonly value: string
@@ -54,7 +57,7 @@ function readClipboardImage(file: File, onImagePasteUpload?: (file: File) => Pro
   })
 }
 
-export function MarkdownTextarea({ className, id, label, onChange, onImagePasteUpload, onRichPaste, placeholder, toolbarLabel, value }: MarkdownTextareaProps) {
+export function MarkdownTextarea({ className, id, focusOffset, label, onChange, onFocused, onImagePasteUpload, onRichPaste, placeholder, toolbarLabel, value }: MarkdownTextareaProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const imageInputId = useId()
@@ -76,20 +79,25 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
 
     latestValueRef.current = value
 
-    if (!editor || serializeEditorMarkdown(editor) === value) {
-      return
+    if (!editor) return
+
+    if (focusOffset !== undefined) {
+      focusMarkdownCaret(editor, value, focusOffset, toEditorStyles())
+      const selection = window.getSelection()
+      savedSelectionRangeRef.current = selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : undefined
+      onFocused?.()
+    } else if (serializeEditorMarkdown(editor) !== value) {
+      renderEditorMarkdown(editor, value, toEditorStyles())
     }
+  }, [value, focusOffset, onFocused])
 
-    renderEditorMarkdown(editor, value, toEditorStyles())
-  }, [value])
-
-  const syncMarkdownValue = (afterSync?: (nextValue: string) => void) => {
+  const syncMarkdownValue = (afterSync?: MarkdownTextareaProps['onRichPaste']) => {
     const editor = editorRef.current
     const notifyPagination = (nextValue: string) => {
       if (!afterSync || lastPaginatedValueRef.current === nextValue) return
       lastPaginatedValueRef.current = nextValue
       pendingValueRef.current = undefined
-      afterSync(nextValue)
+      afterSync(nextValue, () => editor ? readMarkdownCaretOffset(editor) : undefined)
     }
 
     if (!editor) {
