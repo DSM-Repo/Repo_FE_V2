@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
 import { getSavedAccessToken } from '@/features/auth/api'
+import { useResumePageSize } from '@/shared/lib/useResumePageSize'
 import {
   getLibraryResumeByStudentId,
   clearLegacyLibraryCache,
@@ -12,7 +13,7 @@ import {
   type LibraryResumePage,
 } from '@/features/library/api'
 import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
-import { AppHeader, Button, ResumeBookSheet, SearchField } from '@/shared/ui'
+import { AppHeader, Button, ResumeFeedbackSheet, SearchField } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -95,6 +96,8 @@ export default function ResumeBookPage() {
   )
   const studentId = parseStudentId(params.bookId)
   const [loadState, setLoadState] = useState<ResumeLoadState>({ kind: 'loading' })
+  const [pageIndex, setPageIndex] = useState(0)
+  const pageSize = useResumePageSize(1080)
   const pageState: ResumeLoadState = useMemo(
     () =>
       studentId === undefined
@@ -109,6 +112,9 @@ export default function ResumeBookPage() {
     () => (pageState.kind === 'success' ? sortResumePages(pageState.resume.pages) : []),
     [pageState],
   )
+  const lastPageIndex = Math.max(0, Math.floor((sortedPages.length - 1) / pageSize) * pageSize)
+  const startIndex = Math.min(pageIndex - pageIndex % pageSize, lastPageIndex)
+  const visiblePages = sortedPages.slice(startIndex, startIndex + pageSize)
 
   useEffect(() => {
     if (studentId === undefined) {
@@ -190,17 +196,38 @@ export default function ResumeBookPage() {
                       전체 PDF 다운로드
                     </Button>
                   </div>
-                  <div className={styles.sheets}>
-                    {sortedPages.map((page) => (
-                      <ResumeBookSheet
-                        ariaLabel={`${pageState.resume.name} 이력서 ${page.index + 1}쪽`}
-                        content={toSheetContent(pageState.resume, page)}
-                        key={page.id}
-                      />
-                    ))}
+                  <div className={styles.sheetViewport}>
+                    <button
+                      aria-label="이전 페이지"
+                      className={styles.pageArrow}
+                      disabled={startIndex === 0}
+                      type="button"
+                      onClick={() => setPageIndex(Math.max(0, startIndex - pageSize))}
+                    >
+                      ‹
+                    </button>
+                    <div className={styles.sheets}>
+                      {visiblePages.map((page) => (
+                        <ResumeFeedbackSheet
+                          ariaLabel={`${pageState.resume.name} 이력서 ${page.index + 1}쪽`}
+                          className={styles.documentSheet}
+                          content={toSheetContent(pageState.resume, page)}
+                          key={page.id}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      aria-label="다음 페이지"
+                      className={styles.pageArrow}
+                      disabled={startIndex === lastPageIndex}
+                      type="button"
+                      onClick={() => setPageIndex(Math.min(lastPageIndex, startIndex + pageSize))}
+                    >
+                      ›
+                    </button>
                   </div>
-                  <p className={styles.pageIndicator}>
-                    <strong>1</strong> / {sortedPages.length}
+                  <p className={styles.pageIndicator} aria-label="이력서 페이지" aria-live="polite">
+                    <strong>{Math.min(startIndex + pageSize, sortedPages.length)}</strong> / {sortedPages.length}
                   </p>
                 </>
               ) : (

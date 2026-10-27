@@ -60,6 +60,7 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
   const imageInputId = useId()
   const latestValueRef = useRef(value)
   const pendingValueRef = useRef<string | undefined>(undefined)
+  const lastPaginatedValueRef = useRef<string | undefined>(undefined)
   const savedSelectionRangeRef = useRef<Range | undefined>(undefined)
 
   useEffect(() => {
@@ -84,23 +85,29 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
 
   const syncMarkdownValue = (afterSync?: (nextValue: string) => void) => {
     const editor = editorRef.current
+    const notifyPagination = (nextValue: string) => {
+      if (!afterSync || lastPaginatedValueRef.current === nextValue) return
+      lastPaginatedValueRef.current = nextValue
+      pendingValueRef.current = undefined
+      afterSync(nextValue)
+    }
 
     if (!editor) {
-      afterSync?.(latestValueRef.current)
+      notifyPagination(latestValueRef.current)
       return
     }
 
     const nextValue = serializeEditorMarkdown(editor)
 
     if (nextValue === latestValueRef.current) {
-      afterSync?.(nextValue)
+      notifyPagination(nextValue)
       return
     }
 
     latestValueRef.current = nextValue
     pendingValueRef.current = nextValue
     onChange(nextValue)
-    afterSync?.(nextValue)
+    notifyPagination(nextValue)
   }
 
   const saveEditorSelection = () => {
@@ -299,8 +306,9 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
     })
   }
 
-  const handleEditorChange = () => {
-    syncMarkdownValue()
+  const handleEditorChange = (event: React.FormEvent<HTMLDivElement>) => {
+    const isComposing = 'isComposing' in event.nativeEvent && event.nativeEvent.isComposing
+    syncMarkdownValue(isComposing ? undefined : onRichPaste)
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -385,6 +393,7 @@ export function MarkdownTextarea({ className, id, label, onChange, onImagePasteU
         id={id}
         onBlur={handleEditorChange}
         onInput={handleEditorChange}
+        onCompositionEnd={() => syncMarkdownValue(onRichPaste)}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         ref={editorRef}

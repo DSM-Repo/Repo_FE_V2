@@ -65,6 +65,7 @@
 }
 
 .sheetViewport {
+  container-type: inline-size;
   display: grid;
   width: min(100%, 1280px);
   grid-template-columns: 44px minmax(0, auto) 44px;
@@ -93,6 +94,7 @@
   --resume-book-sheet-width: min(
     423px,
     28vw,
+    calc((100cqw - 148px) / 2),
     calc((100dvh - var(--repo-size-header-min-height) - var(--review-reserved-block-size)) * 423 / 599)
   );
   --resume-book-sheet-height: auto;
@@ -145,7 +147,7 @@
 }
 
 .pageArrow {
-  position: absolute;
+  position: static;
   z-index: 3;
   top: 48%;
   border: 0;
@@ -708,6 +710,17 @@
 
   .spread {
     grid-column: 1;
+    grid-row: 1;
+  }
+
+  .pageArrow {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .nextArrow {
+    justify-self: end;
   }
 
   .viewer {

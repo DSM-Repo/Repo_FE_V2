@@ -1360,7 +1360,7 @@ test.describe('student resume management', () => {
   test('pastes Notion formatted content with images into free pages before the project template', async ({ page }) => {
     let savedPages: Array<{ content: string; index: number; type: string }> = []
     const pastedParagraphs = Array.from(
-      { length: 24 },
+      { length: 18 },
       (_, index) => `<p>노션에서 붙여넣은 긴 활동 문단 ${index + 1}입니다. 문제 정의와 해결 과정을 함께 적었습니다.</p>`,
     ).join('')
     const pastedHtml = `
@@ -1428,20 +1428,22 @@ test.describe('student resume management', () => {
     await expect(firstPageContent.locator('strong')).toHaveText('강조된 성과')
     await expect(firstPageContent.locator('u')).toHaveText('밑줄 메모')
     await expect(firstPageContent.locator('img[alt="노션 이미지"]')).toBeVisible()
-    await expect(firstPageContent.locator('img[alt="Screenshot 2026-06-17 at 09.53.01.png"]')).toBeVisible()
-    await expect(firstPageContent.locator('img[alt="clipboard-image.png"]')).toBeVisible()
-    await expect
-      .poll(async () =>
-        firstPageContent
-          .locator('img[alt="clipboard-image.png"]')
-          .evaluate((image) => image instanceof HTMLImageElement && image.naturalWidth),
-      )
-      .toBe(1)
-
     const secondPage = page.getByRole('article', { name: '이력서 작성 2쪽' })
     await expect(secondPage.getByLabel('프로젝트 이름')).toHaveCount(0)
 
+    const imageAlts = ['노션 이미지', 'Screenshot 2026-06-17 at 09.53.01.png', 'clipboard-image.png']
+    const seenImages = new Set<string>()
     for (let attempt = 0; attempt < 5; attempt += 1) {
+      for (const alt of imageAlts) {
+        const image = page.locator(`article img[alt="${alt}"]`)
+        if (await image.count()) {
+          await expect(image).toBeVisible()
+          seenImages.add(alt)
+          if (alt === 'clipboard-image.png') {
+            await expect.poll(() => image.evaluate(element => element instanceof HTMLImageElement && element.naturalWidth)).toBe(1)
+          }
+        }
+      }
       if (await page.getByLabel('프로젝트 이름').count()) {
         break
       }
@@ -1449,6 +1451,7 @@ test.describe('student resume management', () => {
       await page.getByRole('button', { name: '다음 페이지' }).click()
     }
 
+    expect([...seenImages].sort()).toEqual([...imageAlts].sort())
     await expect(page.getByLabel('프로젝트 이름')).toBeVisible()
 
     await page.getByRole('button', { exact: true, name: '저장' }).click()
@@ -1464,6 +1467,9 @@ test.describe('student resume management', () => {
     expect(savedPastedContent).toContain('![Screenshot 2026-06-17 at 09.53.01.png](https://cdn.example.test/notion-capture.png)')
     expect(savedPastedContent).toContain(`![clipboard-image.png](${apiBaseUrl}/uploaded-paste.png)`)
     expect(savedPages[1]?.content).toContain('노션에서 붙여넣은 긴 활동 문단')
+    for (let index = 1; index <= 18; index += 1) {
+      expect(savedPastedContent.split(`노션에서 붙여넣은 긴 활동 문단 ${index}입니다.`)).toHaveLength(2)
+    }
 
     await expect(page.getByLabel('이력서 미리보기')).toBeVisible()
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -1710,6 +1716,7 @@ test.describe('student resume management', () => {
     await page.goto('/resume')
 
     await page.getByRole('button', { name: '이력서 수정하기' }).click()
+    await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
     const secondPageContentInput = page.getByLabel('2쪽 추가 내용')
 
     await secondPageContentInput.fill('태블릿에서도 두 번째 페이지 추가 내용을 작성합니다.')

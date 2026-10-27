@@ -17,7 +17,8 @@ import {
 } from '@/features/library/api'
 import type { InternalHref } from '@/shared/lib/internalHref'
 import type { AppHeaderItem, LibraryBookCardProps, ResumeBookSheetContent } from '@/shared/ui'
-import { AppHeader, Button, CheckboxOption, LibraryBookCard, ResumeBookSheet, SearchField, Tag, Toast } from '@/shared/ui'
+import { useResumePageSize } from '@/shared/lib/useResumePageSize'
+import { AppHeader, Button, CheckboxOption, LibraryBookCard, ResumeFeedbackSheet, SearchField, Tag, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -331,8 +332,11 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     () => (resumeLoadState.kind === 'success' ? toLibrarySheetPages(resumeLoadState.resumes, filteredStudents, activeFilters) : []),
     [activeFilters, filteredStudents, resumeLoadState],
   )
-  const visibleResumePages = librarySheetPages.slice(visiblePageIndex, visiblePageIndex + 2)
-  const displayedPageNumber = Math.min(librarySheetPages.length, visiblePageIndex + visibleResumePages.length)
+  const pageSize = useResumePageSize(720)
+  const lastPageIndex = Math.max(0, Math.floor((librarySheetPages.length - 1) / pageSize) * pageSize)
+  const startIndex = Math.min(visiblePageIndex - visiblePageIndex % pageSize, lastPageIndex)
+  const visibleResumePages = librarySheetPages.slice(startIndex, startIndex + pageSize)
+  const displayedPageNumber = Math.min(librarySheetPages.length, startIndex + visibleResumePages.length)
 
   useEffect(() => {
     let ignoresResult = false
@@ -669,15 +673,15 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                   <button
                     aria-label="이전 페이지"
                     className={`${styles.pageArrow} ${styles.previousArrow}`}
-                    disabled={visiblePageIndex === 0}
+                    disabled={startIndex === 0}
                     type="button"
-                    onClick={() => setVisiblePageIndex((currentIndex) => Math.max(0, currentIndex - 2))}
+                    onClick={() => setVisiblePageIndex(Math.max(0, startIndex - pageSize))}
                   >
                     ‹
                   </button>
                   <div className={styles.sheets}>
                     {visibleResumePages.map(({ key, page, resume }) => (
-                      <ResumeBookSheet
+                      <ResumeFeedbackSheet
                         ariaLabel={`${resume.name} 이력서 ${page.index + 1}쪽`}
                         className={styles.documentSheet}
                         content={toSheetContent(resume, page)}
@@ -688,12 +692,10 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                   <button
                     aria-label="다음 페이지"
                     className={`${styles.pageArrow} ${styles.nextArrow}`}
-                    disabled={visiblePageIndex + 2 >= librarySheetPages.length}
+                    disabled={startIndex === lastPageIndex}
                     type="button"
                     onClick={() =>
-                      setVisiblePageIndex((currentIndex) =>
-                        Math.min(Math.max(0, librarySheetPages.length - 1), currentIndex + 2),
-                      )
+                      setVisiblePageIndex(Math.min(lastPageIndex, startIndex + pageSize))
                     }
                   >
                     ›

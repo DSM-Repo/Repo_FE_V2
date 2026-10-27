@@ -199,14 +199,24 @@
 }
 
 .sheets {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(320px, 423px));
+  display: flex;
   justify-content: center;
   gap: var(--space-3);
 }
 
+.documentSheet {
+  --resume-book-sheet-width: min(423px, calc((100vw - 180px) / 2));
+}
+
+.sheetViewport {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .pageArrow {
-  position: absolute;
+  position: static;
   z-index: 1;
   top: 48%;
   border: 0;
@@ -216,6 +226,11 @@
   font-weight: 300;
   line-height: 1;
   cursor: pointer;
+}
+
+.pageArrow:disabled {
+  opacity: 0.28;
+  cursor: default;
 }
 
 .previousArrow {
@@ -417,7 +432,13 @@
   }
 
   .toolbar {
-    grid-template-columns: 1fr;
+    flex-wrap: wrap;
+  }
+
+  .searchField.searchField {
+    flex: 1 1 240px;
+    width: auto;
+    max-width: 468px;
   }
 
   .searchField {
@@ -429,11 +450,11 @@
   }
 
   .sheets {
-    grid-template-columns: minmax(320px, 520px);
+    min-width: 0;
   }
 
-  .sheets .sheet:nth-child(2) {
-    display: none;
+  .documentSheet {
+    --resume-book-sheet-width: min(423px, calc(100vw - 136px));
   }
 
   .previousArrow {
@@ -481,6 +502,21 @@
   }
 
   .pageArrow {
-    display: none;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .pageArrow:last-child {
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  .sheets {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .documentSheet {
+    --resume-book-sheet-width: min(423px, calc(100vw - 36px));
   }
 }
