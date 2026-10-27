@@ -638,6 +638,11 @@
     justify-self: end;
   }
 
+  .feedbackToggle {
+    position: static;
+    justify-self: end;
+  }
+
   .spread {
     grid-column: 1;
     grid-row: 1;
@@ -696,8 +701,4 @@
     --resume-book-sheet-min-height: 0;
   }
 
-  .feedbackToggle {
-    right: 16px;
-    bottom: 84px;
-  }
 }
