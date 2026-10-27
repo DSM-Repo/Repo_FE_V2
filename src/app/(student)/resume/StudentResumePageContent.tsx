@@ -27,7 +27,7 @@ import {
 } from '@/features/resume/api'
 import { getUserMe, updateUserMajor, type UserMe, type UserMeResult } from '@/features/user/api'
 import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
-import { AppHeader, Icon, PortfolioUrlModal, ResumeBookSheet, Toast } from '@/shared/ui'
+import { AppHeader, Icon, PortfolioUrlModal, ResumeBookSheet, ResumeFeedbackSheet, Toast } from '@/shared/ui'
 
 import {
   getDepartmentFromSchoolNumber,
@@ -636,15 +636,18 @@ export function StudentResumePageContent() {
     : loadState.kind === 'idle' && !requestedResumeId && !getSavedResumeId()
   const isImageUploading = imageUploadState.kind === 'uploading'
   const isResumeActionPending = saveSubmitState !== 'idle' || majorSubmitState === 'pending' || isImageUploading
-  const isEditing = isResumeReady && (viewMode === 'edit' || viewMode === 'feedback')
+  const isEditing = isResumeReady && viewMode === 'edit'
+  const displayedDraft = viewMode === 'feedback' && resume
+    ? { ...toResumeDraft(resume), pages: [...resume.pages].sort((left, right) => left.index - right.index).map(toDraftPage) }
+    : draft
   const canAddPage = isEditing && draft.pages.length < MAX_RESUME_PAGE_COUNT
-  const visiblePageSlotCount = draft.pages.length + (canAddPage ? 1 : 0)
+  const visiblePageSlotCount = displayedDraft.pages.length + (canAddPage ? 1 : 0)
   const maxSpreadStartIndex = Math.max(0, Math.floor((visiblePageSlotCount - 1) / 2) * 2)
   const normalizedSpreadStartIndex = Math.min(spreadStartIndex - (spreadStartIndex % 2), maxSpreadStartIndex)
   const visiblePageSlots = [normalizedSpreadStartIndex, normalizedSpreadStartIndex + 1].filter((index) => index < visiblePageSlotCount)
   const canMovePrevious = normalizedSpreadStartIndex > 0
   const canMoveNext = normalizedSpreadStartIndex < maxSpreadStartIndex
-  const visiblePageCount = Math.min(normalizedSpreadStartIndex + 2, draft.pages.length)
+  const visiblePageCount = Math.min(normalizedSpreadStartIndex + 2, displayedDraft.pages.length)
   const selectedFeedbackCount =
     feedbackLoadState.kind === 'success'
       ? feedbackLoadState.feedbacks.filter(
@@ -1535,8 +1538,10 @@ export function StudentResumePageContent() {
                   )
                 }
 
-                const page = draft.pages[pageIndex]
+                const page = displayedDraft.pages[pageIndex]
                 const feedbackMarkers = toPageFeedbackMarkers(page)
+
+                const SheetPreview = viewMode === 'feedback' ? ResumeFeedbackSheet : ResumeBookSheet
 
                 return isEditing ? (
                   <ResumeEditorSheet
@@ -1559,10 +1564,12 @@ export function StudentResumePageContent() {
                     pageIndex={pageIndex}
                   />
                 ) : (
-                  <ResumeBookSheet
-                    ariaLabel={`${draft.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
+                  <SheetPreview
+                    ariaLabel={`${displayedDraft.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
                     className={styles.documentSheet}
-                    content={toSheetContent(draft, pageIndex)}
+                    content={viewMode === 'feedback'
+                      ? { ...toSheetContent(displayedDraft, pageIndex), activities: [], headline: '' }
+                      : toSheetContent(draft, pageIndex)}
                     feedbackMarkers={feedbackMarkers}
                     key={page?.index ?? pageIndex}
                   />
@@ -1581,10 +1588,10 @@ export function StudentResumePageContent() {
           </div>
 
           <p className={styles.pageCount}>
-            {visiblePageCount} / {draft.pages.length}
+            {visiblePageCount} / {displayedDraft.pages.length}
           </p>
 
-          {isEditing ? (
+          {isResumeReady && viewMode !== 'view' ? (
             <>
               <label className={styles.feedbackToggle}>
                 <span>피드백 보기</span>

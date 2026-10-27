@@ -4,6 +4,7 @@ import { useId, useRef, useState, type ChangeEvent, type ClipboardEvent, type CS
 
 import type { Major } from '@/features/major/api'
 import type { ResumePageType } from '@/features/resume/api'
+import { toFeedbackPosition } from '@/shared/lib/feedbackPosition'
 import { Dropdown, FeedbackBalloon, Icon, QrCode, type DropdownOption, type ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 
 import { MarkdownTextarea } from './MarkdownTextarea'
@@ -72,13 +73,6 @@ const emptyProject: ResumeDraftProject = {
   name: '',
   startDate: '',
   summary: '',
-}
-
-function toFeedbackPosition(value: number, axis: 'x' | 'y') {
-  const normalizedValue = value <= 1 ? value : value <= 100 ? value / 100 : value / (axis === 'x' ? 551 : 780)
-  const clampedValue = Math.min(1, Math.max(0, normalizedValue))
-
-  return `${clampedValue * 100}%`
 }
 
 function renderFeedbackMarkers(feedbackMarkers: readonly ResumeBookSheetFeedbackMarker[]) {

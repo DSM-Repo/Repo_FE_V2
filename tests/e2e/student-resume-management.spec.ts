@@ -596,7 +596,7 @@ test.describe('student resume management', () => {
     releaseResumeRequest.resolve()
   })
 
-  test('renders edit controls and compact feedback without duplicating the expanded title', async ({ page }, testInfo) => {
+  test('reviews feedback on the document preview without duplicating the expanded title', async ({ page }, testInfo) => {
     let applyRequestBody: unknown
 
     await page.route((url) => url.href === `${apiBaseUrl}/feedback?documentId=resume-id`, async (route) => {
@@ -648,10 +648,9 @@ test.describe('student resume management', () => {
     await page.setViewportSize({ height: 1080, width: 1920 })
     await page.goto('/resume?resumeId=resume-id&mode=feedback')
 
-    await expect(page.getByRole('button', { name: '작성 취소' })).toBeVisible()
-    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeVisible()
-    await expect(page.getByLabel('활동 작성 도구')).toBeVisible()
-    await expect(page.getByLabel('프로젝트 작성 도구')).toBeVisible()
+    await expect(page.getByRole('button', { name: '이력서 수정하기' })).toBeVisible()
+    await expect(page.getByLabel('활동 작성 도구')).toHaveCount(0)
+    await expect(page.getByLabel('프로젝트 작성 도구')).toHaveCount(0)
     const feedbackPanel = page.getByRole('complementary', { name: '피드백 목록' })
 
     await expect(feedbackPanel).toBeVisible()
@@ -662,10 +661,10 @@ test.describe('student resume management', () => {
     await expect(feedbackPanel.getByText('미완료', { exact: true })).toBeVisible()
     await expect(feedbackPanel.getByText('완료', { exact: true })).toBeVisible()
     await expect(
-      page.locator('article[aria-label="이력서 작성 1쪽"]').getByRole('button', { name: /피드백 위치: 문장 근거를 한 줄 더 추가해보세요/ }),
+      page.getByRole('article').nth(0).getByRole('button', { name: /피드백 위치: 문장 근거를 한 줄 더 추가해보세요/ }),
     ).toBeVisible()
     const secondPageFeedbackMarker = page
-      .locator('article[aria-label="이력서 작성 2쪽"]')
+      .getByRole('article').nth(1)
       .getByRole('button', { name: /피드백 위치: 프로젝트 성과를 숫자로 표현해보세요/ })
     await expect(secondPageFeedbackMarker).toBeVisible()
     await secondPageFeedbackMarker.click()
@@ -677,7 +676,7 @@ test.describe('student resume management', () => {
     await expect(hoverMessage).toHaveCSS('opacity', '1')
     const [markerBox, messageBox, pageBox] = await Promise.all([
       secondPageFeedbackMarker.boundingBox(), hoverMessage.boundingBox(),
-      page.locator('article[aria-label="이력서 작성 2쪽"]').boundingBox(),
+      page.getByRole('article').nth(1).boundingBox(),
     ])
     expect(markerBox).not.toBeNull()
     expect(messageBox).not.toBeNull()
@@ -713,6 +712,9 @@ test.describe('student resume management', () => {
 
     await expect.poll(() => applyRequestBody).toEqual({ applied: true, feedbackIds: ['feedback-1'] })
     await expect(page.getByRole('status')).toContainText('1개 피드백을 완료 처리했습니다.')
+    await page.getByRole('button', { name: '이력서 수정하기' }).click()
+    await expect(page.getByLabel('프로젝트 작성 도구')).toBeVisible()
+    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeVisible()
   })
 
   test('allows writing a resume before opening an existing resume', async ({ page }) => {

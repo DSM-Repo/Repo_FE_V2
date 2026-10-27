@@ -21,7 +21,7 @@
 .feedbackMarker {
   position: absolute;
   pointer-events: auto;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--feedback-marker-scale, 1));
 }
 
 .feedbackMarker[data-active='true'],

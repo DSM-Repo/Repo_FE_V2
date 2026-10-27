@@ -13,7 +13,7 @@ import {
   type ResumePage,
 } from '@/features/resume/api'
 import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
-import { AppHeader, Icon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
+import { AppHeader, Icon, ResumeFeedbackSheet, Switch, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -83,6 +83,7 @@ function toSheetContent(resume: Resume, page: ResumePage | undefined): ResumeBoo
     majorName: resume.majorName || '전공미정',
     name: resume.name,
     pageContent: page?.content,
+    pageType: page?.type,
     portfolioUrl: resume.portfolioUrl,
     profileImageUrl: resume.profileImageUrl,
     ...(sheetProject ? { project: sheetProject } : {}),
@@ -561,7 +562,7 @@ export default function TeacherStudentReviewPage() {
                 {visiblePageIndexes.map((pageIndex) => {
                   const page = pages[pageIndex]
                   return (
-                    <ResumeBookSheet
+                    <ResumeFeedbackSheet
                       ariaLabel={`${resume.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
                       className={styles.documentSheet}
                       content={toSheetContent(resume, page)}

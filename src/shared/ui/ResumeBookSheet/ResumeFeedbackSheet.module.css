@@ -1,0 +1,28 @@
+.viewport {
+  position: relative;
+  width: var(--resume-book-sheet-width, 423px);
+  height: auto;
+  aspect-ratio: 423 / 599;
+  flex-shrink: 0;
+}
+
+.viewport > .document {
+  --feedback-marker-scale: calc(1 / var(--resume-feedback-scale, 1));
+  --resume-book-sheet-width: 423px;
+  --resume-book-sheet-height: 599px;
+  --resume-book-sheet-padding: 20px;
+  --resume-book-sheet-avatar-size: 56px;
+  --resume-book-sheet-header-gap: 13px;
+  --resume-book-sheet-name-size: 20px;
+  --resume-book-sheet-major-size: var(--repo-font-body-tiny-size);
+  --resume-book-sheet-meta-size: var(--repo-font-body-tiny-size);
+  --resume-book-sheet-project-name-size: 22px;
+  --resume-book-sheet-qr-size: 80px;
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: var(--resume-book-sheet-width);
+  height: var(--resume-book-sheet-height);
+  min-height: 0;
+  transform: scale(var(--resume-feedback-scale, 1));
+  transform-origin: top left;
+}
