@@ -2,6 +2,7 @@ import { Fragment, type CSSProperties, type MouseEvent, type ReactNode } from 'r
 import Image from 'next/image'
 
 import { FeedbackBalloon } from '@/shared/ui/FeedbackBalloon'
+import { toFeedbackPosition } from '@/shared/lib/feedbackPosition'
 import { normalizeDisplayImageUrl } from '@/shared/api/imageUrl'
 import { Icon } from '@/shared/ui/Icon'
 import { QrCode } from '@/shared/ui/QrCode'
@@ -312,13 +313,6 @@ export function MarkdownContent({ value }: { readonly value: string }) {
   return <>{blocks.map((block, index) => <Fragment key={`${block.kind}-${index}`}>{renderMarkdownBlock(block, index)}</Fragment>)}</>
 }
 
-function toFeedbackPosition(value: number, axis: 'x' | 'y') {
-  const normalizedValue = value <= 1 ? value : value <= 100 ? value / 100 : value / (axis === 'x' ? 423 : 599)
-  const clampedValue = Math.min(1, Math.max(0, normalizedValue))
-
-  return `${clampedValue * 100}%`
-}
-
 function renderFeedbackMarkers(feedbackMarkers: readonly ResumeBookSheetFeedbackMarker[]) {
   if (feedbackMarkers.length === 0) {
     return null
@@ -339,7 +333,7 @@ function renderFeedbackMarkers(feedbackMarkers: readonly ResumeBookSheetFeedback
           onActivate={marker.onSelect}
           selected={marker.selected}
           style={{
-            '--feedback-message-max-width': `calc(${Math.max(parseFloat(toFeedbackPosition(marker.x, 'x')), 100 - parseFloat(toFeedbackPosition(marker.x, 'x')))}cqw - var(--feedback-balloon-size, 36px) / 2)`,
+            '--feedback-message-max-width': `calc(${Math.max(parseFloat(toFeedbackPosition(marker.x, 'x')), 100 - parseFloat(toFeedbackPosition(marker.x, 'x')))}cqw * var(--resume-feedback-scale, 1) - var(--feedback-balloon-size, 36px) / 2)`,
             left: toFeedbackPosition(marker.x, 'x'),
             top: toFeedbackPosition(marker.y, 'y'),
           } as CSSProperties}

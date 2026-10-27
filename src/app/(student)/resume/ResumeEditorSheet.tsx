@@ -4,6 +4,7 @@ import { useId, useRef, useState, type ChangeEvent, type ClipboardEvent, type CS
 
 import type { Major } from '@/features/major/api'
 import type { ResumePageType } from '@/features/resume/api'
+import { toFeedbackPosition } from '@/shared/lib/feedbackPosition'
 import { Dropdown, FeedbackBalloon, Icon, QrCode, type DropdownOption, type ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 
 import { MarkdownTextarea } from './MarkdownTextarea'
@@ -50,6 +51,7 @@ export type ResumeImageTarget = 'profile' | { readonly pageIndex: number; readon
 export type ResumeEditorSheetProps = {
   readonly className?: string
   readonly draft: ResumeDraft
+  readonly contentFocusOffset?: number
   readonly feedbackMarkers?: readonly ResumeBookSheetFeedbackMarker[]
   readonly imageUploadTarget?: ResumeImageTarget
   readonly isMajorLoading?: boolean
@@ -57,10 +59,11 @@ export type ResumeEditorSheetProps = {
   readonly isUploadingImage?: boolean
   readonly majors?: readonly Major[]
   readonly onChange: (nextDraft: ResumeDraft) => void
+  readonly onContentFocused?: () => void
   readonly onInlineImagePasteUpload?: (file: File) => Promise<string | undefined>
   readonly onImageUpload?: (input: { readonly file: File; readonly target: ResumeImageTarget }) => void
   readonly onMajorChange?: (majorId: number) => void
-  readonly onPageRichPaste?: (input: { readonly content: string; readonly pageIndex: number }) => void
+  readonly onPageRichPaste?: (input: { readonly content: string; readonly pageIndex: number; readonly readCaretOffset: () => number | undefined }) => void
   readonly onPortfolioUrlClick?: () => void
   readonly onRemovePage?: () => void
   readonly pageIndex: number
@@ -72,13 +75,6 @@ const emptyProject: ResumeDraftProject = {
   name: '',
   startDate: '',
   summary: '',
-}
-
-function toFeedbackPosition(value: number, axis: 'x' | 'y') {
-  const normalizedValue = value <= 1 ? value : value <= 100 ? value / 100 : value / (axis === 'x' ? 551 : 780)
-  const clampedValue = Math.min(1, Math.max(0, normalizedValue))
-
-  return `${clampedValue * 100}%`
 }
 
 function renderFeedbackMarkers(feedbackMarkers: readonly ResumeBookSheetFeedbackMarker[]) {
@@ -147,6 +143,7 @@ function toStudentMeta(schoolNumber: string) {
 export function ResumeEditorSheet({
   className,
   draft,
+  contentFocusOffset,
   feedbackMarkers = [],
   imageUploadTarget,
   isMajorLoading = false,
@@ -154,6 +151,7 @@ export function ResumeEditorSheet({
   isUploadingImage = false,
   majors = [],
   onChange,
+  onContentFocused,
   onInlineImagePasteUpload,
   onImageUpload,
   onMajorChange,
@@ -290,7 +288,9 @@ export function ResumeEditorSheet({
           label={`${page.index + 1}쪽 추가 내용`}
           onChange={(content) => updatePage({ content })}
           onImagePasteUpload={onInlineImagePasteUpload}
-          onRichPaste={(content) => onPageRichPaste?.({ content, pageIndex })}
+          focusOffset={contentFocusOffset}
+          onFocused={onContentFocused}
+          onRichPaste={(content, readCaretOffset) => onPageRichPaste?.({ content, pageIndex, readCaretOffset })}
           placeholder="추가 내용을 작성해주세요."
           toolbarLabel="추가 페이지 작성 도구"
           value={page.content}
@@ -392,7 +392,9 @@ export function ResumeEditorSheet({
           label={`${page.index + 1}쪽 추가 내용`}
           onChange={(content) => updatePage({ content })}
           onImagePasteUpload={onInlineImagePasteUpload}
-          onRichPaste={(content) => onPageRichPaste?.({ content, pageIndex })}
+          focusOffset={contentFocusOffset}
+          onFocused={onContentFocused}
+          onRichPaste={(content, readCaretOffset) => onPageRichPaste?.({ content, pageIndex, readCaretOffset })}
           placeholder="프로젝트에서 수행한 역할과 기여 내용, 그리고 진행 과정에 대한 회고 등을 작성해 주세요."
           toolbarLabel="프로젝트 작성 도구"
           value={page.content}
@@ -551,7 +553,9 @@ export function ResumeEditorSheet({
           label={`${page.index + 1}쪽 추가 내용`}
           onChange={(content) => updatePage({ content })}
           onImagePasteUpload={onInlineImagePasteUpload}
-          onRichPaste={(content) => onPageRichPaste?.({ content, pageIndex })}
+          focusOffset={contentFocusOffset}
+          onFocused={onContentFocused}
+          onRichPaste={(content, readCaretOffset) => onPageRichPaste?.({ content, pageIndex, readCaretOffset })}
           placeholder="활동 내용과 날짜, 상세를 입력해주세요."
           toolbarLabel="활동 작성 도구"
           value={page.content}

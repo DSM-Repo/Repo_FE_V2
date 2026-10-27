@@ -122,6 +122,7 @@
 }
 
 .sheetViewport {
+  container-type: inline-size;
   display: grid;
   width: min(100%, 1240px);
   min-height: auto;
@@ -168,7 +169,7 @@
   --resume-book-sheet-height: min(
     864px,
     calc(100dvh - var(--repo-size-header-min-height) - 140px),
-    calc((100vw - 116px) * 390 / 551)
+    calc((100cqw - 84px) * 390 / 551)
   );
   --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 551 / 780);
   --resume-book-sheet-padding: clamp(14px, calc(var(--resume-book-sheet-width) * 0.043), var(--space-6));
@@ -627,10 +628,24 @@
   }
 
   .pageArrow {
-    display: none;
+    grid-column: 1;
+    grid-row: 2;
+    margin-top: var(--space-3);
+    justify-self: start;
+  }
+
+  .pageArrow:last-child {
+    justify-self: end;
+  }
+
+  .feedbackToggle {
+    position: static;
+    justify-self: end;
   }
 
   .spread {
+    grid-column: 1;
+    grid-row: 1;
     align-content: flex-start;
     align-items: flex-start;
     flex-wrap: wrap;
@@ -686,8 +701,4 @@
     --resume-book-sheet-min-height: 0;
   }
 
-  .feedbackToggle {
-    right: 16px;
-    bottom: 84px;
-  }
 }

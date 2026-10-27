@@ -1,10 +1,26 @@
 .balloon {
+  --feedback-balloon-gap: calc(var(--feedback-balloon-size, 36px) * 0.4);
+  --feedback-message-available-width: min(240px, calc(var(--feedback-message-max-width, 240px) - var(--feedback-balloon-gap)));
   position: relative;
   display: inline-flex;
   align-items: flex-start;
   width: var(--feedback-balloon-size, 36px);
   min-height: var(--feedback-balloon-size, 36px);
   overflow: visible;
+}
+
+.balloon::after {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  width: var(--feedback-balloon-gap);
+  height: 100%;
+  content: '';
+}
+
+.balloon[data-message-side='left']::after {
+  right: 100%;
+  left: auto;
 }
 
 .avatar,
@@ -59,17 +75,16 @@
 .message {
   position: absolute;
   top: 0;
-  left: calc(100% - 4px);
+  left: calc(100% + var(--feedback-balloon-gap));
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
   width: max-content;
-  min-width: 0;
+  min-width: min(calc(var(--feedback-balloon-size, 36px) * 2.8), var(--feedback-message-available-width));
   height: var(--feedback-balloon-size, 36px);
-  max-width: min(240px, var(--feedback-message-max-width, 240px));
-  padding: 0 var(--space-3) 0 var(--space-4);
+  max-width: var(--feedback-message-available-width);
+  padding: 0 var(--space-3) 0 calc(var(--feedback-balloon-size, 36px) * 0.85);
   box-sizing: border-box;
-  border-radius: var(--repo-radius-pill);
+  border-radius: var(--feedback-balloon-size, 36px) calc(var(--feedback-balloon-size, 36px) / 2) calc(var(--feedback-balloon-size, 36px) / 2) 0;
   color: var(--repo-gray-50);
   clip-path: inset(0 100% 0 0);
   opacity: 0;
@@ -81,9 +96,8 @@
 }
 
 .balloon[data-message-side='left'] .message {
-  right: calc(100% - 4px);
+  right: calc(100% + var(--feedback-balloon-gap));
   left: auto;
-  padding: 0 var(--space-4) 0 var(--space-3);
   transform-origin: right center;
 }
 
@@ -108,35 +122,6 @@
   overflow-wrap: normal;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.status {
-  flex: 0 0 auto;
-  padding: 2px 6px;
-  border: 1px solid var(--repo-gray-600);
-  border-radius: var(--repo-radius-pill);
-  color: var(--repo-gray-50);
-  font-size: var(--repo-font-body-very-tiny-size);
-  font-weight: var(--repo-font-title-tiny-weight);
-  line-height: var(--repo-font-body-very-tiny-line-height);
-  white-space: nowrap;
-}
-
-.balloon[data-selected='true'] .status {
-  background: var(--repo-gray-50);
-  color: var(--repo-bg-main-point);
-}
-
-.balloon[data-completed='true'] .status {
-  background: var(--repo-gray-50);
-  color: var(--repo-gray-600);
-}
-
-.checkIcon {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  color: var(--repo-gray-300);
 }
 
 @media (prefers-reduced-motion: reduce) {

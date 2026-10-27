@@ -26,8 +26,9 @@ import {
   type ResumeSaveProject,
 } from '@/features/resume/api'
 import { getUserMe, updateUserMajor, type UserMe, type UserMeResult } from '@/features/user/api'
+import { useResumePageSize } from '@/shared/lib/useResumePageSize'
 import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
-import { AppHeader, Icon, PortfolioUrlModal, ResumeBookSheet, Toast } from '@/shared/ui'
+import { AppHeader, Icon, PortfolioUrlModal, ResumeFeedbackSheet, Toast } from '@/shared/ui'
 
 import {
   getDepartmentFromSchoolNumber,
@@ -50,7 +51,8 @@ const AUTO_SAVE_ENABLED = false
 const SUCCESS_FEEDBACK_DURATION_MS = 5_000
 const MAX_RESUME_PAGE_COUNT = 5
 const PROFILE_PASTE_PAGE_UNITS = 18
-const FREE_PASTE_PAGE_UNITS = 30
+const PROJECT_PASTE_PAGE_UNITS = 16
+const FREE_PASTE_PAGE_UNITS = 22
 
 const defaultResumeDraft = {
   activities: [],
@@ -107,14 +109,28 @@ function estimateMarkdownLineUnits(line: string) {
   return Math.max(1, Math.ceil(textLength / lineUnit))
 }
 
-function splitMarkdownIntoPageChunks(value: string) {
+function splitMarkdownIntoPageChunks(value: string, firstPageUnits = PROFILE_PASTE_PAGE_UNITS) {
   const lines = value.replace(/\r/g, '').split('\n')
   const chunks: string[] = []
   let chunkLines: string[] = []
   let chunkUnits = 0
-  let unitLimit = PROFILE_PASTE_PAGE_UNITS
+  let unitLimit = firstPageUnits
 
-  for (const line of lines) {
+  for (const originalLine of lines) {
+    let line = originalLine
+    while (estimateMarkdownLineUnits(line) > unitLimit && line.length > unitLimit * 46) {
+      const maxLength = Math.floor(unitLimit * 46)
+      const wordBoundary = line.lastIndexOf(' ', maxLength)
+      const splitAt = wordBoundary > maxLength / 2 ? wordBoundary : maxLength
+      if (chunkLines.some((chunkLine) => chunkLine.trim())) {
+        chunks.push(chunkLines.join('\n').trim())
+        chunkLines = []
+        chunkUnits = 0
+      }
+      chunks.push(line.slice(0, splitAt).trim())
+      line = line.slice(splitAt).trimStart()
+      unitLimit = FREE_PASTE_PAGE_UNITS
+    }
     const lineUnits = estimateMarkdownLineUnits(line)
     const hasChunkContent = chunkLines.some((chunkLine) => chunkLine.trim())
 
@@ -458,6 +474,8 @@ export function StudentResumePageContent() {
   const [openFeedbackId, setOpenFeedbackId] = useState<string>()
   const [selectedFeedbackIds, setSelectedFeedbackIds] = useState<ReadonlySet<string>>(() => new Set())
   const [spreadStartIndex, setSpreadStartIndex] = useState(0)
+  const [contentFocus, setContentFocus] = useState<{ readonly pageIndex: number; readonly offset: number }>()
+  const handleContentFocused = useCallback(() => setContentFocus(undefined), [])
   const userRef = useRef<UserMe | undefined>(undefined)
   const viewedResumeIdRef = useRef<string | undefined>(undefined)
   const documentSessionRef = useRef(0)
@@ -636,15 +654,20 @@ export function StudentResumePageContent() {
     : loadState.kind === 'idle' && !requestedResumeId && !getSavedResumeId()
   const isImageUploading = imageUploadState.kind === 'uploading'
   const isResumeActionPending = saveSubmitState !== 'idle' || majorSubmitState === 'pending' || isImageUploading
-  const isEditing = isResumeReady && (viewMode === 'edit' || viewMode === 'feedback')
+  const isEditing = isResumeReady && viewMode === 'edit'
+  const displayedDraft = viewMode === 'feedback' && resume
+    ? { ...toResumeDraft(resume), pages: [...resume.pages].sort((left, right) => left.index - right.index).map(toDraftPage) }
+    : draft
   const canAddPage = isEditing && draft.pages.length < MAX_RESUME_PAGE_COUNT
-  const visiblePageSlotCount = draft.pages.length + (canAddPage ? 1 : 0)
-  const maxSpreadStartIndex = Math.max(0, Math.floor((visiblePageSlotCount - 1) / 2) * 2)
-  const normalizedSpreadStartIndex = Math.min(spreadStartIndex - (spreadStartIndex % 2), maxSpreadStartIndex)
-  const visiblePageSlots = [normalizedSpreadStartIndex, normalizedSpreadStartIndex + 1].filter((index) => index < visiblePageSlotCount)
+  const visiblePageSlotCount = displayedDraft.pages.length + (canAddPage ? 1 : 0)
+  const pageSize = useResumePageSize(980)
+  const maxSpreadStartIndex = Math.max(0, Math.floor((visiblePageSlotCount - 1) / pageSize) * pageSize)
+  const normalizedSpreadStartIndex = Math.min(spreadStartIndex - (spreadStartIndex % pageSize), maxSpreadStartIndex)
+  const visiblePageSlots = Array.from({ length: pageSize }, (_, offset) => normalizedSpreadStartIndex + offset)
+    .filter((index) => index < visiblePageSlotCount)
   const canMovePrevious = normalizedSpreadStartIndex > 0
   const canMoveNext = normalizedSpreadStartIndex < maxSpreadStartIndex
-  const visiblePageCount = Math.min(normalizedSpreadStartIndex + 2, draft.pages.length)
+  const visiblePageCount = Math.min(normalizedSpreadStartIndex + pageSize, displayedDraft.pages.length)
   const selectedFeedbackCount =
     feedbackLoadState.kind === 'success'
       ? feedbackLoadState.feedbacks.filter(
@@ -863,39 +886,51 @@ export function StudentResumePageContent() {
   }, [])
 
   const handlePageRichPaste = useCallback(
-    ({ content, pageIndex }: { readonly content: string; readonly pageIndex: number }) => {
+    ({ content, pageIndex, readCaretOffset }: { readonly content: string; readonly pageIndex: number; readonly readCaretOffset: () => number | undefined }) => {
+      const page = draft.pages[pageIndex]
+      if (!page) return
+      const firstPageUnits = page.type === 'FREE' ? FREE_PASTE_PAGE_UNITS
+        : page.type === 'PROJECT' ? PROJECT_PASTE_PAGE_UNITS : PROFILE_PASTE_PAGE_UNITS
+      const chunks = splitMarkdownIntoPageChunks(content, firstPageUnits)
+      if (chunks.length <= 1) return
+      if (draft.pages.length + chunks.length - 1 > MAX_RESUME_PAGE_COUNT) {
+        setActionFeedback({ message: '이력서는 최대 5쪽입니다. 붙여넣은 내용은 유지되며, 내용을 줄이면 페이지를 나눌 수 있습니다.', tone: 'error' })
+        return
+      }
+
+      const caretOffset = readCaretOffset()
+      if (caretOffset !== undefined) {
+        let searchStart = 0
+        for (const [chunkIndex, chunk] of chunks.entries()) {
+          const start = content.indexOf(chunk, searchStart)
+          const end = start + chunk.length
+          searchStart = end
+          if (caretOffset > end && chunkIndex < chunks.length - 1) continue
+          const targetPageIndex = pageIndex + chunkIndex
+          setContentFocus({ pageIndex: targetPageIndex, offset: Math.max(0, Math.min(chunk.length, caretOffset - start)) })
+          setSpreadStartIndex(Math.floor(targetPageIndex / pageSize) * pageSize)
+          break
+        }
+      }
+
       handleDraftChange((currentDraft) => {
-        const page = currentDraft.pages[pageIndex]
-
-        if (!page || page.type !== 'PROFILE' || pageIndex !== 0) {
+        if (!currentDraft.pages[pageIndex] || currentDraft.pages.length + chunks.length - 1 > MAX_RESUME_PAGE_COUNT) {
           return currentDraft
         }
 
-        const chunks = splitMarkdownIntoPageChunks(content)
-
-        if (chunks.length <= 1) {
-          return currentDraft
-        }
-
-        const remainingPages = currentDraft.pages.slice(1)
-        const firstProjectOffset = remainingPages.findIndex((draftPage) => draftPage.type === 'PROJECT')
-        const pagesAfterOverflow = firstProjectOffset === -1
-          ? remainingPages.filter((draftPage) => draftPage.type !== 'FREE')
-          : remainingPages.slice(firstProjectOffset)
-        const availableOverflowPageCount = Math.max(0, MAX_RESUME_PAGE_COUNT - 1 - pagesAfterOverflow.length)
-        const overflowPages = chunks.slice(1, 1 + availableOverflowPageCount).map((chunk): ResumeDraftPage => ({
-          content: chunk,
-          index: 0,
-          type: 'FREE',
-        }))
-
-        return {
-          ...currentDraft,
-          pages: reindexDraftPages([{ ...page, content: chunks[0] ?? '' }, ...overflowPages, ...pagesAfterOverflow].slice(0, MAX_RESUME_PAGE_COUNT)),
-        }
+        return { ...currentDraft, pages: reindexDraftPages([
+          ...currentDraft.pages.slice(0, pageIndex),
+          { ...currentDraft.pages[pageIndex], content: chunks[0] ?? '' },
+          ...chunks.slice(1).map((chunk): ResumeDraftPage => ({
+            content: chunk,
+            index: 0,
+            type: 'FREE',
+          })),
+          ...currentDraft.pages.slice(pageIndex + 1),
+        ]) }
       })
     },
-    [handleDraftChange],
+    [draft.pages, handleDraftChange, pageSize],
   )
 
   const handleCancelEditing = useCallback(() => {
@@ -954,11 +989,11 @@ export function StudentResumePageContent() {
     })
     setSpreadStartIndex((currentIndex) => {
       const nextPageCount = Math.max(1, draft.pages.length - 1)
-      const maxNextSpreadStartIndex = Math.max(0, Math.floor((nextPageCount - 1) / 2) * 2)
+      const maxNextSpreadStartIndex = Math.max(0, Math.floor((nextPageCount - 1) / pageSize) * pageSize)
 
-      return Math.min(currentIndex - (currentIndex % 2), maxNextSpreadStartIndex)
+      return Math.min(currentIndex - (currentIndex % pageSize), maxNextSpreadStartIndex)
     })
-  }, [draft.pages.length, handleDraftChange])
+  }, [draft.pages.length, handleDraftChange, pageSize])
 
   const handleImageUpload = useCallback(
     async ({ file, target }: { readonly file: File; readonly target: ResumeImageTarget }) => {
@@ -1513,7 +1548,7 @@ export function StudentResumePageContent() {
             <button
               className={styles.pageArrow}
               disabled={!canMovePrevious}
-              onClick={() => setSpreadStartIndex(Math.max(0, normalizedSpreadStartIndex - 2))}
+              onClick={() => setSpreadStartIndex(Math.max(0, normalizedSpreadStartIndex - pageSize))}
               type="button"
               aria-label="이전 페이지"
             >
@@ -1535,12 +1570,13 @@ export function StudentResumePageContent() {
                   )
                 }
 
-                const page = draft.pages[pageIndex]
+                const page = displayedDraft.pages[pageIndex]
                 const feedbackMarkers = toPageFeedbackMarkers(page)
 
                 return isEditing ? (
                   <ResumeEditorSheet
                     className={styles.documentSheet}
+                    contentFocusOffset={contentFocus?.pageIndex === pageIndex ? contentFocus.offset : undefined}
                     draft={draft}
                     feedbackMarkers={feedbackMarkers}
                     imageUploadTarget={imageUploadState.kind === 'uploading' ? imageUploadState.target : undefined}
@@ -1550,6 +1586,7 @@ export function StudentResumePageContent() {
                     key={page?.index ?? pageIndex}
                     majors={majors}
                     onChange={handleDraftChange}
+                    onContentFocused={handleContentFocused}
                     onInlineImagePasteUpload={handleInlineImagePasteUpload}
                     onImageUpload={handleImageUpload}
                     onMajorChange={(majorId) => void handleMajorChange(majorId)}
@@ -1559,10 +1596,12 @@ export function StudentResumePageContent() {
                     pageIndex={pageIndex}
                   />
                 ) : (
-                  <ResumeBookSheet
-                    ariaLabel={`${draft.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
+                  <ResumeFeedbackSheet
+                    ariaLabel={`${displayedDraft.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
                     className={styles.documentSheet}
-                    content={toSheetContent(draft, pageIndex)}
+                    content={viewMode === 'feedback'
+                      ? { ...toSheetContent(displayedDraft, pageIndex), activities: [], headline: '' }
+                      : toSheetContent(draft, pageIndex)}
                     feedbackMarkers={feedbackMarkers}
                     key={page?.index ?? pageIndex}
                   />
@@ -1572,7 +1611,7 @@ export function StudentResumePageContent() {
             <button
               className={styles.pageArrow}
               disabled={!canMoveNext}
-              onClick={() => setSpreadStartIndex(Math.min(maxSpreadStartIndex, normalizedSpreadStartIndex + 2))}
+              onClick={() => setSpreadStartIndex(Math.min(maxSpreadStartIndex, normalizedSpreadStartIndex + pageSize))}
               type="button"
               aria-label="다음 페이지"
             >
@@ -1581,10 +1620,10 @@ export function StudentResumePageContent() {
           </div>
 
           <p className={styles.pageCount}>
-            {visiblePageCount} / {draft.pages.length}
+            {visiblePageCount} / {displayedDraft.pages.length}
           </p>
 
-          {isEditing ? (
+          {isResumeReady && viewMode !== 'view' ? (
             <>
               <label className={styles.feedbackToggle}>
                 <span>피드백 보기</span>

@@ -300,7 +300,10 @@ test.describe('student resume management', () => {
       const chooser = page.waitForEvent('filechooser')
       await page.getByRole('button', { name: '프로필 이미지 추가' }).click()
       await (await chooser).setFiles({ buffer: validProfilePng, mimeType: 'image/png', name: 'race.png' })
+      const uploaded = page.waitForResponse((response) => response.url() === `${apiBaseUrl}/image`
+        && response.request().method() === 'POST')
       await page.getByRole('button', { name: '적용하기' }).click()
+      expect((await uploaded).status()).toBe(attempt === 0 ? 500 : 201)
       if (attempt === 0) {
         await expect(page.getByRole('alert').filter({ hasText: '이미지 업로드에 실패했습니다' })).toBeVisible()
         await expect(page.getByRole('button', { name: '프로필 이미지 추가' })).toBeEnabled()
@@ -309,6 +312,7 @@ test.describe('student resume management', () => {
     }
     await expect(page.getByRole('button', { name: '프로필 이미지 변경' }).locator('img')).toHaveAttribute('src', new URL('/retried.png', page.url()).href)
     await expect(page.getByLabel('자기소개 제목')).toHaveValue('실패해도 유지')
+    expect(uploads).toBe(2)
   })
 
   test('race: page ID lookup after saving preserves newer text and assigns IDs to the next save', async ({ page }) => {
@@ -596,7 +600,7 @@ test.describe('student resume management', () => {
     releaseResumeRequest.resolve()
   })
 
-  test('renders edit controls and compact feedback without duplicating the expanded title', async ({ page }, testInfo) => {
+  test('reviews feedback on the document preview without duplicating the expanded title', async ({ page }, testInfo) => {
     let applyRequestBody: unknown
 
     await page.route((url) => url.href === `${apiBaseUrl}/feedback?documentId=resume-id`, async (route) => {
@@ -648,10 +652,9 @@ test.describe('student resume management', () => {
     await page.setViewportSize({ height: 1080, width: 1920 })
     await page.goto('/resume?resumeId=resume-id&mode=feedback')
 
-    await expect(page.getByRole('button', { name: '작성 취소' })).toBeVisible()
-    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeVisible()
-    await expect(page.getByLabel('활동 작성 도구')).toBeVisible()
-    await expect(page.getByLabel('프로젝트 작성 도구')).toBeVisible()
+    await expect(page.getByRole('button', { name: '이력서 수정하기' })).toBeVisible()
+    await expect(page.getByLabel('활동 작성 도구')).toHaveCount(0)
+    await expect(page.getByLabel('프로젝트 작성 도구')).toHaveCount(0)
     const feedbackPanel = page.getByRole('complementary', { name: '피드백 목록' })
 
     await expect(feedbackPanel).toBeVisible()
@@ -662,10 +665,10 @@ test.describe('student resume management', () => {
     await expect(feedbackPanel.getByText('미완료', { exact: true })).toBeVisible()
     await expect(feedbackPanel.getByText('완료', { exact: true })).toBeVisible()
     await expect(
-      page.locator('article[aria-label="이력서 작성 1쪽"]').getByRole('button', { name: /피드백 위치: 문장 근거를 한 줄 더 추가해보세요/ }),
+      page.getByRole('article').nth(0).getByRole('button', { name: /피드백 위치: 문장 근거를 한 줄 더 추가해보세요/ }),
     ).toBeVisible()
     const secondPageFeedbackMarker = page
-      .locator('article[aria-label="이력서 작성 2쪽"]')
+      .getByRole('article').nth(1)
       .getByRole('button', { name: /피드백 위치: 프로젝트 성과를 숫자로 표현해보세요/ })
     await expect(secondPageFeedbackMarker).toBeVisible()
     await secondPageFeedbackMarker.click()
@@ -677,7 +680,7 @@ test.describe('student resume management', () => {
     await expect(hoverMessage).toHaveCSS('opacity', '1')
     const [markerBox, messageBox, pageBox] = await Promise.all([
       secondPageFeedbackMarker.boundingBox(), hoverMessage.boundingBox(),
-      page.locator('article[aria-label="이력서 작성 2쪽"]').boundingBox(),
+      page.getByRole('article').nth(1).boundingBox(),
     ])
     expect(markerBox).not.toBeNull()
     expect(messageBox).not.toBeNull()
@@ -687,7 +690,9 @@ test.describe('student resume management', () => {
     expect(messageBox!.width).toBeLessThanOrEqual(240)
     expect(Math.abs(messageBox!.y - markerBox!.y)).toBeLessThanOrEqual(1)
     expect(Math.abs(messageBox!.height - markerBox!.height)).toBeLessThanOrEqual(1)
-    expect(messageBox!.x + messageBox!.width).toBeLessThanOrEqual(markerBox!.x + 4.5)
+    expect(markerBox!.x - messageBox!.x - messageBox!.width).toBeCloseTo(markerBox!.width * 0.4, 0)
+    await expect(hoverMessage).toHaveText('프로젝트 성과를 숫자로 표현해보세요.')
+    await expect(hoverMessage).toHaveCSS('border-bottom-left-radius', '0px')
     expect(messageBox!.x).toBeGreaterThanOrEqual(pageBox!.x)
     await page.screenshot({ path: testInfo.outputPath('student-feedback-expanded-hover.png'), fullPage: true })
 
@@ -711,6 +716,9 @@ test.describe('student resume management', () => {
 
     await expect.poll(() => applyRequestBody).toEqual({ applied: true, feedbackIds: ['feedback-1'] })
     await expect(page.getByRole('status')).toContainText('1개 피드백을 완료 처리했습니다.')
+    await page.getByRole('button', { name: '이력서 수정하기' }).click()
+    await expect(page.getByLabel('프로젝트 작성 도구')).toBeVisible()
+    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeVisible()
   })
 
   test('allows writing a resume before opening an existing resume', async ({ page }) => {
@@ -1356,7 +1364,7 @@ test.describe('student resume management', () => {
   test('pastes Notion formatted content with images into free pages before the project template', async ({ page }) => {
     let savedPages: Array<{ content: string; index: number; type: string }> = []
     const pastedParagraphs = Array.from(
-      { length: 24 },
+      { length: 18 },
       (_, index) => `<p>노션에서 붙여넣은 긴 활동 문단 ${index + 1}입니다. 문제 정의와 해결 과정을 함께 적었습니다.</p>`,
     ).join('')
     const pastedHtml = `
@@ -1420,24 +1428,28 @@ test.describe('student resume management', () => {
       editor.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
     }, pastedHtml)
 
+    await expect(page.getByRole('textbox', { name: '4쪽 추가 내용', exact: true })).toBeFocused()
+    await page.getByRole('button', { name: '이전 페이지' }).click()
     await expect(firstPageContent.locator('h2')).toHaveText('노션 활동 정리')
     await expect(firstPageContent.locator('strong')).toHaveText('강조된 성과')
     await expect(firstPageContent.locator('u')).toHaveText('밑줄 메모')
     await expect(firstPageContent.locator('img[alt="노션 이미지"]')).toBeVisible()
-    await expect(firstPageContent.locator('img[alt="Screenshot 2026-06-17 at 09.53.01.png"]')).toBeVisible()
-    await expect(firstPageContent.locator('img[alt="clipboard-image.png"]')).toBeVisible()
-    await expect
-      .poll(async () =>
-        firstPageContent
-          .locator('img[alt="clipboard-image.png"]')
-          .evaluate((image) => image instanceof HTMLImageElement && image.naturalWidth),
-      )
-      .toBe(1)
-
     const secondPage = page.getByRole('article', { name: '이력서 작성 2쪽' })
     await expect(secondPage.getByLabel('프로젝트 이름')).toHaveCount(0)
 
+    const imageAlts = ['노션 이미지', 'Screenshot 2026-06-17 at 09.53.01.png', 'clipboard-image.png']
+    const seenImages = new Set<string>()
     for (let attempt = 0; attempt < 5; attempt += 1) {
+      for (const alt of imageAlts) {
+        const image = page.locator(`article img[alt="${alt}"]`)
+        if (await image.count()) {
+          await expect(image).toBeVisible()
+          seenImages.add(alt)
+          if (alt === 'clipboard-image.png') {
+            await expect.poll(() => image.evaluate(element => element instanceof HTMLImageElement && element.naturalWidth)).toBe(1)
+          }
+        }
+      }
       if (await page.getByLabel('프로젝트 이름').count()) {
         break
       }
@@ -1445,6 +1457,7 @@ test.describe('student resume management', () => {
       await page.getByRole('button', { name: '다음 페이지' }).click()
     }
 
+    expect([...seenImages].sort()).toEqual([...imageAlts].sort())
     await expect(page.getByLabel('프로젝트 이름')).toBeVisible()
 
     await page.getByRole('button', { exact: true, name: '저장' }).click()
@@ -1460,6 +1473,9 @@ test.describe('student resume management', () => {
     expect(savedPastedContent).toContain('![Screenshot 2026-06-17 at 09.53.01.png](https://cdn.example.test/notion-capture.png)')
     expect(savedPastedContent).toContain(`![clipboard-image.png](${apiBaseUrl}/uploaded-paste.png)`)
     expect(savedPages[1]?.content).toContain('노션에서 붙여넣은 긴 활동 문단')
+    for (let index = 1; index <= 18; index += 1) {
+      expect(savedPastedContent.split(`노션에서 붙여넣은 긴 활동 문단 ${index}입니다.`)).toHaveLength(2)
+    }
 
     await expect(page.getByLabel('이력서 미리보기')).toBeVisible()
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -1706,6 +1722,7 @@ test.describe('student resume management', () => {
     await page.goto('/resume')
 
     await page.getByRole('button', { name: '이력서 수정하기' }).click()
+    await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
     const secondPageContentInput = page.getByLabel('2쪽 추가 내용')
 
     await secondPageContentInput.fill('태블릿에서도 두 번째 페이지 추가 내용을 작성합니다.')

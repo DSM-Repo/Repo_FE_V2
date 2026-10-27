@@ -18,7 +18,7 @@ export { OptionList } from './OptionList';
 export { PortfolioUrlModal } from './PortfolioUrlModal';
 export { PortfolioResumeSheet } from './PortfolioResumeSheet';
 export { QrCode } from './QrCode';
-export { ResumeBookSheet } from './ResumeBookSheet';
+export { ResumeBookSheet, ResumeFeedbackSheet } from './ResumeBookSheet';
 export { SearchField } from './SearchField';
 export { Switch } from './Switch';
 export { Tag } from './Tag';

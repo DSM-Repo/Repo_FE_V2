@@ -187,8 +187,10 @@ test('expands only feedback details without repeating the title and navigates to
 })
 
 for (const firstX of [0.3, 0.9]) {
-  test(`keeps compact hover content aligned and a single-line comment unduplicated at x=${firstX}`, async ({ page }, testInfo) => {
+  const viewportWidth = 1440
+  test(`keeps detached title-only feedback aligned at x=${firstX} on ${viewportWidth}px`, async ({ page }, testInfo) => {
     await mockFeedbackReview(page, { firstComment: '2345', firstX })
+    await page.setViewportSize({ width: viewportWidth, height: 900 })
     await page.getByRole('switch', { name: '피드백 보기' }).click()
     const panel = page.getByRole('complementary', { name: '피드백 목록' })
     const row = panel.getByRole('button', { name: /2345/ })
@@ -202,16 +204,21 @@ for (const firstX of [0.3, 0.9]) {
     await marker.hover()
     const tooltip = marker.locator('..').locator(':scope > div')
     await expect(tooltip).toHaveCSS('opacity', '1')
-    const [avatarBox, glyphBox, tooltipBox, titleBox, statusBox, sheetBox] = await Promise.all([
+    const [avatarBox, glyphBox, tooltipBox, titleBox, sheetBox] = await Promise.all([
       marker.boundingBox(), marker.locator('svg').boundingBox(), tooltip.boundingBox(),
       tooltip.getByText('2345', { exact: true }).boundingBox(),
-      tooltip.getByText('선택됨', { exact: true }).boundingBox(), sheet.boundingBox(),
+      sheet.boundingBox(),
     ])
     expect(avatarBox).not.toBeNull()
     expect(glyphBox).not.toBeNull()
     expect(tooltipBox).not.toBeNull()
     expect(titleBox).not.toBeNull()
-    expect(statusBox).not.toBeNull()
+    await expect(tooltip).toHaveText('2345')
+    await expect(tooltip.locator('svg')).toHaveCount(0)
+    await expect(tooltip).toHaveCSS('border-bottom-left-radius', '0px')
+    await expect(tooltip).toHaveCSS('border-top-left-radius', '36px')
+    await expect(tooltip).toHaveCSS('border-top-right-radius', '18px')
+    await expect(tooltip).toHaveCSS('border-bottom-right-radius', '18px')
     expect(sheetBox).not.toBeNull()
     expect(avatarBox!.width).toBeLessThanOrEqual(36)
     expect(avatarBox!.height).toBeLessThanOrEqual(36)
@@ -220,15 +227,27 @@ for (const firstX of [0.3, 0.9]) {
     expect(tooltipBox!.width).toBeLessThanOrEqual(240)
     expect(Math.abs(tooltipBox!.y - avatarBox!.y)).toBeLessThanOrEqual(1)
     expect(Math.abs(tooltipBox!.height - avatarBox!.height)).toBeLessThanOrEqual(1)
-    expect(titleBox!.x + titleBox!.width).toBeLessThanOrEqual(statusBox!.x)
+    expect(titleBox!.x + titleBox!.width).toBeLessThanOrEqual(tooltipBox!.x + tooltipBox!.width)
     expect(tooltipBox!.x).toBeGreaterThanOrEqual(sheetBox!.x)
     expect(tooltipBox!.x + tooltipBox!.width).toBeLessThanOrEqual(sheetBox!.x + sheetBox!.width)
     if (firstX > 0.5) {
-      expect(tooltipBox!.x + tooltipBox!.width).toBeLessThanOrEqual(avatarBox!.x + 4.5)
+      expect(avatarBox!.x - tooltipBox!.x - tooltipBox!.width).toBeCloseTo(avatarBox!.width * 0.4, 0)
     } else {
-      expect(tooltipBox!.x).toBeGreaterThanOrEqual(avatarBox!.x + avatarBox!.width - 4.5)
+      expect(tooltipBox!.x - avatarBox!.x - avatarBox!.width).toBeCloseTo(avatarBox!.width * 0.4, 0)
     }
-    await page.screenshot({ path: testInfo.outputPath(`desktop-feedback-hover-${firstX > 0.5 ? 'left' : 'right'}.png`), fullPage: true })
+    const gapX = firstX > 0.5 ? avatarBox!.x - 5 : avatarBox!.x + avatarBox!.width + 5
+    await page.mouse.move(gapX, avatarBox!.y + avatarBox!.height / 2)
+    await expect(tooltip).toHaveCSS('opacity', '1')
+    await page.screenshot({ path: testInfo.outputPath(`feedback-hover-${viewportWidth}-${firstX > 0.5 ? 'left' : 'right'}.png`), fullPage: true })
+    await page.screenshot({
+      path: testInfo.outputPath('feedback-marker.png'),
+      clip: {
+        x: Math.min(avatarBox!.x, tooltipBox!.x) - 8,
+        y: avatarBox!.y - 8,
+        width: Math.max(avatarBox!.x + avatarBox!.width, tooltipBox!.x + tooltipBox!.width) - Math.min(avatarBox!.x, tooltipBox!.x) + 16,
+        height: avatarBox!.height + 16,
+      },
+    })
   })
 }
 

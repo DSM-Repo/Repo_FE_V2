@@ -13,7 +13,8 @@ import {
   type ResumePage,
 } from '@/features/resume/api'
 import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
-import { AppHeader, Icon, ResumeBookSheet, Switch, Toast } from '@/shared/ui'
+import { useResumePageSize } from '@/shared/lib/useResumePageSize'
+import { AppHeader, Icon, ResumeFeedbackSheet, Switch, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
 
@@ -83,6 +84,7 @@ function toSheetContent(resume: Resume, page: ResumePage | undefined): ResumeBoo
     majorName: resume.majorName || '전공미정',
     name: resume.name,
     pageContent: page?.content,
+    pageType: page?.type,
     portfolioUrl: resume.portfolioUrl,
     profileImageUrl: resume.profileImageUrl,
     ...(sheetProject ? { project: sheetProject } : {}),
@@ -241,11 +243,16 @@ export default function TeacherStudentReviewPage() {
 
   const resume = loadState.kind === 'success' ? loadState.resume : undefined
   const pages = useMemo(() => (resume ? [...resume.pages].sort((left, right) => left.index - right.index) : []), [resume])
-  const visiblePageIndexes = pages.length <= 1 ? [0] : [spreadStartIndex, Math.min(spreadStartIndex + 1, pages.length - 1)]
-  const canMovePrevious = spreadStartIndex > 0
-  const canMoveNext = spreadStartIndex + 1 < pages.length - 1
+  const pageSize = useResumePageSize(1180)
+  const lastPageIndex = Math.max(0, Math.floor((pages.length - 1) / pageSize) * pageSize)
+  const startIndex = Math.min(spreadStartIndex - spreadStartIndex % pageSize, lastPageIndex)
+  const visiblePageIndexes = pages.length === 0 ? [0] : Array.from(
+    { length: Math.min(pageSize, pages.length - startIndex) }, (_, offset) => startIndex + offset,
+  )
+  const canMovePrevious = startIndex > 0
+  const canMoveNext = startIndex < lastPageIndex
   const canUpdateVisibility = Boolean(resume)
-  const currentFeedbackPage = pages[spreadStartIndex] ?? pages[0]
+  const currentFeedbackPage = pages[startIndex] ?? pages[0]
 
   const handleVisibilityChange = useCallback(
     async (isPublic: boolean) => {
@@ -350,7 +357,7 @@ export default function TeacherStudentReviewPage() {
     setExpandedFeedbackId(feedback.feedbackId)
     if (feedback.pageDeleted) return
     const pageIndex = pages.findIndex((page) => page.id === feedback.pageId)
-    if (pageIndex >= 0) setSpreadStartIndex(Math.min(pageIndex, Math.max(0, pages.length - 2)))
+    if (pageIndex >= 0) setSpreadStartIndex(pageIndex)
   }, [pages])
 
   const toPageFeedbackMarkers = useCallback(
@@ -551,7 +558,7 @@ export default function TeacherStudentReviewPage() {
                 aria-label="이전 페이지"
                 className={`${styles.pageArrow} ${styles.previousArrow}`}
                 disabled={!canMovePrevious}
-                onClick={() => setSpreadStartIndex((currentIndex) => Math.max(0, currentIndex - 1))}
+                onClick={() => setSpreadStartIndex(Math.max(0, startIndex - pageSize))}
                 type="button"
               >
                 <Icon name="chevron-left" />
@@ -561,7 +568,7 @@ export default function TeacherStudentReviewPage() {
                 {visiblePageIndexes.map((pageIndex) => {
                   const page = pages[pageIndex]
                   return (
-                    <ResumeBookSheet
+                    <ResumeFeedbackSheet
                       ariaLabel={`${resume.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
                       className={styles.documentSheet}
                       content={toSheetContent(resume, page)}
@@ -577,7 +584,7 @@ export default function TeacherStudentReviewPage() {
                 aria-label="다음 페이지"
                 className={`${styles.pageArrow} ${styles.nextArrow}`}
                 disabled={!canMoveNext}
-                onClick={() => setSpreadStartIndex((currentIndex) => Math.min(pages.length - 1, currentIndex + 1))}
+                onClick={() => setSpreadStartIndex(Math.min(lastPageIndex, startIndex + pageSize))}
                 type="button"
               >
                 <Icon name="chevron-right" />
@@ -588,7 +595,7 @@ export default function TeacherStudentReviewPage() {
 
         {resume ? (
           <p className={styles.pageIndicator} aria-label="이력서 페이지">
-            <strong>{Math.min(spreadStartIndex + 1, Math.max(pages.length, 1))}</strong> / {Math.max(pages.length, 1)}
+            <strong>{Math.min(startIndex + pageSize, Math.max(pages.length, 1))}</strong> / {Math.max(pages.length, 1)}
           </p>
         ) : null}
 

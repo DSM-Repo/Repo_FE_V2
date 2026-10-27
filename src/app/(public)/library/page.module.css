@@ -179,6 +179,7 @@
 }
 
 .resumeViewer {
+  container-type: inline-size;
   position: relative;
   display: grid;
   width: min(100%, 1240px);
@@ -348,7 +349,7 @@
   --resume-book-sheet-height: min(
     864px,
     calc(100dvh - var(--repo-size-header-min-height) - 180px),
-    calc((100vw - 116px) * 390 / 551)
+    calc((100cqw - 84px) * 390 / 551)
   );
   --resume-book-sheet-width: calc(var(--resume-book-sheet-height) * 551 / 780);
   --resume-book-sheet-padding: clamp(14px, calc(var(--resume-book-sheet-width) * 0.043), var(--space-6));
@@ -498,6 +499,7 @@
   }
 
   .searchField.searchField {
+    flex: 0 0 auto;
     width: 100%;
   }
 
@@ -506,9 +508,7 @@
   }
 
   .sheets {
-    overflow-x: auto;
-    justify-content: start;
-    scroll-snap-type: x mandatory;
+    justify-content: center;
   }
 
   .documentSheet {
@@ -519,7 +519,6 @@
     );
     --resume-book-sheet-min-height: 0;
 
-    scroll-snap-align: center;
   }
 
   .toastLayer {
