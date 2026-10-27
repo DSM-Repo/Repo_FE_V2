@@ -300,7 +300,10 @@ test.describe('student resume management', () => {
       const chooser = page.waitForEvent('filechooser')
       await page.getByRole('button', { name: '프로필 이미지 추가' }).click()
       await (await chooser).setFiles({ buffer: validProfilePng, mimeType: 'image/png', name: 'race.png' })
+      const uploaded = page.waitForResponse((response) => response.url() === `${apiBaseUrl}/image`
+        && response.request().method() === 'POST')
       await page.getByRole('button', { name: '적용하기' }).click()
+      expect((await uploaded).status()).toBe(attempt === 0 ? 500 : 201)
       if (attempt === 0) {
         await expect(page.getByRole('alert').filter({ hasText: '이미지 업로드에 실패했습니다' })).toBeVisible()
         await expect(page.getByRole('button', { name: '프로필 이미지 추가' })).toBeEnabled()
@@ -309,6 +312,7 @@ test.describe('student resume management', () => {
     }
     await expect(page.getByRole('button', { name: '프로필 이미지 변경' }).locator('img')).toHaveAttribute('src', new URL('/retried.png', page.url()).href)
     await expect(page.getByLabel('자기소개 제목')).toHaveValue('실패해도 유지')
+    expect(uploads).toBe(2)
   })
 
   test('race: page ID lookup after saving preserves newer text and assigns IDs to the next save', async ({ page }) => {
