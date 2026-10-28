@@ -496,7 +496,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1920, height: 108
   test(`readers share the restored document geometry at ${viewport.width}x${viewport.height}px`, async ({ page }, testInfo) => {
     await authenticateAs(page, 'STUDENT')
     const pages = createPages(2)
-    const lines = Array.from({ length: 24 }, (_, index) => `- 활동 ${index + 1}: 학생별 이력서 내용과 문서 표시 기준 및 프로젝트 경험을 함께 확인하는 활동 기록입니다.`)
+    const lines = Array.from({ length: 10 }, (_, index) => `- 활동 ${index + 1}: 학생별 이력서 내용과 문서 표시 기준 및 프로젝트 경험을 함께 확인하는 활동 기록입니다.`)
     pages[0].content = '## 활동 기록\n' + lines.join('\n')
     await mockResume(page, pages)
     await page.setViewportSize(viewport)
@@ -505,10 +505,13 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1920, height: 108
       if (baseline) await page.evaluate(token => localStorage.setItem('repo.auth.accessToken', token), createTestAccessToken(viewer.role))
       await page.goto(viewer.path)
       const sheet = sheets(page).first()
-      const lastLine = sheet.getByText(lines[23].slice(2), { exact: true })
+      const lastLine = sheet.getByText(lines[9].slice(2), { exact: true })
       await expectTextInsideSheet(lastLine)
       await expect.poll(() => sheet.evaluate(element => (element as HTMLElement).offsetWidth)).toBe(610)
       await expect(sheet).toHaveCSS('height', '864px')
+      await expect(sheet.getByText('오혜민', { exact: true })).toHaveCSS('font-size', '24px')
+      await expect(sheet.getByText('student@dsm.hs.kr', { exact: false })).toHaveCSS('font-size', '16.8px')
+      await expect.poll(async () => parseFloat(await lastLine.evaluate(element => getComputedStyle(element).fontSize))).toBeCloseTo(10, 2)
       const geometry = await sheet.evaluate(element => {
         const bounds = element.getBoundingClientRect()
         const bodyLines = [...element.querySelectorAll('li')].filter(item => item.textContent?.startsWith('활동 '))

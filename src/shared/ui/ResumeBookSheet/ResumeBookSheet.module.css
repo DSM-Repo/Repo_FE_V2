@@ -93,7 +93,7 @@
   min-width: 0;
   margin: 0;
   color: var(--repo-text-black);
-  font-size: var(--resume-book-sheet-name-size, var(--repo-font-title-small-size));
+  font-size: calc(var(--resume-book-sheet-name-size, var(--repo-font-title-small-size)) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-title-small-weight);
   line-height: 1.2;
   letter-spacing: 0;
@@ -102,7 +102,7 @@
 
 .major {
   color: var(--repo-gray-500);
-  font-size: var(--resume-book-sheet-major-size, var(--repo-font-body-tiny-size));
+  font-size: calc(var(--resume-book-sheet-major-size, var(--repo-font-body-tiny-size)) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
   overflow-wrap: anywhere;
@@ -111,7 +111,7 @@
 .meta {
   margin: 0;
   color: var(--repo-text-black);
-  font-size: var(--resume-book-sheet-meta-size, var(--repo-font-body-tiny-size));
+  font-size: calc(var(--resume-book-sheet-meta-size, var(--repo-font-body-tiny-size)) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
   overflow-wrap: anywhere;
@@ -181,7 +181,7 @@
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--repo-text-black);
-  font-size: var(--resume-book-sheet-project-name-size, var(--repo-font-title-small-size));
+  font-size: calc(var(--resume-book-sheet-project-name-size, var(--repo-font-title-small-size)) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-title-small-weight);
   line-height: var(--repo-font-title-small-line-height);
   letter-spacing: 0;
@@ -190,7 +190,7 @@
 .projectPeriod {
   margin: 0;
   color: var(--repo-gray-500);
-  font-size: var(--repo-font-body-very-tiny-size);
+  font-size: calc(var(--repo-font-body-very-tiny-size) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-body-very-tiny-weight);
   line-height: var(--repo-font-body-very-tiny-line-height);
 }
@@ -217,7 +217,7 @@
   margin: 0;
   overflow-wrap: anywhere;
   color: var(--repo-text-black);
-  font-size: var(--repo-font-body-tiny-size);
+  font-size: calc(var(--repo-font-body-tiny-size) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
 }
@@ -226,7 +226,7 @@
 .section h3 {
   margin: 0;
   color: var(--repo-text-black);
-  font-size: var(--repo-font-body-tiny-size);
+  font-size: calc(var(--repo-font-body-tiny-size) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-body-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
   letter-spacing: 0;
@@ -241,7 +241,7 @@
 .introBox p {
   margin: 0;
   color: var(--repo-gray-800);
-  font-size: var(--repo-font-resume-small-size);
+  font-size: calc(var(--repo-font-resume-small-size) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-resume-small-weight);
   line-height: var(--repo-font-resume-small-line-height);
 }
@@ -266,7 +266,7 @@
   padding: 5px 12px;
   border-radius: var(--repo-radius-pill);
   background: var(--repo-gray-100);
-  font-size: 8px;
+  font-size: calc(8px * var(--resume-book-text-scale, 1));
   line-height: 1;
   text-align: center;
 }
@@ -284,14 +284,14 @@
   display: grid;
   gap: 3px;
   color: var(--repo-text-black);
-  font-size: 11px;
+  font-size: calc(11px * var(--resume-book-text-scale, 1));
   line-height: 1.25;
 }
 
 .activityList time,
 .detailSection h4 {
   color: var(--repo-gray-500);
-  font-size: 12px;
+  font-size: calc(12px * var(--resume-book-text-scale, 1));
   font-weight: 500;
 }
 
@@ -312,7 +312,7 @@
   padding-left: 16px;
   margin: 0;
   color: var(--repo-text-black);
-  font-size: 11px;
+  font-size: calc(11px * var(--resume-book-text-scale, 1));
   line-height: 1.25;
 }
 
@@ -381,28 +381,28 @@
 
 .markdownHeading1 {
   color: var(--repo-text-black);
-  font-size: var(--repo-font-title-small-size);
+  font-size: calc(var(--repo-font-title-small-size) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-title-small-weight);
   line-height: var(--repo-font-title-small-line-height);
 }
 
 .markdownHeading2 {
   color: var(--repo-text-black);
-  font-size: var(--repo-font-title-tiny-size);
+  font-size: calc(var(--repo-font-title-tiny-size) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
 }
 
 .markdownHeading3 {
   color: var(--repo-text-black);
-  font-size: var(--repo-font-body-tiny-size);
+  font-size: calc(var(--repo-font-body-tiny-size) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
 }
 
 .markdownHeading4 {
   color: var(--repo-text-black);
-  font-size: var(--repo-font-body-very-tiny-size);
+  font-size: calc(var(--repo-font-body-very-tiny-size) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-body-very-tiny-line-height);
 }

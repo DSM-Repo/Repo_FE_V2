@@ -7,16 +7,17 @@
 }
 
 .viewport > .document {
+  --resume-book-text-scale: 1.2;
   --feedback-marker-scale: calc(1 / var(--resume-feedback-scale, 1));
   --resume-book-sheet-width: 610.338461538px;
   --resume-book-sheet-height: 864px;
   --resume-book-sheet-padding: 24px;
   --resume-book-sheet-avatar-size: 56px;
   --resume-book-sheet-header-gap: calc(610.338461538px * 0.028);
-  --resume-book-sheet-name-size: 22px;
+  --resume-book-sheet-name-size: 20px;
   --resume-book-sheet-major-size: 14px;
   --resume-book-sheet-meta-size: 14px;
-  --resume-book-sheet-project-name-size: 24px;
+  --resume-book-sheet-project-name-size: 22px;
   --resume-book-sheet-qr-size: 80px;
   position: absolute;
   inset: 0 auto auto 0;
