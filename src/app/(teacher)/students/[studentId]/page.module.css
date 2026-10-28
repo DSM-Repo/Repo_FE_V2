@@ -67,7 +67,7 @@
 .sheetViewport {
   container-type: inline-size;
   display: grid;
-  width: min(100%, 1280px);
+  width: min(100%, 1380px);
   grid-template-columns: 44px minmax(0, auto) 44px;
   align-items: center;
   justify-content: center;
@@ -91,19 +91,6 @@
   --feedback-balloon-line-height: var(--repo-font-body-tiny-line-height);
   --feedback-balloon-weight: var(--repo-font-body-tiny-weight);
   --feedback-balloon-shadow: 0 2px 6px color-mix(in srgb, var(--repo-text-black) 16%, transparent);
-  --resume-book-sheet-width: min(
-    423px,
-    28vw,
-    calc((100cqw - 148px) / 2),
-    calc((100dvh - var(--repo-size-header-min-height) - var(--review-reserved-block-size)) * 423 / 599)
-  );
-  --resume-book-sheet-height: auto;
-  --resume-book-sheet-padding: clamp(var(--space-4), 1.15vw, var(--space-5));
-  --resume-book-sheet-avatar-size: clamp(44px, 2.6vw, 56px);
-  --resume-book-sheet-name-size: clamp(16px, 1.12vw, 20px);
-  --resume-book-sheet-project-name-size: clamp(16px, 1.16vw, 22px);
-  --resume-book-sheet-qr-size: clamp(56px, 3.6vw, 80px);
-  flex: 0 0 var(--resume-book-sheet-width);
 }
 
 .page[data-feedback-panel-open='true'] .viewer {
@@ -664,14 +651,7 @@
     flex-wrap: wrap;
   }
 
-  .documentSheet {
-    --resume-book-sheet-width: min(
-      423px,
-      calc(100vw - 48px),
-      calc((100dvh - var(--repo-size-header-min-height) - var(--review-reserved-block-size)) * 423 / 599)
-    );
-    --resume-book-sheet-height: auto;
-  }
+
 
   .previousArrow {
     left: 16px;
@@ -764,14 +744,7 @@
     margin-block: 0;
   }
 
-  .documentSheet {
-    --resume-book-sheet-width: min(
-      423px,
-      calc(100vw - 32px),
-      calc((100dvh - var(--repo-size-header-min-height) - var(--review-reserved-block-size)) * 423 / 599)
-    );
-    --resume-book-sheet-height: auto;
-  }
+
 
   .documentEmpty {
     min-height: 288px;

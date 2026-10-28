@@ -1,6 +1,6 @@
 import type { Locator } from '@playwright/test'
 
-import { authenticateAs } from './auth-fixtures'
+import { authenticateAs, createTestAccessToken } from './auth-fixtures'
 import { apiBaseUrl, expect, test, type Page } from './test-fixtures'
 
 type ResumePage = {
@@ -491,3 +491,51 @@ test('one long project paragraph spans pages while preserving all text', async (
   expect(savedText.replace(/\s+/g, ' ').trim()).toBe(paragraph.replace(/\s+/g, ' ').trim())
   await testInfo.attach('long-paragraph-saved-pages', { body: JSON.stringify(savedPages, null, 2), contentType: 'application/json' })
 })
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1920, height: 1080 }, { width: 390, height: 900 }, { width: 390, height: 1080 }]) {
+  test(`readers share the restored document geometry at ${viewport.width}x${viewport.height}px`, async ({ page }, testInfo) => {
+    await authenticateAs(page, 'STUDENT')
+    const pages = createPages(2)
+    const lines = Array.from({ length: 24 }, (_, index) => `- 활동 ${index + 1}: 학생별 이력서 내용과 문서 표시 기준 및 프로젝트 경험을 함께 확인하는 활동 기록입니다.`)
+    pages[0].content = '## 활동 기록\n' + lines.join('\n')
+    await mockResume(page, pages)
+    await page.setViewportSize(viewport)
+    let baseline: { width: number; height: number; lastLineY: number } | undefined
+    for (const viewer of viewers) {
+      if (baseline) await page.evaluate(token => localStorage.setItem('repo.auth.accessToken', token), createTestAccessToken(viewer.role))
+      await page.goto(viewer.path)
+      const sheet = sheets(page).first()
+      const lastLine = sheet.getByText(lines[23].slice(2), { exact: true })
+      await expectTextInsideSheet(lastLine)
+      await expect.poll(() => sheet.evaluate(element => (element as HTMLElement).offsetWidth)).toBe(610)
+      await expect(sheet).toHaveCSS('height', '864px')
+      const geometry = await sheet.evaluate(element => {
+        const bounds = element.getBoundingClientRect()
+        const bodyLines = [...element.querySelectorAll('li')].filter(item => item.textContent?.startsWith('활동 '))
+        const lastLine = bodyLines.at(-1)!
+        return { width: bounds.width, height: bounds.height,
+          lastLineY: (lastLine.getBoundingClientRect().bottom - bodyLines[0].getBoundingClientRect().top) / bounds.height }
+      })
+      if (viewport.width === 1920) {
+        expect(geometry.width).toBeCloseTo(864 * 551 / 780, 0)
+        expect(geometry.height).toBeCloseTo(864, 0)
+      }
+      if (baseline) {
+        expect(geometry.width).toBeCloseTo(baseline.width, 0)
+        expect(geometry.height).toBeCloseTo(baseline.height, 0)
+        expect(geometry.lastLineY).toBeCloseTo(baseline.lastLineY, 3)
+      } else baseline = geometry
+      if (viewer.name === 'library' || viewer.name === 'book') {
+        const previous = (await page.getByRole('button', { name: '이전 페이지', exact: true }).boundingBox())!
+        const next = (await page.getByRole('button', { name: '다음 페이지', exact: true }).boundingBox())!
+        expect(next.x).toBeGreaterThan(previous.x + previous.width)
+      }
+      const sheetBounds = (await sheet.boundingBox())!
+      for (const name of ['이전 페이지', '다음 페이지']) {
+        const arrow = (await page.getByRole('button', { name, exact: true }).boundingBox())!
+        expect(arrow.x + arrow.width <= sheetBounds.x + 0.5 || arrow.x >= sheetBounds.x + sheetBounds.width - 0.5 || arrow.y >= sheetBounds.y + sheetBounds.height - 0.5).toBe(true)
+      }
+      await page.screenshot({ path: testInfo.outputPath(`${viewer.name}-restored-size.png`), fullPage: true })
+    }
+  })
+}

@@ -243,7 +243,7 @@ export default function TeacherStudentReviewPage() {
 
   const resume = loadState.kind === 'success' ? loadState.resume : undefined
   const pages = useMemo(() => (resume ? [...resume.pages].sort((left, right) => left.index - right.index) : []), [resume])
-  const pageSize = useResumePageSize(1180)
+  const pageSize = useResumePageSize(980)
   const lastPageIndex = Math.max(0, Math.floor((pages.length - 1) / pageSize) * pageSize)
   const startIndex = Math.min(spreadStartIndex - spreadStartIndex % pageSize, lastPageIndex)
   const visiblePageIndexes = pages.length === 0 ? [0] : Array.from(
@@ -553,7 +553,7 @@ export default function TeacherStudentReviewPage() {
           ) : null}
 
           {resume ? (
-            <div className={styles.sheetViewport}>
+            <div data-resume-viewport className={styles.sheetViewport}>
               <button
                 aria-label="이전 페이지"
                 className={`${styles.pageArrow} ${styles.previousArrow}`}
@@ -569,6 +569,7 @@ export default function TeacherStudentReviewPage() {
                   const page = pages[pageIndex]
                   return (
                     <ResumeFeedbackSheet
+                      pagesPerSpread={pageSize}
                       ariaLabel={`${resume.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
                       className={styles.documentSheet}
                       content={toSheetContent(resume, page)}

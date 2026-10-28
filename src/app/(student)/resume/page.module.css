@@ -124,7 +124,7 @@
 .sheetViewport {
   container-type: inline-size;
   display: grid;
-  width: min(100%, 1240px);
+  width: min(100%, 1380px);
   min-height: auto;
   grid-template-columns: 24px minmax(0, auto) 24px;
   gap: 8px;

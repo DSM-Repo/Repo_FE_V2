@@ -1544,7 +1544,7 @@ export function StudentResumePageContent() {
             )}
           </div>
 
-          <div className={styles.sheetViewport}>
+          <div data-resume-viewport className={styles.sheetViewport}>
             <button
               className={styles.pageArrow}
               disabled={!canMovePrevious}
@@ -1597,6 +1597,7 @@ export function StudentResumePageContent() {
                   />
                 ) : (
                   <ResumeFeedbackSheet
+                      pagesPerSpread={pageSize}
                     ariaLabel={`${displayedDraft.name} 이력서 ${(page?.index ?? pageIndex) + 1}쪽`}
                     className={styles.documentSheet}
                     content={viewMode === 'feedback'
