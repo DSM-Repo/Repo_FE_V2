@@ -1658,6 +1658,88 @@ test.describe('student resume management', () => {
     await page.screenshot({ path: testInfo.outputPath('heading-hierarchy.png') })
   })
 
+  for (const width of [390, 1280]) {
+    test(`keeps Shift Enter quotes connected after save and reload at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 })
+      let resume = raceResume('resume-id', '')
+      await page.route(`${apiBaseUrl}/resume/resume-id`, (route) => route.fulfill({ json: resume }))
+      await page.route('**/resume/save', async (route) => {
+        const body = route.request().postDataJSON() as { pages: typeof resume.pages }
+        resume = { ...resume, pages: body.pages.map((item, index) => ({ ...item, id: `saved-${index}` })) }
+        await route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-10-28T00:00:00Z' } })
+      })
+      await page.goto('/resume?mode=edit')
+      const editor = page.getByRole('textbox', { name: '1쪽 추가 내용' })
+      await editor.pressSequentially('> ')
+      await page.keyboard.insertText('인용 첫 줄')
+      await editor.press('Shift+Enter')
+      await page.keyboard.insertText('인용 둘째 줄')
+      await editor.press('Shift+Enter')
+      await page.keyboard.insertText('인용 셋째 줄')
+      await expect(editor.locator('blockquote')).toHaveCount(1)
+      await page.getByRole('button', { exact: true, name: '저장' }).click()
+      await expect.poll(() => resume.pages[0]?.content).toBe('> 인용 첫 줄\n> 인용 둘째 줄\n> 인용 셋째 줄')
+      const previewQuote = page.getByLabel('이력서 미리보기').locator('blockquote')
+      await expect(previewQuote).toHaveCount(1)
+      await expect(previewQuote.locator('br')).toHaveCount(2)
+      await page.getByRole('button', { name: '이력서 수정하기' }).click()
+      await expect(editor.locator('blockquote')).toHaveCount(1)
+      await expect(editor.locator('blockquote br')).toHaveCount(2)
+      await page.getByRole('button', { exact: true, name: '저장' }).click()
+      await page.reload()
+      await expect(previewQuote).toHaveCount(1)
+      await expect(previewQuote.locator('br')).toHaveCount(2)
+      await page.screenshot({ path: testInfo.outputPath('connected-quotes.png') })
+
+      await page.getByRole('button', { name: '이력서 수정하기' }).click()
+      await editor.fill('')
+      await editor.evaluate((element) => {
+        const clipboardData = new DataTransfer()
+        clipboardData.setData('text/plain', '> **굵은\n> 인용**\n> *기울임\n> 연결*\n> <u>밑줄\n> 연결</u>\n> \n> [링크](https://example.com)\n\n> 별도 인용\n일반 본문')
+        element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
+      })
+      await expect(editor.locator('blockquote')).toHaveCount(2)
+      await expect(editor.locator('blockquote').first().locator('br')).toHaveCount(7)
+      await expect(editor.locator('blockquote strong')).toHaveText('굵은인용')
+      await page.getByRole('button', { exact: true, name: '저장' }).click()
+      await expect(previewQuote).toHaveCount(2)
+      await expect(previewQuote.first().locator('br')).toHaveCount(7)
+      await expect(previewQuote.first().locator('strong')).toHaveText('굵은인용')
+      await expect(previewQuote.first().locator('em br')).toHaveCount(1)
+      await expect(previewQuote.first().locator('u br')).toHaveCount(1)
+      await expect(previewQuote.first().getByRole('link')).toHaveText('링크')
+      await expect(previewQuote.nth(1)).toHaveText('별도 인용')
+    })
+  }
+
+  for (const { tool, selector } of [
+    { tool: '굵게', selector: 'strong, b' },
+    { tool: '기울임', selector: 'em, i' },
+    { tool: '밑줄', selector: 'u' },
+  ]) {
+    test(`preserves ${tool} across Shift Enter quote lines`, async ({ page }) => {
+      await page.route('**/resume/save', (route) => route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-10-28T00:00:00Z' } }))
+      await page.goto('/resume?mode=edit')
+      const editor = page.getByRole('textbox', { name: '1쪽 추가 내용' })
+      await editor.pressSequentially('> ')
+      await page.keyboard.insertText('서식 첫 줄')
+      await editor.press('ControlOrMeta+a')
+      await page.getByLabel('활동 작성 도구').getByRole('button', { name: tool, exact: true }).click()
+      await page.keyboard.press('ArrowRight')
+      await editor.press('Shift+Enter')
+      await page.keyboard.insertText('서식 둘째 줄')
+      await expect(editor.locator(selector)).toHaveText(/서식 첫 줄\s*서식 둘째 줄/)
+      await page.getByRole('button', { exact: true, name: '저장' }).click()
+      const quote = page.getByLabel('이력서 미리보기').locator('blockquote')
+      await expect(quote).toHaveCount(1)
+      await expect(quote.locator(selector)).toHaveText(/서식 첫 줄\s*서식 둘째 줄/)
+      await expect(quote.locator(`${selector.split(', ')[0]} br`)).toHaveCount(1)
+      await page.getByRole('button', { name: '이력서 수정하기' }).click()
+      await expect(editor.locator(selector)).toHaveText(/서식 첫 줄\s*서식 둘째 줄/)
+      await expect(editor.locator('blockquote br')).toHaveCount(1)
+    })
+  }
+
   test('preserves Shift Enter line breaks when saving markdown blocks', async ({ page }) => {
     let savedActivityContent = ''
 
