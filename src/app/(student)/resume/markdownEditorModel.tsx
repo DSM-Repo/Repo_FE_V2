@@ -318,7 +318,7 @@ function toEditableMarkdownBlock(line: string): EditableMarkdownBlock {
     return { kind: 'heading', level: 1, text: line.slice(2) }
   }
 
-  if (line.startsWith('> ')) {
+  if (line === '>' || line.startsWith('> ')) {
     return { kind: 'quote', text: line.slice(2) }
   }
 
@@ -336,11 +336,23 @@ function toEditableMarkdownBlock(line: string): EditableMarkdownBlock {
 export function toEditableMarkdownBlocks(value: string): readonly EditableMarkdownBlock[] {
   const lines = value ? value.split('\n') : ['']
 
-  return lines.map(toEditableMarkdownBlock)
+  const blocks: EditableMarkdownBlock[] = []
+
+  for (const line of lines) {
+    const block = toEditableMarkdownBlock(line)
+    const previous = blocks.at(-1)
+    if (block.kind === 'quote' && previous?.kind === 'quote') {
+      blocks[blocks.length - 1] = { kind: 'quote', text: `${previous.text}\n${block.text}` }
+    } else {
+      blocks.push(block)
+    }
+  }
+
+  return blocks
 }
 
 function appendInlineNodes(parent: HTMLElement, value: string): void {
-  const pattern = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|<u>(.*?)<\/u>)/g
+  const pattern = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|<u>([\s\S]*?)<\/u>)/g
   let currentIndex = 0
   let match = pattern.exec(value)
 
@@ -420,7 +432,18 @@ function createBlockElement(block: EditableMarkdownBlock, styles: EditorBlockCla
     return element
   }
 
-  if (block.text) {
+  if (block.kind === 'quote') {
+    appendInlineNodes(element, block.text)
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+    const textNodes: Text[] = []
+    while (walker.nextNode()) textNodes.push(walker.currentNode as Text)
+    for (const textNode of textNodes) {
+      const lines = textNode.data.split('\n')
+      textNode.replaceWith(...lines.flatMap((line, index) => index === 0 ? [line] : [document.createElement('br'), line]))
+    }
+    // Chromium needs a trailing placeholder to keep an empty final line editable.
+    if (!block.text || block.text.endsWith('\n')) element.append(document.createElement('br'))
+  } else if (block.text) {
     appendInlineNodes(element, block.text)
   } else {
     element.append(document.createElement('br'))
@@ -449,6 +472,32 @@ function findEditorBlock(editor: HTMLElement, node: Node): HTMLElement {
   }
 
   return block && editor.contains(block) ? block : editor
+}
+
+export function exitMarkdownQuote(editor: HTMLElement, selection: Selection, styles: EditorBlockClassNames): boolean {
+  if (selection.rangeCount === 0) return false
+  const range = selection.getRangeAt(0)
+  if (!editor.contains(range.startContainer)) return false
+  const quote = findEditorBlock(editor, range.startContainer)
+  if (quote.tagName !== 'BLOCKQUOTE' || !quote.contains(range.endContainer)) return false
+
+  range.deleteContents()
+  const remainder = range.cloneRange()
+  remainder.setEnd(quote, quote.childNodes.length)
+  const content = remainder.extractContents()
+  const paragraph = createBlockElement({ kind: 'paragraph', text: '' }, styles)
+  if (content.textContent || content.querySelector('img')) paragraph.replaceChildren(content)
+
+  if (quote.textContent || quote.querySelector('img')) {
+    quote.after(paragraph)
+  } else {
+    quote.replaceWith(paragraph)
+  }
+  range.setStart(paragraph, 0)
+  range.collapse(true)
+  selection.removeAllRanges()
+  selection.addRange(range)
+  return true
 }
 
 export function applyMarkdownBlockShortcut(editor: HTMLElement, selection: Selection, styles: EditorBlockClassNames): boolean {

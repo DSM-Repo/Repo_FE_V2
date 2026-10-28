@@ -332,7 +332,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
     () => (resumeLoadState.kind === 'success' ? toLibrarySheetPages(resumeLoadState.resumes, filteredStudents, activeFilters) : []),
     [activeFilters, filteredStudents, resumeLoadState],
   )
-  const pageSize = useResumePageSize(720)
+  const pageSize = useResumePageSize(980)
   const lastPageIndex = Math.max(0, Math.floor((librarySheetPages.length - 1) / pageSize) * pageSize)
   const startIndex = Math.min(visiblePageIndex - visiblePageIndex % pageSize, lastPageIndex)
   const visibleResumePages = librarySheetPages.slice(startIndex, startIndex + pageSize)
@@ -638,7 +638,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                 ))}
               </div>
             ) : null}
-            <div className={styles.resumeViewer} aria-live="polite">
+            <div data-resume-viewport className={styles.resumeViewer} aria-live="polite">
               {studentSearchState.kind === 'loading' ? (
                 <p className={styles.emptyMessage}>학생 이력서를 불러오는 중입니다.</p>
               ) : null}
@@ -682,8 +682,8 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
                   <div className={styles.sheets}>
                     {visibleResumePages.map(({ key, page, resume }) => (
                       <ResumeFeedbackSheet
+                        pagesPerSpread={pageSize}
                         ariaLabel={`${resume.name} 이력서 ${page.index + 1}쪽`}
-                        className={styles.documentSheet}
                         content={toSheetContent(resume, page)}
                         key={key}
                       />

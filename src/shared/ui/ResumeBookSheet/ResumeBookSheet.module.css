@@ -393,12 +393,18 @@
   line-height: var(--repo-font-title-tiny-line-height);
 }
 
-.markdownHeading3,
-.markdownHeading4 {
+.markdownHeading3 {
   color: var(--repo-text-black);
   font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
+}
+
+.markdownHeading4 {
+  color: var(--repo-text-black);
+  font-size: var(--repo-font-body-very-tiny-size);
+  font-weight: var(--repo-font-title-tiny-weight);
+  line-height: var(--repo-font-body-very-tiny-line-height);
 }
 
 .pageContent blockquote,

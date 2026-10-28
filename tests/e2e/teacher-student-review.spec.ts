@@ -149,7 +149,7 @@ test.describe('teacher student portfolio review', () => {
     await expect(page.getByText('학생 이력서를 불러올 수 없습니다.')).toHaveCount(0)
     await expect(page.getByText('김학생')).toBeVisible()
     await expect(page.getByText('TypeScript')).toBeVisible()
-    await expect(page.getByLabel('김학생 이력서 1쪽')).toHaveCSS('aspect-ratio', '423 / 599')
+    await expect(page.getByLabel('김학생 이력서 1쪽')).toHaveCSS('aspect-ratio', '551 / 780')
     const sheetBox = await page.getByLabel('김학생 이력서 1쪽').boundingBox()
     expect(sheetBox).not.toBeNull()
     expect(sheetBox?.width).toBeGreaterThan(360)

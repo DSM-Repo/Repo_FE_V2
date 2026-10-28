@@ -113,7 +113,7 @@ function toMarkdownBlock(line: string): MarkdownBlock | undefined {
     return { kind: 'heading', level: 1, text: trimmedLine.slice(2) }
   }
 
-  if (trimmedLine.startsWith('> ')) {
+  if (trimmedLine === '>' || trimmedLine.startsWith('> ')) {
     return { kind: 'quote', text: trimmedLine.slice(2) }
   }
 
@@ -150,8 +150,17 @@ function toSafeImageSrc(value: string) {
   return normalizeDisplayImageUrl(value, RESUME_BOOK_API_BASE_URL) || undefined
 }
 
+function renderMarkdownText(value: string) {
+  return value.split('\n').map((line, index) => (
+    <Fragment key={index}>
+      {index > 0 && <br />}
+      {line}
+    </Fragment>
+  ))
+}
+
 function renderMarkdownInline(value: string): readonly ReactNode[] {
-  const pattern = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|<u>(.*?)<\/u>)/g
+  const pattern = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|<u>([\s\S]*?)<\/u>)/g
   const nodes: ReactNode[] = []
   let currentIndex = 0
   let match = pattern.exec(value)
@@ -161,7 +170,7 @@ function renderMarkdownInline(value: string): readonly ReactNode[] {
     const matchText = match[0] ?? ''
 
     if (matchStart > currentIndex) {
-      nodes.push(value.slice(currentIndex, matchStart))
+      nodes.push(renderMarkdownText(value.slice(currentIndex, matchStart)))
     }
 
     const imageAlt = match[2]
@@ -188,18 +197,18 @@ function renderMarkdownInline(value: string): readonly ReactNode[] {
       nodes.push(
         safeHref ? (
           <a href={safeHref} key={key} rel="noreferrer" target="_blank">
-            {linkText}
+            {renderMarkdownText(linkText)}
           </a>
         ) : (
-          <span key={key}>{linkText}</span>
+          <span key={key}>{renderMarkdownText(linkText)}</span>
         ),
       )
     } else if (boldText !== undefined) {
-      nodes.push(<strong key={key}>{boldText}</strong>)
+      nodes.push(<strong key={key}>{renderMarkdownText(boldText)}</strong>)
     } else if (italicText !== undefined) {
-      nodes.push(<em key={key}>{italicText}</em>)
+      nodes.push(<em key={key}>{renderMarkdownText(italicText)}</em>)
     } else if (underlineText !== undefined) {
-      nodes.push(<u key={key}>{underlineText}</u>)
+      nodes.push(<u key={key}>{renderMarkdownText(underlineText)}</u>)
     }
 
     currentIndex = matchStart + matchText.length
@@ -207,7 +216,7 @@ function renderMarkdownInline(value: string): readonly ReactNode[] {
   }
 
   if (currentIndex < value.length) {
-    nodes.push(value.slice(currentIndex))
+    nodes.push(renderMarkdownText(value.slice(currentIndex)))
   }
 
   return nodes
@@ -251,7 +260,7 @@ function normalizeStoredMarkdown(value: string) {
     .replace(/<u[^>]*>/gi, '<u>')
     .replace(/<\/u>/gi, '</u>')
     .replace(/<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)')
-    .replace(/<[^>]+>/g, '')
+    .replace(/<(?!\/?u\b)[^>]+>/g, '')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
@@ -292,7 +301,11 @@ function renderMarkdownBlock(block: MarkdownBlock, index: number) {
     case 'paragraph':
       return <p key={index}>{renderMarkdownInline(block.text)}</p>
     case 'quote':
-      return <blockquote key={index}>{renderMarkdownInline(block.text)}</blockquote>
+      return (
+        <blockquote key={index}>
+          {renderMarkdownInline(block.text)}
+        </blockquote>
+      )
     case 'bulletList':
       return (
         <ul className={styles.markdownBulletList} key={index}>
@@ -305,10 +318,19 @@ function renderMarkdownBlock(block: MarkdownBlock, index: number) {
 }
 
 export function MarkdownContent({ value }: { readonly value: string }) {
-  const blocks = normalizeStoredMarkdown(value)
-    .split('\n')
-    .map(toMarkdownBlock)
-    .filter((block) => block !== undefined)
+  const blocks: MarkdownBlock[] = []
+  let previousWasQuote = false
+
+  for (const line of normalizeStoredMarkdown(value).split('\n')) {
+    const block = toMarkdownBlock(line)
+    const previous = blocks.at(-1)
+    if (block?.kind === 'quote' && previousWasQuote && previous?.kind === 'quote') {
+      blocks[blocks.length - 1] = { kind: 'quote', text: `${previous.text}\n${block.text}` }
+    } else if (block) {
+      blocks.push(block)
+    }
+    previousWasQuote = block?.kind === 'quote'
+  }
 
   return <>{blocks.map((block, index) => <Fragment key={`${block.kind}-${index}`}>{renderMarkdownBlock(block, index)}</Fragment>)}</>
 }

@@ -97,7 +97,7 @@ export default function ResumeBookPage() {
   const studentId = parseStudentId(params.bookId)
   const [loadState, setLoadState] = useState<ResumeLoadState>({ kind: 'loading' })
   const [pageIndex, setPageIndex] = useState(0)
-  const pageSize = useResumePageSize(1080)
+  const pageSize = useResumePageSize(980)
   const pageState: ResumeLoadState = useMemo(
     () =>
       studentId === undefined
@@ -196,7 +196,7 @@ export default function ResumeBookPage() {
                       전체 PDF 다운로드
                     </Button>
                   </div>
-                  <div className={styles.sheetViewport}>
+                  <div data-resume-viewport className={styles.sheetViewport}>
                     <button
                       aria-label="이전 페이지"
                       className={styles.pageArrow}
@@ -209,8 +209,8 @@ export default function ResumeBookPage() {
                     <div className={styles.sheets}>
                       {visiblePages.map((page) => (
                         <ResumeFeedbackSheet
+                          pagesPerSpread={pageSize}
                           ariaLabel={`${pageState.resume.name} 이력서 ${page.index + 1}쪽`}
-                          className={styles.documentSheet}
                           content={toSheetContent(pageState.resume, page)}
                           key={page.id}
                         />

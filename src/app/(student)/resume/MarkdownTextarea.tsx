@@ -8,6 +8,7 @@ import {
   applyMarkdownBlockCommand,
   clipboardHtmlToMarkdown,
   insertMarkdownAtSelection,
+  exitMarkdownQuote,
   markdownTools,
   renderEditorMarkdown,
   serializeEditorMarkdown,
@@ -324,6 +325,16 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
       event.preventDefault()
       applyCommand('bold')
       return
+    }
+
+    if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey && !event.nativeEvent.isComposing) {
+      const editor = editorRef.current
+      const selection = window.getSelection()
+      if (editor && selection && exitMarkdownQuote(editor, selection, toEditorStyles())) {
+        event.preventDefault()
+        syncMarkdownValue(onRichPaste)
+        return
+      }
     }
 
     if (event.key !== ' ' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.nativeEvent.isComposing) {
