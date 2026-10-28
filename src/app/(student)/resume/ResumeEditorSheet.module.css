@@ -734,9 +734,9 @@
 
 .markdownEditor h4,
 .markdownEditorHeading4 {
-  font-size: var(--repo-font-body-tiny-size);
+  font-size: var(--repo-font-body-very-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
-  line-height: var(--repo-font-body-tiny-line-height);
+  line-height: var(--repo-font-body-very-tiny-line-height);
 }
 
 .markdownEditor blockquote,

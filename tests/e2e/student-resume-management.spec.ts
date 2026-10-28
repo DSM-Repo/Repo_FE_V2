@@ -1586,7 +1586,7 @@ test.describe('student resume management', () => {
       { fontSize: '24px', markdown: '# 프로젝트 경험', selector: 'h1', shortcut: '#', text: '프로젝트 경험' },
       { fontSize: '16px', markdown: '## 맡은 역할', selector: 'h2', shortcut: '##', text: '맡은 역할' },
       { fontSize: '14px', markdown: '### 문제 해결', selector: 'h3', shortcut: '###', text: '문제 해결' },
-      { fontSize: '14px', markdown: '#### 회고', selector: 'h4', shortcut: '####', text: '회고' },
+      { fontSize: '12px', markdown: '#### 회고', selector: 'h4', shortcut: '####', text: '회고' },
       { fontSize: '10px', markdown: '> 사용자 피드백', selector: 'blockquote', shortcut: '>', text: '사용자 피드백' },
     ]) {
       await pageContentInput.fill('')
@@ -1638,6 +1638,24 @@ test.describe('student resume management', () => {
     await expect(pageContentInput.locator('hr')).toBeVisible()
     await page.getByRole('button', { exact: true, name: '저장' }).click()
     await expect.poll(() => savedActivityContent).toBe('---')
+  })
+
+  test('distinguishes H3 and H4 in the editor and saved preview', async ({ page }, testInfo) => {
+    await page.route('**/resume/save', (route) => route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-10-28T00:00:00Z' } }))
+    await page.goto('/resume?mode=edit')
+    const editor = page.getByRole('textbox', { name: '1쪽 추가 내용' })
+    await editor.evaluate((element) => {
+      const clipboardData = new DataTransfer()
+      clipboardData.setData('text/plain', '### 제목 삼\n#### 제목 사')
+      element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
+    })
+    await expect(editor.locator('h3')).toHaveCSS('font-size', '14px')
+    await expect(editor.locator('h4')).toHaveCSS('font-size', '12px')
+    await page.getByRole('button', { exact: true, name: '저장' }).click()
+    const preview = page.getByLabel('이력서 미리보기')
+    await expect(preview.locator('h3').filter({ hasText: '제목 삼' })).toHaveCSS('font-size', '14px')
+    await expect(preview.locator('h4').filter({ hasText: '제목 사' })).toHaveCSS('font-size', '12px')
+    await page.screenshot({ path: testInfo.outputPath('heading-hierarchy.png') })
   })
 
   test('preserves Shift Enter line breaks when saving markdown blocks', async ({ page }) => {

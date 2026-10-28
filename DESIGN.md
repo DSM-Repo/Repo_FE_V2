@@ -170,6 +170,7 @@ All spacing derives from 4px.
 ### ResumeEditorSheet
 - **Structure**: document-sized editable sheet with compact identity header, muted intro panel, skill chips, markdown activity/project body, and optional QR/project image placeholder
 - **Variants**: profile page, project page, free page
+- **Markdown hierarchy**: H1 uses title/small (24px), H2 title/tiny (16px), H3 body/tiny (14px) and H4 body/very-tiny (12px), all with title/tiny semibold weight. Editor and saved readers use the same scale.
 - **States**: editable text, placeholder, focus, empty skill list, hover-revealed skill delete
 - **Layout**: mirrors the resume preview density rather than form density; controls keep transparent document styling and use existing typography tokens
 - **Accessibility**: editable fields keep labels through visually hidden text, toolbar buttons expose action labels, and focus remains visible without changing sheet geometry
