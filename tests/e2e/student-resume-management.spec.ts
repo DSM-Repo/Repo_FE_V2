@@ -1740,6 +1740,45 @@ test.describe('student resume management', () => {
     })
   }
 
+  for (const position of ['end', 'middle', 'empty']) {
+    test(`Enter exits a quote into normal text at ${position}`, async ({ page }) => {
+      let savedContent = ''
+      await page.route('**/resume/save', async (route) => {
+        savedContent = route.request().postDataJSON().pages[0].content
+        await route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-10-28T00:00:00Z' } })
+      })
+      await page.goto('/resume?mode=edit')
+      const editor = page.getByRole('textbox', { name: '1쪽 추가 내용' })
+      await editor.pressSequentially('> ')
+      if (position !== 'empty') {
+        await page.keyboard.insertText('인용 첫 줄')
+        await editor.press('Shift+Enter')
+        await page.keyboard.insertText('앞부분뒷부분')
+      }
+      if (position === 'middle') {
+        await editor.press('ArrowLeft')
+        await editor.press('ArrowLeft')
+        await editor.press('ArrowLeft')
+      }
+      await editor.press('Enter')
+      await expect.poll(() => editor.evaluate(() => {
+        const node = window.getSelection()?.anchorNode
+        const element = node instanceof HTMLElement ? node : node?.parentElement
+        return element?.closest('blockquote') === null
+      })).toBe(true)
+      await page.keyboard.insertText('일반 본문')
+      await expect(editor.locator('blockquote')).toHaveCount(position === 'empty' ? 0 : 1)
+      if (position !== 'empty') await expect(editor.locator('blockquote')).not.toContainText('일반 본문')
+      await page.getByRole('button', { exact: true, name: '저장' }).click()
+      const expected = position === 'empty' ? '일반 본문'
+        : position === 'middle' ? '> 인용 첫 줄\n> 앞부분\n일반 본문뒷부분'
+        : '> 인용 첫 줄\n> 앞부분뒷부분\n일반 본문'
+      await expect.poll(() => savedContent).toBe(expected)
+      const preview = page.getByLabel('이력서 미리보기')
+      await expect(preview.locator('p').filter({ hasText: '일반 본문' })).toHaveCount(1)
+    })
+  }
+
   test('preserves Shift Enter line breaks when saving markdown blocks', async ({ page }) => {
     let savedActivityContent = ''
 

@@ -474,6 +474,32 @@ function findEditorBlock(editor: HTMLElement, node: Node): HTMLElement {
   return block && editor.contains(block) ? block : editor
 }
 
+export function exitMarkdownQuote(editor: HTMLElement, selection: Selection, styles: EditorBlockClassNames): boolean {
+  if (selection.rangeCount === 0) return false
+  const range = selection.getRangeAt(0)
+  if (!editor.contains(range.startContainer)) return false
+  const quote = findEditorBlock(editor, range.startContainer)
+  if (quote.tagName !== 'BLOCKQUOTE' || !quote.contains(range.endContainer)) return false
+
+  range.deleteContents()
+  const remainder = range.cloneRange()
+  remainder.setEnd(quote, quote.childNodes.length)
+  const content = remainder.extractContents()
+  const paragraph = createBlockElement({ kind: 'paragraph', text: '' }, styles)
+  if (content.textContent || content.querySelector('img')) paragraph.replaceChildren(content)
+
+  if (quote.textContent || quote.querySelector('img')) {
+    quote.after(paragraph)
+  } else {
+    quote.replaceWith(paragraph)
+  }
+  range.setStart(paragraph, 0)
+  range.collapse(true)
+  selection.removeAllRanges()
+  selection.addRange(range)
+  return true
+}
+
 export function applyMarkdownBlockShortcut(editor: HTMLElement, selection: Selection, styles: EditorBlockClassNames): boolean {
   if (selection.rangeCount === 0 || !selection.isCollapsed) {
     return false
