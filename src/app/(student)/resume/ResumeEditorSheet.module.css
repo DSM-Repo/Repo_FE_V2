@@ -385,7 +385,7 @@
 
 .introTitleInput {
   min-height: 1.4em;
-  font-size: var(--repo-font-body-tiny-size);
+  font-size: calc(var(--repo-font-body-tiny-size) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
 }
@@ -400,7 +400,7 @@
   background: transparent;
   resize: none;
   field-sizing: content;
-  font-size: var(--repo-font-resume-small-size);
+  font-size: calc(var(--repo-font-resume-small-size) * var(--resume-book-text-scale, 1));
   font-weight: var(--repo-font-resume-small-weight);
   line-height: var(--repo-font-resume-small-line-height);
   letter-spacing: 0;

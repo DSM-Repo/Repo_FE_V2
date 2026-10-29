@@ -6,7 +6,8 @@
   flex-shrink: 0;
 }
 
-.viewport > .document {
+.viewport > .document,
+.viewport > article {
   --resume-book-text-scale: 1.2;
   --feedback-marker-scale: calc(1 / var(--resume-feedback-scale, 1));
   --resume-book-sheet-width: 610.338461538px;
@@ -27,4 +28,11 @@
   aspect-ratio: 551 / 780;
   transform: scale(var(--resume-feedback-scale, 1));
   transform-origin: top left;
+}
+
+.viewport > article[aria-label^='이력서 작성'] {
+  --resume-book-sheet-name-size: 24px;
+  --resume-book-sheet-major-size: 16.8px;
+  --resume-book-sheet-meta-size: 16.8px;
+  --resume-book-sheet-project-name-size: 26.4px;
 }

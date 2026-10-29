@@ -295,12 +295,17 @@
 }
 
 .loadingMessages {
+  pointer-events: none;
   position: absolute;
   top: 40px;
   left: 64px;
   display: grid;
   gap: 6px;
   max-width: min(420px, calc(100% - 128px));
+}
+
+.loadingMessages button {
+  pointer-events: auto;
 }
 
 .loadingMessage {

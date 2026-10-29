@@ -164,7 +164,7 @@ for (const viewer of viewers) {
   })
 }
 
-const projectParagraphs = Array.from({ length: 40 }, (_, index) => `프로젝트 기록 ${String(index + 1).padStart(2, '0')}: 구현 과정과 결과를 정리했습니다.`)
+const projectParagraphs = Array.from({ length: 120 }, (_, index) => `프로젝트 기록 ${String(index + 1).padStart(2, '0')}: 구현 과정과 결과를 정리했습니다.`)
 
 for (const width of [390, 1280]) {
   for (const input of ['typing', 'composition', 'paste']) {
@@ -252,7 +252,7 @@ for (const tag of ['strong', 'a']) {
 test('pagination at a heading boundary preserves heading and divider blocks', async ({ page }) => {
   await authenticateAs(page, 'STUDENT')
   const pages = createPages(2)
-  pages[1].content = [...projectParagraphs.slice(0, 16), '## 경계 제목', '---', ...projectParagraphs.slice(16, 20)].join('\n')
+  pages[1].content = [...projectParagraphs.slice(0, 45), '## 경계 제목', '---', ...projectParagraphs.slice(45, 49)].join('\n')
   const mocks = await mockResume(page, pages)
   await page.setViewportSize({ width: 390, height: 900 })
   await page.goto('/resume?resumeId=resume-id&mode=edit')
@@ -293,7 +293,7 @@ test('image-only paste continues typing after the final image on the following p
   await editor.focus()
   await editor.evaluate(element => {
     const clipboardData = new DataTransfer()
-    clipboardData.setData('text/html', Array.from({ length: 2 }, (_, index) => `<p><img alt="그림${index}" src="/image-${index}.png"></p>`).join(''))
+    clipboardData.setData('text/html', Array.from({ length: 7 }, (_, index) => `<p><img alt="그림${index}" src="/image-${index}.png"></p>`).join(''))
     element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
   })
   const continuation = page.getByRole('textbox', { name: '3쪽 추가 내용', exact: true })
@@ -303,14 +303,14 @@ test('image-only paste continues typing after the final image on the following p
   await page.getByRole('button', { name: '저장', exact: true }).click()
   await expect.poll(() => mocks.getSavedPages()?.length).toBe(3)
   const saved = mocks.getSavedPages()!.slice(1).map(item => item.content).join('\n')
-  for (let index = 0; index < 2; index++) expect(saved.split(`![그림${index}]`)).toHaveLength(2)
+  for (let index = 0; index < 7; index++) expect(saved.split(`![그림${index}]`)).toHaveLength(2)
   expect(saved.endsWith('이미지 다음 내용')).toBe(true)
 })
 
 test('splitting in the middle of bold text preserves its caret and formatting', async ({ page }) => {
   await authenticateAs(page, 'STUDENT')
   const pages = createPages(2)
-  pages[1].content = projectParagraphs.map((paragraph, index) => index === 25 ? '**가나다라마바사**' : paragraph).join('\n')
+  pages[1].content = projectParagraphs.map((paragraph, index) => index === 55 ? '**가나다라마바사**' : paragraph).join('\n')
   const mocks = await mockResume(page, pages)
   await page.setViewportSize({ width: 390, height: 900 })
   await page.goto('/resume?resumeId=resume-id&mode=edit')
@@ -476,7 +476,7 @@ test('one long project paragraph spans pages while preserving all text', async (
   const pages = createPages(2)
   pages[1].content = ''
   const mocks = await mockResume(page, pages)
-  const paragraph = '프로젝트 작업 내용을 확인했습니다. '.repeat(90).trim()
+  const paragraph = '프로젝트 작업 내용을 확인했습니다. '.repeat(300).trim()
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('/resume?resumeId=resume-id&mode=edit')
   const editor = page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })
@@ -494,7 +494,7 @@ test('one long project paragraph spans pages while preserving all text', async (
   expect(savedPages.length).toBeLessThanOrEqual(5)
   expect(savedPages[1].type).toBe('PROJECT')
   expect(savedPages.slice(2).every(item => item.type === 'FREE')).toBe(true)
-  const savedText = savedPages.slice(1).map(item => item.content).join(' ')
+  const savedText = savedPages.slice(1).map(item => item.content).join('')
   expect(savedText.replace(/\s+/g, ' ').trim()).toBe(paragraph.replace(/\s+/g, ' ').trim())
   await testInfo.attach('long-paragraph-saved-pages', { body: JSON.stringify(savedPages, null, 2), contentType: 'application/json' })
 })
@@ -559,7 +559,7 @@ for (const includeSavedPages of [false, true, 'partial', 'empty', 'null'] as con
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.goto('/resume?resumeId=resume-id&mode=edit')
     const activity = page.getByRole('textbox', { name: '1쪽 추가 내용', exact: true })
-    await activity.fill(Array.from({ length: 19 }, (_, index) => `활동 ${index + 1}`).join('\n'))
+    await activity.fill(Array.from({ length: 42 }, (_, index) => `활동 ${index + 1}`).join('\n'))
     await expect(page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })).toBeFocused()
     await page.keyboard.insertText('새 페이지 내용')
     await expect(page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })).toContainText('새 페이지 내용')
@@ -588,7 +588,7 @@ for (const replaceSubmittedPage of [false, true]) {
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.goto('/resume?resumeId=resume-id&mode=edit')
     const activity = page.getByRole('textbox', { name: '1쪽 추가 내용', exact: true })
-    const fillProfile = () => activity.fill(Array.from({ length: 19 }, (_, index) => `활동 ${index + 1}`).join('\n'))
+    const fillProfile = () => activity.fill(Array.from({ length: 42 }, (_, index) => `활동 ${index + 1}`).join('\n'))
     await fillProfile()
     await expect(page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })).toBeVisible()
     await page.getByRole('button', { name: '저장', exact: true }).click()

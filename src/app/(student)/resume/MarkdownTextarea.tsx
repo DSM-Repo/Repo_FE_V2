@@ -1,4 +1,4 @@
-import { Fragment, useId, useEffect, useRef, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react'
+import { Fragment, useId, useEffect, useRef, useCallback, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react'
 
 import { MarkdownToolbarIcon } from './MarkdownToolbarIcon'
 import styles from './ResumeEditorSheet.module.css'
@@ -24,6 +24,8 @@ type MarkdownTextareaProps = {
   readonly onFocused?: () => void
   readonly onImagePasteUpload?: (file: File) => Promise<string | undefined>
   readonly onRichPaste?: (value: string, readCaretOffset: () => number | undefined) => void
+  readonly onUndo?: () => void
+  readonly onRedo?: () => void
   readonly placeholder: string
   readonly toolbarLabel: string
   readonly value: string
@@ -58,7 +60,7 @@ function readClipboardImage(file: File, onImagePasteUpload?: (file: File) => Pro
   })
 }
 
-export function MarkdownTextarea({ className, id, focusOffset, label, onChange, onFocused, onImagePasteUpload, onRichPaste, placeholder, toolbarLabel, value }: MarkdownTextareaProps) {
+export function MarkdownTextarea({ className, id, focusOffset, label, onChange, onFocused, onImagePasteUpload, onRichPaste, onUndo, onRedo, placeholder, toolbarLabel, value }: MarkdownTextareaProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const imageInputId = useId()
@@ -78,6 +80,7 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
       pendingValueRef.current = undefined
     }
 
+    if (value !== latestValueRef.current) lastPaginatedValueRef.current = undefined
     latestValueRef.current = value
 
     if (!editor) return
@@ -91,6 +94,27 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
       renderEditorMarkdown(editor, value, toEditorStyles())
     }
   }, [value, focusOffset, onFocused])
+
+  const runHistoryAction = useCallback((action: () => void) => {
+    pendingValueRef.current = undefined
+    lastPaginatedValueRef.current = undefined
+    savedSelectionRangeRef.current = undefined
+    action()
+  }, [])
+
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor) return
+    const handleHistoryInput = (event: InputEvent) => {
+      const historyAction = event.inputType === 'historyUndo' ? onUndo
+        : event.inputType === 'historyRedo' ? onRedo : undefined
+      if (!historyAction) return
+      event.preventDefault()
+      runHistoryAction(historyAction)
+    }
+    editor.addEventListener('beforeinput', handleHistoryInput)
+    return () => editor.removeEventListener('beforeinput', handleHistoryInput)
+  }, [onUndo, onRedo, runHistoryAction])
 
   const syncMarkdownValue = (afterSync?: MarkdownTextareaProps['onRichPaste']) => {
     const editor = editorRef.current
@@ -304,7 +328,7 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
     const htmlMarkdown = clipboardHtmlToMarkdown(clipboardData.getData('text/html'), clipboardData.getData('text/plain'))
     const imageFiles = Array.from(clipboardData.files).filter((file) => file.type.startsWith('image/'))
 
-    void Promise.all(imageFiles.map((file) => readClipboardImage(file, onImagePasteUpload))).then((imageMarkdowns) => {
+    const insertPaste = (imageMarkdowns: readonly string[]) => {
       const markdown = [htmlMarkdown, ...imageMarkdowns].filter(Boolean).join('\n')
 
       if (!insertMarkdownAtSelection(editor, window.getSelection(), markdown, toEditorStyles())) {
@@ -312,7 +336,13 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
       }
 
       syncMarkdownValue(onRichPaste)
-    })
+    }
+
+    if (imageFiles.length === 0) {
+      insertPaste([])
+    } else {
+      void Promise.all(imageFiles.map((file) => readClipboardImage(file, onImagePasteUpload))).then(insertPaste)
+    }
   }
 
   const handleEditorChange = (event: React.FormEvent<HTMLDivElement>) => {
@@ -321,6 +351,17 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.nativeEvent.isComposing) {
+      const key = event.key.toLowerCase()
+      const historyAction = key === 'z' ? (event.shiftKey ? onRedo : onUndo)
+        : key === 'y' && !event.shiftKey ? onRedo : undefined
+      if (historyAction) {
+        event.preventDefault()
+        runHistoryAction(historyAction)
+        return
+      }
+    }
+
     if (event.key.toLowerCase() === 'b' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault()
       applyCommand('bold')

@@ -1,5 +1,7 @@
 'use client'
 
+import { ResumeDocumentViewport } from '@/shared/ui/ResumeBookSheet/ResumeFeedbackSheet'
+
 import { useId, useRef, useState, type ChangeEvent, type ClipboardEvent, type CSSProperties, type KeyboardEvent } from 'react'
 
 import type { Major } from '@/features/major/api'
@@ -63,6 +65,8 @@ export type ResumeEditorSheetProps = {
   readonly isUploadingImage?: boolean
   readonly majors?: readonly Major[]
   readonly onChange: (nextDraft: ResumeDraft) => void
+  readonly onUndo?: () => void
+  readonly onRedo?: () => void
   readonly onContentFocused?: () => void
   readonly onInlineImagePasteUpload?: (file: File) => Promise<string | undefined>
   readonly onImageUpload?: (input: { readonly file: File; readonly target: ResumeImageTarget }) => void
@@ -144,7 +148,7 @@ function toStudentMeta(schoolNumber: string) {
   return [schoolNumber.trim(), getDepartmentFromSchoolNumber(schoolNumber)].filter(Boolean).join(' ')
 }
 
-export function ResumeEditorSheet({
+function ResumeEditorSheetContent({
   className,
   draft,
   contentFocusOffset,
@@ -155,6 +159,8 @@ export function ResumeEditorSheet({
   isUploadingImage = false,
   majors = [],
   onChange,
+  onUndo,
+  onRedo,
   onContentFocused,
   onInlineImagePasteUpload,
   onImageUpload,
@@ -287,6 +293,8 @@ export function ResumeEditorSheet({
       <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
         {renderPageActions()}
         <MarkdownTextarea
+          onUndo={onUndo}
+          onRedo={onRedo}
           className={styles.freePageContentInput}
           id={`resume-page-content-${page.index}`}
           label={`${page.index + 1}쪽 추가 내용`}
@@ -399,6 +407,8 @@ export function ResumeEditorSheet({
         </section>
 
         <MarkdownTextarea
+          onUndo={onUndo}
+          onRedo={onRedo}
           className={styles.projectContentInput}
           id={`resume-page-content-${page.index}`}
           label={`${page.index + 1}쪽 추가 내용`}
@@ -560,6 +570,8 @@ export function ResumeEditorSheet({
           <h3>활동</h3>
         </div>
         <MarkdownTextarea
+          onUndo={onUndo}
+          onRedo={onRedo}
           className={styles.activityInput}
           id={`resume-page-content-${page.index}`}
           label={`${page.index + 1}쪽 추가 내용`}
@@ -576,4 +588,8 @@ export function ResumeEditorSheet({
       {renderFeedbackMarkers(feedbackMarkers)}
     </article>
   )
+}
+
+export function ResumeEditorSheet(props: Parameters<typeof ResumeEditorSheetContent>[0] & { readonly pagesPerSpread?: number }) {
+  return <ResumeDocumentViewport className={props.className} pagesPerSpread={props.pagesPerSpread}><ResumeEditorSheetContent {...props} className={undefined} /></ResumeDocumentViewport>
 }

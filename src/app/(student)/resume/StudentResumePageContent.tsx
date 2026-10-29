@@ -28,6 +28,7 @@ import {
 import { getUserMe, updateUserMajor, type UserMe, type UserMeResult } from '@/features/user/api'
 import { writeProjectImageSize } from '@/shared/lib/projectImageSize'
 import { useResumePageSize } from '@/shared/lib/useResumePageSize'
+import { splitMarkdownIntoPageChunks } from './markdownPagination'
 import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 import { AppHeader, Icon, PortfolioUrlModal, ResumeFeedbackSheet, Toast } from '@/shared/ui'
 
@@ -51,9 +52,6 @@ const AUTO_SAVE_IDLE_MS = 180_000
 const AUTO_SAVE_ENABLED = false
 const SUCCESS_FEEDBACK_DURATION_MS = 5_000
 const MAX_RESUME_PAGE_COUNT = 5
-const PROFILE_PASTE_PAGE_UNITS = 18
-const PROJECT_PASTE_PAGE_UNITS = 16
-const FREE_PASTE_PAGE_UNITS = 22
 
 const defaultResumeDraft = {
   activities: [],
@@ -79,80 +77,6 @@ function createEmptyProjectPage(index: number): ResumeDraftPage {
     project: { endDate: '', imageUrl: '', name: '', startDate: '', summary: '' },
     type: 'PROJECT',
   }
-}
-
-function estimateMarkdownLineUnits(line: string) {
-  const trimmedLine = line.trim()
-
-  if (!trimmedLine) {
-    return 0.35
-  }
-
-  if (/^!\[[^\]]*]\([^)]+\)$/.test(trimmedLine)) {
-    return 12
-  }
-
-  if (trimmedLine.startsWith('# ')) {
-    return 3.8
-  }
-
-  if (trimmedLine.startsWith('## ')) {
-    return 3
-  }
-
-  if (trimmedLine.startsWith('### ') || trimmedLine.startsWith('#### ')) {
-    return 2.3
-  }
-
-  const textLength = trimmedLine.replace(/^[->] /, '').length
-  const lineUnit = trimmedLine.startsWith('- ') || trimmedLine.startsWith('> ') ? 38 : 46
-
-  return Math.max(1, Math.ceil(textLength / lineUnit))
-}
-
-function splitMarkdownIntoPageChunks(value: string, firstPageUnits = PROFILE_PASTE_PAGE_UNITS) {
-  const lines = value.replace(/\r/g, '').split('\n')
-  const chunks: string[] = []
-  let chunkLines: string[] = []
-  let chunkUnits = 0
-  let unitLimit = firstPageUnits
-
-  for (const originalLine of lines) {
-    let line = originalLine
-    while (estimateMarkdownLineUnits(line) > unitLimit && line.length > unitLimit * 46) {
-      const maxLength = Math.floor(unitLimit * 46)
-      const wordBoundary = line.lastIndexOf(' ', maxLength)
-      const splitAt = wordBoundary > maxLength / 2 ? wordBoundary : maxLength
-      if (chunkLines.some((chunkLine) => chunkLine.trim())) {
-        chunks.push(chunkLines.join('\n').trim())
-        chunkLines = []
-        chunkUnits = 0
-      }
-      chunks.push(line.slice(0, splitAt).trim())
-      line = line.slice(splitAt).trimStart()
-      unitLimit = FREE_PASTE_PAGE_UNITS
-    }
-    const lineUnits = estimateMarkdownLineUnits(line)
-    const hasChunkContent = chunkLines.some((chunkLine) => chunkLine.trim())
-
-    if (hasChunkContent && chunkUnits + lineUnits > unitLimit) {
-      chunks.push(chunkLines.join('\n').trim())
-      chunkLines = []
-      chunkUnits = 0
-      unitLimit = FREE_PASTE_PAGE_UNITS
-    }
-
-    chunkLines.push(line)
-    chunkUnits += lineUnits
-  }
-
-  const finalChunk = chunkLines.join('\n').trim()
-
-  if (finalChunk) {
-    chunks.push(finalChunk)
-  }
-
-  return chunks.length > 0 ? chunks : ['']
 }
 
 function reindexDraftPages(pages: readonly ResumeDraftPage[]) {
@@ -526,6 +450,8 @@ export function StudentResumePageContent() {
   const isAutoSaveBlockedRef = useRef(false)
   const pendingSaveModeRef = useRef<SaveMode | undefined>(undefined)
   const saveOperationRef = useRef(0)
+  const undoDraftsRef = useRef<ResumeDraft[]>([])
+  const redoDraftsRef = useRef<ResumeDraft[]>([])
 
   useEffect(() => {
     if (actionFeedback?.tone !== 'success') {
@@ -649,6 +575,8 @@ export function StudentResumePageContent() {
     }
 
     if (result.kind === 'success') {
+      undoDraftsRef.current = []
+      redoDraftsRef.current = []
       viewedResumeIdRef.current = result.resume.id
       saveResumeId(result.resume.id)
       setDraft(() => {
@@ -913,21 +841,42 @@ export function StudentResumePageContent() {
   }, [feedbackLoadState, feedbackSubmitState.kind, selectedFeedbackIds])
 
   const handleDraftChange = useCallback((nextDraft: ResumeDraft | ((currentDraft: ResumeDraft) => ResumeDraft)) => {
+    if (undoDraftsRef.current.at(-1) !== draft) {
+      undoDraftsRef.current = [...undoDraftsRef.current.slice(-99), draft]
+    }
+    redoDraftsRef.current = []
     draftRevisionRef.current += 1
     lastDraftChangeAtRef.current = Date.now()
     autoSaveGenerationRef.current += 1
     setDraft(nextDraft)
     setIsDraftDirty(true)
     setActionFeedback(undefined)
-  }, [setDraft])
+  }, [draft, setDraft])
+
+  const restoreDraftHistory = useCallback((direction: 'undo' | 'redo', pageIndex: number) => {
+    const source = direction === 'undo' ? undoDraftsRef : redoDraftsRef
+    const destination = direction === 'undo' ? redoDraftsRef : undoDraftsRef
+    const previous = source.current.pop()
+    if (!previous) return
+    destination.current = [...destination.current.slice(-99), draft]
+    draftRevisionRef.current += 1
+    lastDraftChangeAtRef.current = Date.now()
+    autoSaveGenerationRef.current += 1
+    setDraft(previous)
+    setIsDraftDirty(true)
+    setActionFeedback(undefined)
+    const targetIndex = direction === 'redo' && previous.pages.length > draft.pages.length
+      ? Math.min(previous.pages.length - 1, pageIndex + previous.pages.length - draft.pages.length)
+      : Math.min(pageIndex, previous.pages.length - 1)
+    setSpreadStartIndex(Math.floor(targetIndex / pageSize) * pageSize)
+    setContentFocus({ pageIndex: targetIndex, offset: previous.pages[targetIndex]?.content.length ?? 0 })
+  }, [draft, pageSize, setDraft])
 
   const handlePageRichPaste = useCallback(
     ({ content, pageIndex, readCaretOffset }: { readonly content: string; readonly pageIndex: number; readonly readCaretOffset: () => number | undefined }) => {
       const page = draft.pages[pageIndex]
       if (!page) return
-      const firstPageUnits = page.type === 'FREE' ? FREE_PASTE_PAGE_UNITS
-        : page.type === 'PROJECT' ? PROJECT_PASTE_PAGE_UNITS : PROFILE_PASTE_PAGE_UNITS
-      const chunks = splitMarkdownIntoPageChunks(content, firstPageUnits)
+      const chunks = splitMarkdownIntoPageChunks(content, pageIndex)
       if (chunks.length <= 1) return
       if (draft.pages.length + chunks.length - 1 > MAX_RESUME_PAGE_COUNT) {
         setActionFeedback({ message: '이력서는 최대 5쪽입니다. 붙여넣은 내용은 유지되며, 내용을 줄이면 페이지를 나눌 수 있습니다.', tone: 'error' })
@@ -936,14 +885,12 @@ export function StudentResumePageContent() {
 
       const caretOffset = readCaretOffset()
       if (caretOffset !== undefined) {
-        let searchStart = 0
         for (const [chunkIndex, chunk] of chunks.entries()) {
-          const start = content.indexOf(chunk, searchStart)
-          const end = start + chunk.length
-          searchStart = end
+          const start = chunk.sourceStart
+          const end = chunk.sourceEnd
           if (caretOffset > end && chunkIndex < chunks.length - 1) continue
           const targetPageIndex = pageIndex + chunkIndex
-          setContentFocus({ pageIndex: targetPageIndex, offset: Math.max(0, Math.min(chunk.length, caretOffset - start)) })
+          setContentFocus({ pageIndex: targetPageIndex, offset: Math.max(0, Math.min(chunk.content.length, caretOffset - start + chunk.prefixLength)) })
           setSpreadStartIndex(Math.floor(targetPageIndex / pageSize) * pageSize)
           break
         }
@@ -956,9 +903,9 @@ export function StudentResumePageContent() {
 
         return { ...currentDraft, pages: reindexDraftPages([
           ...currentDraft.pages.slice(0, pageIndex),
-          { ...currentDraft.pages[pageIndex], content: chunks[0] ?? '' },
+          { ...currentDraft.pages[pageIndex], content: chunks[0]?.content ?? '' },
           ...chunks.slice(1).map((chunk): ResumeDraftPage => ({
-            content: chunk,
+            content: chunk.content,
             index: 0,
             type: 'FREE',
           })),
@@ -970,6 +917,8 @@ export function StudentResumePageContent() {
   )
 
   const handleCancelEditing = useCallback(() => {
+    undoDraftsRef.current = []
+    redoDraftsRef.current = []
     documentSessionRef.current += 1
     draftRevisionRef.current += 1
     setImageUploadState({ kind: 'idle' })
@@ -1321,6 +1270,8 @@ export function StudentResumePageContent() {
       }
 
       if (savedPageIds) {
+        undoDraftsRef.current = undoDraftsRef.current.map((snapshot) => applySavedPageIds(snapshot, draftToSave, savedPageIds))
+        redoDraftsRef.current = redoDraftsRef.current.map((snapshot) => applySavedPageIds(snapshot, draftToSave, savedPageIds))
         setDraft((currentDraft) => applySavedPageIds(currentDraft, draftToSave, savedPageIds))
       }
 
@@ -1569,7 +1520,7 @@ export function StudentResumePageContent() {
               <button
                 className={styles.secondaryAction}
                 disabled={!isResumeReady}
-                onClick={() => setViewMode('edit')}
+                onClick={() => { undoDraftsRef.current = []; redoDraftsRef.current = []; setViewMode('edit') }}
                 type="button"
               >
                 이력서 수정하기
@@ -1608,6 +1559,7 @@ export function StudentResumePageContent() {
 
                 return isEditing ? (
                   <ResumeEditorSheet
+                    pagesPerSpread={pageSize}
                     className={styles.documentSheet}
                     contentFocusOffset={contentFocus?.pageIndex === pageIndex ? contentFocus.offset : undefined}
                     draft={draft}
@@ -1619,6 +1571,8 @@ export function StudentResumePageContent() {
                     key={page?.index ?? pageIndex}
                     majors={majors}
                     onChange={handleDraftChange}
+                    onUndo={() => restoreDraftHistory('undo', pageIndex)}
+                    onRedo={() => restoreDraftHistory('redo', pageIndex)}
                     onContentFocused={handleContentFocused}
                     onInlineImagePasteUpload={handleInlineImagePasteUpload}
                     onImageUpload={handleImageUpload}

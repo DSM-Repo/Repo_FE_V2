@@ -1,11 +1,11 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode, type CSSProperties } from 'react'
 
 import { ResumeBookSheet, type ResumeBookSheetProps } from './ResumeBookSheet'
 import styles from './ResumeFeedbackSheet.module.css'
 
-export function ResumeFeedbackSheet({ className, pagesPerSpread = 2, ...props }: ResumeBookSheetProps & { readonly pagesPerSpread?: number }) {
+export function ResumeDocumentViewport({ className, pagesPerSpread = 2, children }: { readonly className?: string; readonly pagesPerSpread?: number; readonly children: ReactNode }) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const [layout, setLayout] = useState({ width: 864 * 551 / 780, scale: 1 })
 
@@ -48,7 +48,11 @@ export function ResumeFeedbackSheet({ className, pagesPerSpread = 2, ...props }:
       ref={viewportRef}
       style={{ width: layout.width, flexBasis: layout.width, '--resume-feedback-scale': layout.scale } as CSSProperties}
     >
-      <ResumeBookSheet {...props} className={styles.document} />
+      {children}
     </div>
   )
+}
+
+export function ResumeFeedbackSheet({ className, pagesPerSpread = 2, ...props }: ResumeBookSheetProps & { readonly pagesPerSpread?: number }) {
+  return <ResumeDocumentViewport className={className} pagesPerSpread={pagesPerSpread}><ResumeBookSheet {...props} className={styles.document} /></ResumeDocumentViewport>
 }
