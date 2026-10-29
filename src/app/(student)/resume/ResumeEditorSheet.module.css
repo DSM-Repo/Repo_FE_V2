@@ -676,7 +676,7 @@
   width: 100%;
   min-height: 96px;
   align-content: start;
-  gap: var(--space-2);
+  gap: 0;
   padding: 0;
   overflow: auto;
   border: 0;
@@ -790,7 +790,7 @@
 .markdownEditor img {
   display: block;
   max-width: 100%;
-  max-height: 180px;
+  max-height: 128px;
   margin: var(--space-2) 0;
   border-radius: 6px;
   object-fit: contain;
@@ -958,4 +958,16 @@
 .projectImageSize :is(summary, input, button):focus-visible {
   outline: 2px solid var(--repo-text-black);
   outline-offset: 2px;
+}
+
+.markdownEditor > :is(h1, h2, h3, h4, blockquote, ul, hr) {
+  margin-block: var(--space-2);
+}
+
+.markdownEditor > :first-child {
+  margin-top: 0;
+}
+
+.markdownEditor > :last-child {
+  margin-bottom: 0;
 }

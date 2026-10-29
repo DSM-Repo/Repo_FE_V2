@@ -1,3 +1,5 @@
+import { parseResumeMarkdown, hasNestedQuoteBlocks, RESUME_QUOTE_BREAK, type ResumeMarkdownBlock } from '@/shared/lib/resumeMarkdown'
+
 import { normalizeDisplayImageUrl } from '@/shared/api/imageUrl'
 
 export const markdownTools = [
@@ -17,12 +19,7 @@ export const markdownTools = [
 
 export type MarkdownCommand = (typeof markdownTools)[number]['command']
 
-export type EditableMarkdownBlock =
-  | { readonly kind: 'heading'; readonly level: 1 | 2 | 3 | 4; readonly text: string }
-  | { readonly kind: 'divider' }
-  | { readonly kind: 'paragraph'; readonly text: string }
-  | { readonly kind: 'quote'; readonly text: string }
-  | { readonly kind: 'bulletList'; readonly text: string }
+export type EditableMarkdownBlock = ResumeMarkdownBlock
 
 type EditorBlockClassNames = {
   readonly bulletList: string; readonly divider: string; readonly heading1: string; readonly heading2: string; readonly heading3: string; readonly heading4: string; readonly paragraph: string; readonly quote: string
@@ -101,7 +98,7 @@ function withInlineMarkdown(command: MarkdownCommand, selectedText: string) {
 }
 
 function normalizeMarkdownText(value: string) {
-  return value.replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+  return value.replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n')
 }
 
 function escapeMarkdownInline(value: string) {
@@ -183,6 +180,15 @@ function htmlElementToMarkdownLines(element: HTMLElement): readonly string[] {
     return image ? [image] : []
   }
 
+  if (element.tagName === 'BLOCKQUOTE') {
+    const nestedBlocks = Array.from(element.children).some(child => blockTags.has(child.tagName))
+    const body = nestedBlocks
+      ? Array.from(element.childNodes).flatMap(child => child instanceof HTMLElement
+          ? htmlElementToMarkdownLines(child) : [child.textContent ?? '']).join('\n')
+      : normalizeMarkdownText(inlineHtmlToMarkdown(element))
+    return body.split('\n').map(line => `> ${line}`)
+  }
+
   if (element.tagName === 'UL' || element.tagName === 'OL') {
     return Array.from(element.children).flatMap((child) => {
       if (!(child instanceof HTMLElement) || child.tagName !== 'LI') {
@@ -205,7 +211,7 @@ function htmlElementToMarkdownLines(element: HTMLElement): readonly string[] {
   const text = normalizeMarkdownText(inlineHtmlToMarkdown(element))
 
   if (!text) {
-    return childBlockLines
+    return childBlockLines.length ? childBlockLines : ['']
   }
 
   switch (element.tagName) {
@@ -219,8 +225,6 @@ function htmlElementToMarkdownLines(element: HTMLElement): readonly string[] {
     case 'H5':
     case 'H6':
       return [`#### ${text}`]
-    case 'BLOCKQUOTE':
-      return text.split('\n').map((line) => `> ${line}`)
     case 'LI':
       return [`- ${text.replace(/\n+/g, ' ')}`]
     default:
@@ -234,12 +238,18 @@ export function clipboardHtmlToMarkdown(html: string, plainText: string) {
   }
 
   const document = new DOMParser().parseFromString(html, 'text/html')
+  let previousWasQuote = false
   const lines = Array.from(document.body.childNodes).flatMap((node) => {
     if (node.nodeType === Node.TEXT_NODE) {
       return normalizeMarkdownText(node.textContent ?? '').split('\n').filter(Boolean)
     }
 
-    return node instanceof HTMLElement ? htmlElementToMarkdownLines(node) : []
+    if (!(node instanceof HTMLElement)) return []
+    const currentIsQuote = node.tagName === 'BLOCKQUOTE'
+    const lines = htmlElementToMarkdownLines(node)
+    const separator = previousWasQuote && currentIsQuote ? [RESUME_QUOTE_BREAK] : []
+    previousWasQuote = currentIsQuote
+    return [...separator, ...lines]
   })
   const markdown = normalizeMarkdownText(lines.join('\n'))
 
@@ -301,55 +311,7 @@ export function toHeadingShortcut(value: string, selectionStart: number) {
   }
 }
 
-function toEditableMarkdownBlock(line: string): EditableMarkdownBlock {
-  if (line.startsWith('#### ')) {
-    return { kind: 'heading', level: 4, text: line.slice(5) }
-  }
-
-  if (line.startsWith('### ')) {
-    return { kind: 'heading', level: 3, text: line.slice(4) }
-  }
-
-  if (line.startsWith('## ')) {
-    return { kind: 'heading', level: 2, text: line.slice(3) }
-  }
-
-  if (line.startsWith('# ')) {
-    return { kind: 'heading', level: 1, text: line.slice(2) }
-  }
-
-  if (line === '>' || line.startsWith('> ')) {
-    return { kind: 'quote', text: line.slice(2) }
-  }
-
-  if (line === '---') {
-    return { kind: 'divider' }
-  }
-
-  if (line.startsWith('- ')) {
-    return { kind: 'bulletList', text: line.slice(2) }
-  }
-
-  return { kind: 'paragraph', text: line }
-}
-
-export function toEditableMarkdownBlocks(value: string): readonly EditableMarkdownBlock[] {
-  const lines = value ? value.split('\n') : ['']
-
-  const blocks: EditableMarkdownBlock[] = []
-
-  for (const line of lines) {
-    const block = toEditableMarkdownBlock(line)
-    const previous = blocks.at(-1)
-    if (block.kind === 'quote' && previous?.kind === 'quote') {
-      blocks[blocks.length - 1] = { kind: 'quote', text: `${previous.text}\n${block.text}` }
-    } else {
-      blocks.push(block)
-    }
-  }
-
-  return blocks
-}
+export const toEditableMarkdownBlocks = parseResumeMarkdown
 
 function appendInlineNodes(parent: HTMLElement, value: string): void {
   const pattern = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|<u>([\s\S]*?)<\/u>)/g
@@ -432,7 +394,9 @@ function createBlockElement(block: EditableMarkdownBlock, styles: EditorBlockCla
     return element
   }
 
-  if (block.kind === 'quote') {
+  if (block.kind === 'quote' && hasNestedQuoteBlocks(block.text)) {
+    element.append(...toEditableMarkdownBlocks(block.text).map(child => createBlockElement(child, styles)))
+  } else if (block.kind === 'quote') {
     appendInlineNodes(element, block.text)
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
     const textNodes: Text[] = []
@@ -546,6 +510,8 @@ export function applyMarkdownBlockShortcut(editor: HTMLElement, selection: Selec
 
   if (block === editor) {
     editor.replaceChildren(replacement)
+  } else if (block.tagName === 'BLOCKQUOTE' && shortcutBlock.kind === 'bulletList') {
+    block.replaceChildren(replacement)
   } else {
     block.replaceWith(replacement)
   }
@@ -566,7 +532,12 @@ export function applyMarkdownBlockCommand(editor: HTMLElement, selection: Select
     range.collapse(false)
   }
 
-  const currentBlock = findEditorBlock(editor, range.startContainer)
+  let currentBlock = findEditorBlock(editor, range.startContainer)
+  if (currentBlock.tagName === 'BLOCKQUOTE') {
+    let nested = range.startContainer instanceof HTMLElement ? range.startContainer : range.startContainer.parentElement
+    while (nested && nested !== currentBlock && nested.parentElement && nested.parentElement !== currentBlock) nested = nested.parentElement
+    if (nested && nested !== currentBlock && blockTags.has(nested.tagName)) currentBlock = nested
+  }
   const replacement = createBlockElement(block, styles)
 
   if (block.kind === 'bulletList') {
@@ -584,6 +555,8 @@ export function applyMarkdownBlockCommand(editor: HTMLElement, selection: Select
 
   if (currentBlock === editor) {
     editor.replaceChildren(replacement)
+  } else if (currentBlock.tagName === 'BLOCKQUOTE') {
+    currentBlock.replaceChildren(replacement)
   } else if (block.kind === 'divider' && currentBlock.textContent?.trim()) {
     currentBlock.after(replacement)
   } else {
@@ -647,6 +620,7 @@ function serializeInlineMarkdown(node: Node): string {
   }
 
   const text = Array.from(node.childNodes).map(serializeInlineMarkdown).join('')
+  if (!text.trim() && ['STRONG', 'B', 'EM', 'I', 'U', 'A'].includes(node.tagName)) return text
 
   switch (node.tagName) {
     case 'STRONG':
@@ -766,7 +740,7 @@ export function serializeEditorMarkdown(editor: HTMLElement) {
       continue
     }
 
-    const isBlock = ['BLOCKQUOTE', 'DIV', 'H1', 'H2', 'H3', 'H4', 'HR', 'P', 'UL'].includes(child.tagName)
+    const isBlock = ['BLOCKQUOTE', 'DIV', 'H1', 'H2', 'H3', 'H4', 'HR', 'P', 'UL', 'OL'].includes(child.tagName)
 
     if (!isBlock) {
       if (child.tagName === 'BR') {
@@ -784,12 +758,15 @@ export function serializeEditorMarkdown(editor: HTMLElement) {
     const headingLevel = child.dataset.headingLevel ?? child.tagName.match(/^H([1-4])$/)?.[1]
 
     if (headingLevel === '1' || headingLevel === '2' || headingLevel === '3' || headingLevel === '4') {
-      lines.push(`${'#'.repeat(Number(headingLevel))} ${text}`)
+      lines.push(text.trim() ? `${'#'.repeat(Number(headingLevel))} ${text}` : '')
       continue
     }
 
     if (child.dataset.markdownBlock === 'quote' || child.tagName === 'BLOCKQUOTE') {
-      lines.push(text.split('\n').map((line) => `> ${line}`).join('\n'))
+      if (lines.at(-1)?.startsWith('>')) lines.push(RESUME_QUOTE_BREAK)
+      const quoteBody = child.querySelector('ul, ol, div, p, blockquote, h1, h2, h3, h4, hr')
+        ? serializeEditorMarkdown(child) : text
+      lines.push(quoteBody.split('\n').map((line) => `> ${line}`).join('\n'))
       continue
     }
 
@@ -798,7 +775,7 @@ export function serializeEditorMarkdown(editor: HTMLElement) {
       continue
     }
 
-    if (child.dataset.markdownBlock === 'bulletList' || child.tagName === 'UL') {
+    if (child.dataset.markdownBlock === 'bulletList' || child.tagName === 'UL' || child.tagName === 'OL') {
       const listItems = Array.from(child.querySelectorAll(':scope > li'))
       const listLines = listItems.length > 0
         ? listItems.map((listItem) => `- ${Array.from(listItem.childNodes).map(serializeInlineMarkdown).join('').replace(/\u00a0/g, ' ')}`)

@@ -1580,7 +1580,10 @@ test.describe('student resume management', () => {
 
     await pageContentInput.fill('기본 본문')
     await expect(pageContentInput).toHaveCSS('font-size', '10px')
-    await pageContentInput.fill('')
+    await pageContentInput.evaluate(editor => {
+      editor.replaceChildren()
+      editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }))
+    })
 
     for (const { fontSize, markdown, selector, shortcut, text } of [
       { fontSize: '24px', markdown: '# 프로젝트 경험', selector: 'h1', shortcut: '#', text: '프로젝트 경험' },
@@ -1589,7 +1592,10 @@ test.describe('student resume management', () => {
       { fontSize: '12px', markdown: '#### 회고', selector: 'h4', shortcut: '####', text: '회고' },
       { fontSize: '10px', markdown: '> 사용자 피드백', selector: 'blockquote', shortcut: '>', text: '사용자 피드백' },
     ]) {
-      await pageContentInput.fill('')
+      await pageContentInput.evaluate(editor => {
+        editor.replaceChildren()
+        editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }))
+      })
       await pageContentInput.pressSequentially(shortcut)
       await pageContentInput.press('Space')
 
@@ -1615,7 +1621,10 @@ test.describe('student resume management', () => {
       await expect(pageContentInput).not.toContainText(markdown)
     }
 
-    await pageContentInput.fill('')
+    await pageContentInput.evaluate(editor => {
+      editor.replaceChildren()
+      editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }))
+    })
     await pageContentInput.pressSequentially('-')
     await pageContentInput.press('Space')
     await page.keyboard.insertText('목록 내용')
@@ -1631,7 +1640,10 @@ test.describe('student resume management', () => {
     await page.getByRole('button', { name: '이력서 수정하기' }).click()
     pageContentInput = page.getByRole('textbox', { name: '1쪽 추가 내용' })
     savedActivityContent = ''
-    await pageContentInput.fill('')
+    await pageContentInput.evaluate(editor => {
+      editor.replaceChildren()
+      editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }))
+    })
     await pageContentInput.pressSequentially('---')
     await pageContentInput.press('Space')
 

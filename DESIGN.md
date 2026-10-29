@@ -171,6 +171,7 @@ All spacing derives from 4px.
 - **Structure**: document-sized editable sheet with compact identity header, muted intro panel, skill chips, markdown activity/project body, and optional QR/project image placeholder
 - **Variants**: profile page, project page, free page
 - **Markdown hierarchy**: H1 uses title/small (24px), H2 title/tiny (16px), H3 body/tiny (14px) and H4 body/very-tiny (12px), all with title/tiny semibold weight. Editor and saved readers use the same scale.
+- **Text fidelity**: preserve authored blank rows exactly; independent quote blocks use a non-rendered `<!-- repo:quote-break -->` boundary, while soft line breaks stay inside one quote. Quote contents support lists and inline formatting. Empty formatted content emits no hidden heading/bold markers. Markdown H1–H4 and inline-image size limits match between editor and all readers; enlarged identity/intro typography is separate.
 - **Quotes**: consecutive `>` lines form one block with explicit line breaks and a continuous neutral quote rule. A bare `>` keeps an empty quoted line; a blank unquoted line separates quotes. Saving and reopening preserve inline formatting and line breaks. Enter exits a quote into a normal paragraph; Shift+Enter continues within the quote.
 - **States**: editable text, placeholder, focus, empty skill list, hover-revealed skill delete
 - **Layout**: mirrors the resume preview density rather than form density; controls keep transparent document styling and use existing typography tokens

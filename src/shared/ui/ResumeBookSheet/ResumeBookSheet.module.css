@@ -318,7 +318,7 @@
 
 .pageContent {
   display: grid;
-  gap: var(--space-2);
+  gap: 0;
   margin: 9px 0 0;
   overflow: hidden;
   color: var(--repo-gray-800);
@@ -329,7 +329,7 @@
 
 .projectPageContent {
   display: grid;
-  gap: var(--space-2);
+  gap: 0;
   margin: 14px 0 0;
   overflow: hidden;
   color: var(--repo-gray-800);
@@ -340,7 +340,7 @@
 
 .freePageContent {
   display: grid;
-  gap: var(--space-2);
+  gap: 0;
   margin: 9px 0 0;
   overflow: hidden;
   color: var(--repo-gray-800);
@@ -381,28 +381,28 @@
 
 .markdownHeading1 {
   color: var(--repo-text-black);
-  font-size: calc(var(--repo-font-title-small-size) * var(--resume-book-text-scale, 1));
+  font-size: var(--repo-font-title-small-size);
   font-weight: var(--repo-font-title-small-weight);
   line-height: var(--repo-font-title-small-line-height);
 }
 
 .markdownHeading2 {
   color: var(--repo-text-black);
-  font-size: calc(var(--repo-font-title-tiny-size) * var(--resume-book-text-scale, 1));
+  font-size: var(--repo-font-title-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-title-tiny-line-height);
 }
 
 .markdownHeading3 {
   color: var(--repo-text-black);
-  font-size: calc(var(--repo-font-body-tiny-size) * var(--resume-book-text-scale, 1));
+  font-size: var(--repo-font-body-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-body-tiny-line-height);
 }
 
 .markdownHeading4 {
   color: var(--repo-text-black);
-  font-size: calc(var(--repo-font-body-very-tiny-size) * var(--resume-book-text-scale, 1));
+  font-size: var(--repo-font-body-very-tiny-size);
   font-weight: var(--repo-font-title-tiny-weight);
   line-height: var(--repo-font-body-very-tiny-line-height);
 }
@@ -462,4 +462,16 @@
     height: auto;
     min-height: 599px;
   }
+}
+
+:is(.pageContent, .projectPageContent, .freePageContent) > :is(h1, h2, h3, h4, blockquote, ul, hr) {
+  margin-block: var(--space-2);
+}
+
+:is(.pageContent, .projectPageContent, .freePageContent) > :first-child {
+  margin-top: 0;
+}
+
+:is(.pageContent, .projectPageContent, .freePageContent) > :last-child {
+  margin-bottom: 0;
 }

@@ -1,3 +1,4 @@
+import { parseResumeMarkdown, hasNestedQuoteBlocks, type ResumeMarkdownBlock } from '@/shared/lib/resumeMarkdown'
 import type { ProjectImageSize } from '@/shared/lib/projectImageSize'
 
 import { Fragment, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
@@ -69,67 +70,9 @@ export type ResumeBookSheetFeedbackPoint = {
   readonly y: number
 }
 
-type MarkdownBlock =
-  | {
-      readonly kind: 'heading'
-      readonly level: 1 | 2 | 3 | 4
-      readonly text: string
-    }
-  | {
-      readonly kind: 'divider'
-    }
-  | {
-      readonly kind: 'paragraph'
-      readonly text: string
-    }
-  | {
-      readonly kind: 'quote'
-      readonly text: string
-    }
-  | {
-      readonly kind: 'bulletList'
-      readonly text: string
-    }
+type MarkdownBlock = ResumeMarkdownBlock
 
 const RESUME_BOOK_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim()
-
-function toMarkdownBlock(line: string): MarkdownBlock | undefined {
-  const trimmedLine = line.trim()
-
-  if (!trimmedLine) {
-    return undefined
-  }
-
-  if (trimmedLine.startsWith('#### ')) {
-    return { kind: 'heading', level: 4, text: trimmedLine.slice(5) }
-  }
-
-  if (trimmedLine.startsWith('### ')) {
-    return { kind: 'heading', level: 3, text: trimmedLine.slice(4) }
-  }
-
-  if (trimmedLine.startsWith('## ')) {
-    return { kind: 'heading', level: 2, text: trimmedLine.slice(3) }
-  }
-
-  if (trimmedLine.startsWith('# ')) {
-    return { kind: 'heading', level: 1, text: trimmedLine.slice(2) }
-  }
-
-  if (trimmedLine === '>' || trimmedLine.startsWith('> ')) {
-    return { kind: 'quote', text: trimmedLine.slice(2) }
-  }
-
-  if (trimmedLine === '---') {
-    return { kind: 'divider' }
-  }
-
-  if (trimmedLine.startsWith('- ')) {
-    return { kind: 'bulletList', text: trimmedLine.slice(2) }
-  }
-
-  return { kind: 'paragraph', text: trimmedLine }
-}
 
 function toSafeHref(value: string) {
   try {
@@ -236,7 +179,7 @@ function decodeBasicHtmlEntities(value: string) {
 }
 
 function normalizeStoredMarkdown(value: string) {
-  if (!/<\/?(p|br|h[1-6]|ul|ol|li|blockquote|hr|strong|b|em|i|u|a)\b/i.test(value)) {
+  if (!/<\/?(p|br|h[1-6]|ul|ol|li|blockquote|hr|strong|b|em|i|a)\b/i.test(value)) {
     return value
   }
 
@@ -263,10 +206,9 @@ function normalizeStoredMarkdown(value: string) {
     .replace(/<u[^>]*>/gi, '<u>')
     .replace(/<\/u>/gi, '</u>')
     .replace(/<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)')
-    .replace(/<(?!\/?u\b)[^>]+>/g, '')
+    .replace(/<(?!\/?u\b|!-- repo:quote-break -->)[^>]+>/g, '')
     .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+
 }
 
 function renderMarkdownBlock(block: MarkdownBlock, index: number) {
@@ -302,11 +244,11 @@ function renderMarkdownBlock(block: MarkdownBlock, index: number) {
       }
     }
     case 'paragraph':
-      return <p key={index}>{renderMarkdownInline(block.text)}</p>
+      return <p key={index}>{block.text ? renderMarkdownInline(block.text) : <br />}</p>
     case 'quote':
       return (
         <blockquote key={index}>
-          {renderMarkdownInline(block.text)}
+          {hasNestedQuoteBlocks(block.text) ? <MarkdownContent value={block.text} /> : renderMarkdownInline(block.text)}
         </blockquote>
       )
     case 'bulletList':
@@ -321,19 +263,7 @@ function renderMarkdownBlock(block: MarkdownBlock, index: number) {
 }
 
 export function MarkdownContent({ value }: { readonly value: string }) {
-  const blocks: MarkdownBlock[] = []
-  let previousWasQuote = false
-
-  for (const line of normalizeStoredMarkdown(value).split('\n')) {
-    const block = toMarkdownBlock(line)
-    const previous = blocks.at(-1)
-    if (block?.kind === 'quote' && previousWasQuote && previous?.kind === 'quote') {
-      blocks[blocks.length - 1] = { kind: 'quote', text: `${previous.text}\n${block.text}` }
-    } else if (block) {
-      blocks.push(block)
-    }
-    previousWasQuote = block?.kind === 'quote'
-  }
+  const blocks = parseResumeMarkdown(normalizeStoredMarkdown(value))
 
   return <>{blocks.map((block, index) => <Fragment key={`${block.kind}-${index}`}>{renderMarkdownBlock(block, index)}</Fragment>)}</>
 }
