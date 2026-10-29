@@ -671,3 +671,32 @@ for (const width of [390, 1280]) {
     await expect.poll(() => mocks.getSavedPages()?.[1].content).toBe(projectBody)
   })
 }
+
+
+test('project periods preserve free text including ongoing after saving', async ({ page }, testInfo) => {
+  await authenticateAs(page, 'STUDENT')
+  const mocks = await mockResume(page, createPages(2), true)
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/resume?resumeId=resume-id&mode=edit')
+  const start = page.getByLabel('프로젝트 시작일', { exact: true })
+  const end = page.getByLabel('프로젝트 종료일', { exact: true })
+  await expect(start).toHaveAttribute('type', 'text')
+  await expect(end).toHaveAttribute('placeholder', '예: 진행 중')
+  await page.getByRole('button', { name: '프로젝트 기간 수정', exact: true }).click()
+  await expect(end).toBeFocused()
+  await start.fill('2026년 봄')
+  await end.fill('진행 중')
+  await page.screenshot({ path: testInfo.outputPath('project-period-editor.png'), fullPage: true })
+  await page.getByRole('button', { name: '저장', exact: true }).click()
+  await expect.poll(() => mocks.getSavedPages()?.[1].project?.endDate).toBe('진행 중')
+  expect(mocks.getSavedPages()![1].project?.startDate).toBe('2026년 봄')
+  await page.goto('/resume?resumeId=resume-id&mode=edit')
+  await expect(start).toHaveValue('2026년 봄')
+  await expect(end).toHaveValue('진행 중')
+  for (const viewer of viewers) {
+    await page.evaluate(token => localStorage.setItem('repo.auth.accessToken', token), createTestAccessToken(viewer.role))
+    await page.goto(viewer.path)
+    await expect(page.getByText('2026년 봄 ~ 진행 중', { exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`project-period-${viewer.name}.png`), fullPage: true })
+  }
+})

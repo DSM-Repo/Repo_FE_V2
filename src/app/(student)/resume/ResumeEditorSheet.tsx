@@ -359,7 +359,9 @@ export function ResumeEditorSheet({
                 className={styles.projectDateInput}
                 id={`resume-project-start-date-${page.index}`}
                 onChange={(event) => updateProject({ startDate: event.target.value })}
-                placeholder="202X-XX-XX"
+                type="text"
+                placeholder="예: 2026.03"
+                title="날짜 또는 원하는 기간 표현을 입력해주세요."
                 value={project.startDate}
               />
               <span aria-hidden="true">~</span>
@@ -370,10 +372,13 @@ export function ResumeEditorSheet({
                 className={styles.projectDateInput}
                 id={`resume-project-end-date-${page.index}`}
                 onChange={(event) => updateProject({ endDate: event.target.value })}
-                placeholder="202X-XX-XX"
+                type="text"
+                placeholder="예: 진행 중"
+                title="종료 날짜 또는 진행 중 등 원하는 표현을 입력해주세요."
                 value={project.endDate}
               />
-              <button className={styles.inlineIconButton} type="button" aria-label="프로젝트 기간 수정">
+              <button className={styles.inlineIconButton} type="button" aria-label="프로젝트 기간 수정"
+                onClick={() => document.getElementById(`resume-project-end-date-${page.index}`)?.focus()}>
                 ✎
               </button>
             </div>
