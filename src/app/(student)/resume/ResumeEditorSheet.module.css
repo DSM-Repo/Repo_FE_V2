@@ -94,7 +94,7 @@
 }
 
 .projectHeader {
-  grid-template-columns: var(--resume-book-sheet-qr-size, 80px) minmax(0, 1fr);
+  grid-template-columns: var(--project-image-width, var(--resume-book-sheet-qr-size, 80px)) minmax(0, 1fr);
   gap: var(--resume-book-sheet-header-gap, var(--space-5));
 }
 
@@ -820,7 +820,7 @@
   }
 
   .projectHeader {
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: var(--project-image-width, 44px) minmax(0, 1fr);
   }
 
   .nameRow,
@@ -874,4 +874,88 @@
     width: 48px;
     height: 48px;
   }
+}
+
+.projectImageEditor {
+  position: relative;
+  width: var(--project-image-width, var(--resume-book-sheet-qr-size, 80px));
+  height: var(--project-image-height, var(--resume-book-sheet-qr-size, 80px));
+}
+
+.projectImageEditor .projectImageButton {
+  width: 100%;
+  height: 100%;
+}
+
+.projectImageButton:has(img) {
+  padding: 0;
+  border: 0;
+}
+
+.projectImageButton img {
+  object-fit: contain;
+}
+
+.projectImageSize {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 5;
+  margin-top: var(--space-1);
+  color: var(--repo-text-black);
+  font-size: var(--repo-font-body-very-tiny-size);
+  line-height: var(--repo-font-body-very-tiny-line-height);
+}
+
+.projectImageSize summary {
+  width: max-content;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--repo-gray-300);
+  border-radius: var(--repo-radius-control);
+  background: var(--repo-gray-50);
+  cursor: pointer;
+}
+
+.projectImageSizePanel {
+  display: grid;
+  width: 180px;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--repo-gray-300);
+  border-radius: var(--repo-radius-control);
+  background: var(--repo-gray-50);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+}
+
+.projectImageSizePanel label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.projectImageSizePanel input {
+  width: 72px;
+  padding: var(--space-1);
+  border: 1px solid var(--repo-gray-300);
+  border-radius: var(--repo-radius-control);
+  color: inherit;
+  background: transparent;
+  font: inherit;
+}
+
+.projectImageSizePanel button {
+  padding: var(--space-1);
+  border: 1px solid var(--repo-gray-300);
+  border-radius: var(--repo-radius-control);
+  color: inherit;
+  background: var(--repo-gray-100);
+  font: inherit;
+  cursor: pointer;
+}
+
+.projectImageSize :is(summary, input, button):focus-visible {
+  outline: 2px solid var(--repo-text-black);
+  outline-offset: 2px;
 }

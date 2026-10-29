@@ -176,6 +176,7 @@ All spacing derives from 4px.
 - **Layout**: mirrors the resume preview density rather than form density; controls keep transparent document styling and use existing typography tokens
 - **Accessibility**: editable fields keep labels through visually hidden text, toolbar buttons expose action labels, and focus remains visible without changing sheet geometry
 
+- **Project image size**: editor offers a compact “이미지 크기” disclosure beside the uploaded image; labelled width/height number controls accept 40–160 document px, with an 80×80 reset. Changes apply on blur/Enter, images use contain to preserve aspect ratio, and editor/teacher/library share the same dimensions. Store explicit dimensions in a reserved leading `<!-- repo:project-image-size=WxH -->` document comment until the backend exposes layout fields; strip that metadata from editable/visible text. Existing images retain their current default dimensions until resized. Controls use body/very-tiny typography, neutral input borders, existing spacing tokens, and visible keyboard focus.
 
 ### TeacherResumeFeedback
 - **Source**: Figma `okhxw8EuxX4OTiZDkXpCcT`, nodes `700:59455` (목록) and `700:59554` (선택 및 삭제)

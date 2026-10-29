@@ -47,7 +47,7 @@
 }
 
 .projectHeader {
-  grid-template-columns: var(--resume-book-sheet-qr-size, 80px) minmax(0, 1fr);
+  grid-template-columns: var(--project-image-width, var(--resume-book-sheet-qr-size, 80px)) minmax(0, 1fr);
   gap: var(--resume-book-sheet-header-gap, 13px);
 }
 
@@ -161,9 +161,9 @@
 
 .projectImage,
 .projectImagePlaceholder {
-  width: var(--resume-book-sheet-qr-size, 80px);
-  height: var(--resume-book-sheet-qr-size, 80px);
-  object-fit: cover;
+  width: var(--project-image-width, var(--resume-book-sheet-qr-size, 80px));
+  height: var(--project-image-height, var(--resume-book-sheet-qr-size, 80px));
+  object-fit: contain;
 }
 
 .projectImagePlaceholder {

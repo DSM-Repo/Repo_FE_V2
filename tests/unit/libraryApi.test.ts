@@ -376,3 +376,18 @@ test('getLibraryResumeByStudentId returns not-found when the public resume is un
     message: '공개된 이력서를 찾을 수 없습니다.',
   })
 })
+
+test('public resume readers restore project image dimensions from document metadata', async () => {
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    cohort: 11, date: 2026, email: '', introduce: '', majorName: '', name: '오혜민',
+    pages: [{ id: 'project-page', index: 1, type: 'PROJECT',
+      content: '<!-- repo:project-image-size=160x40 -->\n프로젝트 내용', project: { imageUrl: '/project.png' } }],
+    portfolioUrl: '', profileImageUrl: null, releasedAt: '', resumeId: 'resume-id', studentId: 1,
+    studentNumber: '2201', year: 2,
+  }))
+  const result = await libraryApi.getLibraryResumeByStudentId({ accessToken: 'token', studentId: 1 })
+  assert.equal(result.kind, 'success')
+  if (result.kind !== 'success') throw new Error('Expected public resume')
+  assert.equal(result.resume.pages[0].content, '프로젝트 내용')
+  assert.deepEqual(result.resume.pages[0].project?.imageSize, { width: 160, height: 40 })
+})

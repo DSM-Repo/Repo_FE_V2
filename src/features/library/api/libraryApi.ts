@@ -21,6 +21,7 @@ import {
   type LibraryRequestFailure,
   type LibraryRequestResponse,
 } from './libraryHttpClient'
+import { readProjectImageSize } from '../../../shared/lib/projectImageSize'
 import { normalizeApiImageUrl } from '../../../shared/api/imageUrl'
 import { readServerErrorMessage } from '../../../shared/api/serverErrorMessage'
 
@@ -205,11 +206,12 @@ function parseLibraryResumePage(value: unknown): LibraryResumePage | undefined {
     return undefined
   }
 
+  const layout = type === 'PROJECT' && project ? readProjectImageSize(value['content']) : { content: value['content'] }
   return {
-    content: value['content'],
+    content: layout.content,
     id: value['id'],
     index: value['index'],
-    ...(project ? { project } : {}),
+    ...(project ? { project: { ...project, ...('imageSize' in layout && layout.imageSize ? { imageSize: layout.imageSize } : {}) } } : {}),
     type,
   }
 }

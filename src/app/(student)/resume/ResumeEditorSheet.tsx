@@ -7,6 +7,9 @@ import type { ResumePageType } from '@/features/resume/api'
 import { toFeedbackPosition } from '@/shared/lib/feedbackPosition'
 import { Dropdown, FeedbackBalloon, Icon, QrCode, type DropdownOption, type ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 
+import type { ProjectImageSize } from '@/shared/lib/projectImageSize'
+
+import { ProjectImageSizeControls } from './ProjectImageSizeControls'
 import { MarkdownTextarea } from './MarkdownTextarea'
 import { ProfileImagePicker } from './ProfileImagePicker'
 import styles from './ResumeEditorSheet.module.css'
@@ -17,6 +20,7 @@ export type ResumeDraftActivity = {
 }
 
 export type ResumeDraftProject = {
+  readonly imageSize?: ProjectImageSize
   readonly endDate: string
   readonly imageUrl: string
   readonly name: string
@@ -307,7 +311,7 @@ export function ResumeEditorSheet({
     return (
       <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
         {renderPageActions()}
-        <header className={styles.projectHeader}>
+        <header className={styles.projectHeader} style={project.imageSize ? { '--project-image-width': `${project.imageSize.width}px`, '--project-image-height': `${project.imageSize.height}px` } as CSSProperties : undefined}>
           <input
             accept="image/jpeg,image/png,image/webp"
             className={styles.fileInput}
@@ -316,23 +320,26 @@ export function ResumeEditorSheet({
             ref={projectImageInputRef}
             type="file"
           />
-          <button
-            aria-busy={isProjectImageUploading}
-            className={styles.projectImageButton}
-            disabled={isProjectImageUploading || !onImageUpload}
-            onClick={() => projectImageInputRef.current?.click()}
-            type="button"
-            aria-label={project.imageUrl ? '프로젝트 이미지 변경' : '프로젝트 이미지 추가'}
-          >
-            {project.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- The uploaded URL is provided by the API and may be outside configured Next image hosts.
-              <img src={project.imageUrl} alt="" />
-            ) : isProjectImageUploading ? (
-              <span>업로드</span>
-            ) : (
-              <Icon name="plus" />
-            )}
-          </button>
+          <div className={styles.projectImageEditor}>
+            <button
+              aria-busy={isProjectImageUploading}
+              className={styles.projectImageButton}
+              disabled={isProjectImageUploading || !onImageUpload}
+              onClick={() => projectImageInputRef.current?.click()}
+              type="button"
+              aria-label={project.imageUrl ? '프로젝트 이미지 변경' : '프로젝트 이미지 추가'}
+            >
+              {project.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- The uploaded URL is provided by the API and may be outside configured Next image hosts.
+                <img src={project.imageUrl} alt="" />
+              ) : isProjectImageUploading ? (
+                <span>업로드</span>
+              ) : (
+                <Icon name="plus" />
+              )}
+            </button>
+            {project.imageUrl ? <ProjectImageSizeControls size={project.imageSize} onChange={(imageSize) => updateProject({ imageSize })} /> : null}
+          </div>
           <div className={styles.projectIdentity}>
             <label className={styles.srOnly} htmlFor={`resume-project-name-${page.index}`}>
               프로젝트 이름

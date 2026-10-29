@@ -1113,3 +1113,24 @@ test('autoSaveResume exposes server messages for handled mutation failures', asy
     status: 410,
   })
 })
+
+test('resume readers extract project image dimensions while leaving other page content untouched', async () => {
+  const content = '<!-- repo:project-image-size=120x60 -->\n## 프로젝트 내용'
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    id: 'resume-id', pages: [
+      { id: 'project-page', index: 1, type: 'PROJECT', content, project: { imageUrl: '/project.png' } },
+      { id: 'free-page', index: 2, type: 'FREE', content },
+    ],
+  }))
+  for (const run of [
+    () => resumeApi.getResumeById({ accessToken: 'token', resumeId: 'resume-id' }),
+    () => resumeApi.getStudentResumeById({ accessToken: 'token', studentId: 1 }),
+  ]) {
+    const result = await run()
+    assert.equal(result.kind, 'success')
+    if (result.kind !== 'success') throw new Error('Expected resume')
+    assert.equal(result.resume.pages[0].content, '## 프로젝트 내용')
+    assert.deepEqual(result.resume.pages[0].project?.imageSize, { width: 120, height: 60 })
+    assert.equal(result.resume.pages[1].content, content)
+  }
+})

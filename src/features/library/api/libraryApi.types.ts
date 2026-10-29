@@ -1,3 +1,5 @@
+import type { ProjectImageSize } from '../../../shared/lib/projectImageSize'
+
 export type LibraryAuthInput = {
   readonly accessToken: string
 }
@@ -63,6 +65,7 @@ export type LibraryResumePage = {
 export type LibraryResumePageType = 'FREE' | 'PROFILE' | 'PROJECT'
 
 export type LibraryResumeProject = {
+  readonly imageSize?: ProjectImageSize
   readonly endDate: string
   readonly imageUrl: string
   readonly name: string

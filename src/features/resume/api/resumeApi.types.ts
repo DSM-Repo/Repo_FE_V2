@@ -1,6 +1,9 @@
+import type { ProjectImageSize } from '../../../shared/lib/projectImageSize'
+
 export type ResumePageType = 'FREE' | 'PROFILE' | 'PROJECT'
 
 export type ResumeProject = {
+  readonly imageSize?: ProjectImageSize
   readonly endDate: string
   readonly imageUrl: string
   readonly name: string

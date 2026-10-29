@@ -1,3 +1,5 @@
+import type { ProjectImageSize } from '@/shared/lib/projectImageSize'
+
 import { Fragment, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import Image from 'next/image'
 
@@ -15,6 +17,7 @@ export type ResumeBookSheetActivity = {
 }
 
 export type ResumeBookSheetProject = {
+  readonly imageSize?: ProjectImageSize
   readonly endDate: string
   readonly imageUrl: string
   readonly name: string
@@ -417,7 +420,7 @@ export function ResumeBookSheet({
 
     return (
       <article className={sheetClassName} aria-label={label} onClick={handleFeedbackPointClick}>
-        <header className={styles.projectHeader}>
+        <header className={styles.projectHeader} style={project.imageSize ? { '--project-image-width': `${project.imageSize.width}px`, '--project-image-height': `${project.imageSize.height}px` } as CSSProperties : undefined}>
           {projectImageUrl ? (
             <Image
               className={styles.projectImage}

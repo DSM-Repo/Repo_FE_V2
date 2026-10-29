@@ -68,6 +68,7 @@ function toSheetContent(resume: Resume, page: ResumePage | undefined): ResumeBoo
       ? {
           endDate: project?.endDate ?? '',
           imageUrl: project?.imageUrl ?? '',
+          ...(project?.imageSize ? { imageSize: project.imageSize } : {}),
           name: project?.name ?? '',
           startDate: project?.startDate ?? '',
           summary: project?.summary ?? '',

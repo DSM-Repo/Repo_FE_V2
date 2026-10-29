@@ -605,3 +605,69 @@ for (const replaceSubmittedPage of [false, true]) {
     expect(mocks.getSavedPages()![1].content).toBe('저장 중 추가한 페이지')
   })
 }
+
+for (const width of [390, 1280]) {
+  test(`project image dimensions persist across save and every reader at ${width}px`, async ({ page }, testInfo) => {
+    await authenticateAs(page, 'STUDENT')
+    const pages = createPages(2)
+    const projectBody = pages[1].content
+    const imageUrl = 'https://images.repo.test/project-logo.svg'
+    pages[1].project!.imageUrl = imageUrl
+    await page.route(imageUrl, route => route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120"><rect width="240" height="120" fill="#526678"/><circle cx="120" cy="60" r="40" fill="#fff"/></svg>',
+    }))
+    const mocks = await mockResume(page, pages, true)
+    await page.setViewportSize({ width, height: 900 })
+    const openProjectEditor = async () => {
+      await page.goto('/resume?resumeId=resume-id&mode=edit')
+      if (width === 390) await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+      await page.getByText('이미지 크기', { exact: true }).click()
+    }
+    const expectImageSize = async (image: Locator, imageWidth: number, imageHeight: number) => {
+      await expect(image).toBeVisible()
+      await expect(image).toHaveCSS('width', `${imageWidth}px`)
+      await expect(image).toHaveCSS('height', `${imageHeight}px`)
+      await expect(image).toHaveCSS('object-fit', 'contain')
+    }
+
+    await openProjectEditor()
+    await page.getByRole('spinbutton', { name: '프로젝트 이미지 가로', exact: true }).fill('30')
+    await page.getByRole('spinbutton', { name: '프로젝트 이미지 가로', exact: true }).press('Enter')
+    await expect(page.getByRole('spinbutton', { name: '프로젝트 이미지 가로', exact: true })).toHaveValue('40')
+    await page.getByRole('spinbutton', { name: '프로젝트 이미지 가로', exact: true }).fill('120')
+    await page.getByRole('spinbutton', { name: '프로젝트 이미지 세로', exact: true }).fill('60')
+    await page.getByRole('spinbutton', { name: '프로젝트 이미지 세로', exact: true }).press('Tab')
+    const editorImage = page.getByRole('button', { name: '프로젝트 이미지 변경', exact: true }).locator('img')
+    await expectImageSize(editorImage, 120, 60)
+    await page.screenshot({ path: testInfo.outputPath(`project-image-size-controls-${width}.png`), fullPage: true })
+    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await expect.poll(() => mocks.getSavedPages()?.[1].content).toBe(`<!-- repo:project-image-size=120x60 -->\n${projectBody}`)
+    expect(mocks.getSavedPages()![1].content.match(/repo:project-image-size=/g)).toHaveLength(1)
+
+    await openProjectEditor()
+    await expect(page.getByRole('spinbutton', { name: '프로젝트 이미지 가로', exact: true })).toHaveValue('120')
+    await expect(page.getByRole('spinbutton', { name: '프로젝트 이미지 세로', exact: true })).toHaveValue('60')
+    await expectImageSize(editorImage, 120, 60)
+    await expect(page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })).not.toContainText('repo:project-image-size')
+
+    for (const viewer of viewers) {
+      await page.evaluate(token => localStorage.setItem('repo.auth.accessToken', token), createTestAccessToken(viewer.role))
+      await page.goto(viewer.path)
+      if (width === 390) await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+      const image = page.getByRole('img', { name: '프로젝트 2 이미지', exact: true })
+      await expectImageSize(image, 120, 60)
+      await expect(page.getByRole('heading', { name: '페이지 2 본문', exact: true })).toBeVisible()
+      await expect(sheets(page).filter({ has: image })).not.toContainText('repo:project-image-size')
+      await page.screenshot({ path: testInfo.outputPath(`project-image-size-${viewer.name}-${width}.png`), fullPage: true })
+    }
+
+    await page.evaluate(token => localStorage.setItem('repo.auth.accessToken', token), createTestAccessToken('STUDENT'))
+    await openProjectEditor()
+    await page.getByRole('button', { name: '기본 크기로', exact: true }).click()
+    await expect(page.getByRole('spinbutton', { name: '프로젝트 이미지 가로', exact: true })).toHaveValue('80')
+    await expect(page.getByRole('spinbutton', { name: '프로젝트 이미지 세로', exact: true })).toHaveValue('80')
+    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await expect.poll(() => mocks.getSavedPages()?.[1].content).toBe(projectBody)
+  })
+}

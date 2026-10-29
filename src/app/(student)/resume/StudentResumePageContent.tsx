@@ -26,6 +26,7 @@ import {
   type ResumeSaveProject,
 } from '@/features/resume/api'
 import { getUserMe, updateUserMajor, type UserMe, type UserMeResult } from '@/features/user/api'
+import { writeProjectImageSize } from '@/shared/lib/projectImageSize'
 import { useResumePageSize } from '@/shared/lib/useResumePageSize'
 import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 import { AppHeader, Icon, PortfolioUrlModal, ResumeFeedbackSheet, Toast } from '@/shared/ui'
@@ -243,6 +244,7 @@ function toDraftProject(project: ResumePage['project']): ResumeDraftProject | un
   return {
     endDate: project.endDate,
     imageUrl: project.imageUrl,
+    ...(project.imageSize ? { imageSize: project.imageSize } : {}),
     name: project.name,
     startDate: project.startDate,
     summary: project.summary,
@@ -268,6 +270,7 @@ function toSheetContent(draft: ResumeDraft, pageIndex: number): ResumeBookSheetC
       ? {
           endDate: project?.endDate ?? '',
           imageUrl: project?.imageUrl ?? '',
+          ...(project?.imageSize ? { imageSize: project.imageSize } : {}),
           name: project?.name ?? '',
           startDate: project?.startDate ?? '',
           summary: project?.summary ?? '',
@@ -362,6 +365,7 @@ function toResumePages(draft: ResumeDraft, resume?: Resume): readonly ResumePage
             project: {
               endDate: project.endDate,
               imageUrl: project.imageUrl,
+              ...(project.imageSize ? { imageSize: project.imageSize } : {}),
               name: project.name,
               startDate: project.startDate,
               summary: project.summary,
@@ -390,7 +394,7 @@ function toResumeSavePages(draft: ResumeDraft): readonly ResumeSavePage[] {
     const project = page.project ? toResumeSaveProject(page.project) : undefined
 
     return {
-      content: page.content,
+      content: page.type === 'PROJECT' ? writeProjectImageSize(page.content, page.project?.imageSize) : page.content,
       id: page.id ?? '',
       index: page.index,
       ...(project ? { project } : {}),
