@@ -102,6 +102,7 @@ export type ResumeSubmission = {
 }
 
 export type ResumeSave = {
+  readonly pages?: readonly { readonly id: string; readonly index: number }[]
   readonly resumeId: string
   readonly savedAt: string
 }

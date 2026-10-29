@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type SetStateAction } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 import { getSavedAccessToken } from '@/features/auth/api'
@@ -317,14 +317,45 @@ function toResumeDraft(resume: Resume): ResumeDraft {
   }
 }
 
+// This key follows immutable page edits and reordering without being sent to the API.
+const draftPageKey = Symbol('draftPageKey')
+type TrackedDraftPage = ResumeDraftPage & { readonly [draftPageKey]?: symbol }
+
+function trackDraftPages(draft: ResumeDraft): ResumeDraft {
+  return {
+    ...draft,
+    pages: draft.pages.map((page: TrackedDraftPage) =>
+      page[draftPageKey] ? page : { ...page, [draftPageKey]: Symbol() },
+    ),
+  }
+}
+
+function applySavedPageIds(
+  currentDraft: ResumeDraft,
+  submittedDraft: ResumeDraft,
+  savedPages: readonly { readonly id: string; readonly index: number }[],
+): ResumeDraft {
+  return {
+    ...currentDraft,
+    pages: currentDraft.pages.map((page: TrackedDraftPage) => {
+      const submittedPage = submittedDraft.pages.find((candidate: TrackedDraftPage) =>
+        page[draftPageKey] !== undefined && candidate[draftPageKey] === page[draftPageKey],
+      )
+      if (!submittedPage) return page
+      const savedPage = savedPages.find((candidate) => candidate.index === submittedPage.index)
+      return savedPage?.id.trim() ? { ...page, id: savedPage.id } : page
+    }),
+  }
+}
+
 function toResumePages(draft: ResumeDraft, resume?: Resume): readonly ResumePage[] {
   return draft.pages.map((page): ResumePage => {
-    const existingPage = resume?.pages.find((resumePage) => resumePage.index === page.index)
+    const existingPage = page.id ? resume?.pages.find((candidate) => candidate.id === page.id) : undefined
     const project = page.project ?? existingPage?.project
 
     return {
       content: page.content,
-      id: page.id ?? existingPage?.id ?? '',
+      id: page.id ?? '',
       index: page.index,
       ...(project
         ? {
@@ -354,15 +385,13 @@ function toResumeSaveProject(project: ResumeSaveProject): ResumeSaveProject | un
   return Object.keys(normalizedProject).length > 0 ? normalizedProject : undefined
 }
 
-function toResumeSavePages(draft: ResumeDraft, resume?: Resume): readonly ResumeSavePage[] {
+function toResumeSavePages(draft: ResumeDraft): readonly ResumeSavePage[] {
   return draft.pages.map((page): ResumeSavePage => {
-    const existingPage = resume?.pages.find((resumePage) => resumePage.index === page.index)
     const project = page.project ? toResumeSaveProject(page.project) : undefined
-    const pageId = page.id ?? existingPage?.id
 
     return {
       content: page.content,
-      ...(pageId ? { id: pageId } : {}),
+      id: page.id ?? '',
       index: page.index,
       ...(project ? { project } : {}),
       type: page.type,
@@ -459,7 +488,10 @@ export function StudentResumePageContent() {
   const requestedMode = searchParams.get('mode')
   const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' })
   const [viewMode, setViewMode] = useState<ViewMode>(() => toInitialViewMode(requestedMode))
-  const [draft, setDraft] = useState<ResumeDraft>(defaultResumeDraft)
+  const [draft, setDraftState] = useState<ResumeDraft>(() => trackDraftPages(defaultResumeDraft))
+  const setDraft = useCallback((nextDraft: SetStateAction<ResumeDraft>) => {
+    setDraftState((currentDraft) => trackDraftPages(typeof nextDraft === 'function' ? nextDraft(currentDraft) : nextDraft))
+  }, [])
   const [saveSubmitState, setSaveSubmitState] = useState<SaveSubmitState>('idle')
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback>()
   const [userLoadState, setUserLoadState] = useState<UserLoadState>({ kind: 'loading' })
@@ -541,7 +573,7 @@ export function StudentResumePageContent() {
     return () => {
       isActive = false
     }
-  }, [])
+  }, [setDraft])
 
   useEffect(() => {
     let isActive = true
@@ -633,7 +665,7 @@ export function StudentResumePageContent() {
       clearSavedResumeId()
     }
     setLoadState({ kind: 'failure', message: toFailureMessage(result) })
-  }, [router])
+  }, [router, setDraft])
 
   useEffect(() => {
     const resumeIdToLoad = requestedResumeId || getSavedResumeId() || ''
@@ -883,7 +915,7 @@ export function StudentResumePageContent() {
     setDraft(nextDraft)
     setIsDraftDirty(true)
     setActionFeedback(undefined)
-  }, [])
+  }, [setDraft])
 
   const handlePageRichPaste = useCallback(
     ({ content, pageIndex, readCaretOffset }: { readonly content: string; readonly pageIndex: number; readonly readCaretOffset: () => number | undefined }) => {
@@ -951,7 +983,7 @@ export function StudentResumePageContent() {
     setIsDraftDirty(false)
     setOpenFeedbackId(undefined)
     setViewMode('view')
-  }, [loadState])
+  }, [loadState, setDraft])
 
   const addProjectPage = useCallback(() => {
     if (draft.pages.length >= MAX_RESUME_PAGE_COUNT) {
@@ -1117,7 +1149,7 @@ export function StudentResumePageContent() {
 
       setActionFeedback({ message: '전공을 변경했습니다.', tone: 'success' })
     },
-    [majorSubmitState, majors],
+    [majorSubmitState, majors, setDraft],
   )
 
   const handleSave = useCallback(
@@ -1157,7 +1189,7 @@ export function StudentResumePageContent() {
       const activeResume = loadState.kind === 'success' ? loadState.resume : undefined
       const activeResumeId = activeResume?.id
       const pages = toResumePages(draftToSave, activeResume)
-      const savePages = toResumeSavePages(draftToSave, activeResume)
+      const savePages = toResumeSavePages(draftToSave)
       const saveRevision = draftRevisionRef.current
       const documentSession = documentSessionRef.current
       const saveOperation = ++saveOperationRef.current
@@ -1209,13 +1241,19 @@ export function StudentResumePageContent() {
         return undefined
       }
 
-      const syncedResumeResult = pages.some((page) => !page.id.trim())
+      const syncedResumeResult = pages.some((page) => !page.id.trim() &&
+        !result.pages?.some((savedPage) => savedPage.index === page.index))
         ? await getResumeById({
             accessToken,
             resumeId: result.resumeId,
           })
         : undefined
       const syncedResume = syncedResumeResult?.kind === 'success' ? syncedResumeResult.resume : undefined
+      const savedPageIds = syncedResume?.pages ?? result.pages
+      const savedPages = pages.map((page) => {
+        const savedPage = savedPageIds?.find((candidate) => candidate.index === page.index)
+        return savedPage ? { ...page, id: savedPage.id } : page
+      })
 
       if (saveOperationRef.current !== saveOperation || documentSessionRef.current !== documentSession) {
         if (saveOperationRef.current === saveOperation) {
@@ -1252,13 +1290,6 @@ export function StudentResumePageContent() {
 
       if (syncedResume) {
         setLoadState({ kind: 'success', resume: syncedResume })
-        setDraft((currentDraft) => ({
-          ...currentDraft,
-          pages: currentDraft.pages.map((page) => {
-            const savedPage = syncedResume.pages.find((candidate) => candidate.index === page.index && candidate.type === page.type)
-            return savedPage ? { ...page, id: savedPage.id } : page
-          }),
-        }))
       } else if (activeResume) {
         setLoadState({
           kind: 'success',
@@ -1266,7 +1297,7 @@ export function StudentResumePageContent() {
             ...activeResume,
             email: draftToSave.email,
             introduce: joinIntroduction(draftToSave),
-            pages,
+            pages: savedPages,
             portfolioUrl: draftToSave.portfolioUrl,
             profileImageUrl: draftToSave.profileImageUrl,
             savedAt: result.savedAt,
@@ -1278,11 +1309,15 @@ export function StudentResumePageContent() {
           kind: 'success',
           resume: toSavedDraftResume({
             draft: draftToSave,
-            pages,
+            pages: savedPages,
             resumeId: result.resumeId,
             savedAt: result.savedAt,
           }),
         })
+      }
+
+      if (savedPageIds) {
+        setDraft((currentDraft) => applySavedPageIds(currentDraft, draftToSave, savedPageIds))
       }
 
       if (!hasNewChanges) {
@@ -1313,7 +1348,7 @@ export function StudentResumePageContent() {
 
       return result.resumeId
     },
-    [draft, isResumeActionPending, isResumeReady, loadState, viewMode],
+    [draft, isResumeActionPending, isResumeReady, loadState, setDraft, viewMode],
   )
 
   const handlePortfolioUrlConfirm = useCallback(
@@ -1365,7 +1400,7 @@ export function StudentResumePageContent() {
 
     const activeResume = loadState.kind === 'success' ? loadState.resume : undefined
     const pages = toResumePages(draft, activeResume)
-    const savePages = toResumeSavePages(draft, activeResume)
+    const savePages = toResumeSavePages(draft)
     const saveRevision = draftRevisionRef.current
     const documentSession = documentSessionRef.current
     const submitOperation = ++saveOperationRef.current
@@ -1431,13 +1466,7 @@ export function StudentResumePageContent() {
 
     if (syncedResume) {
       setLoadState({ kind: 'success', resume: { ...syncedResume, submissionStatus: result.submissionStatus } })
-      setDraft((currentDraft) => ({
-        ...currentDraft,
-        pages: currentDraft.pages.map((page) => {
-          const savedPage = syncedResume.pages.find((candidate) => candidate.index === page.index && candidate.type === page.type)
-          return savedPage ? { ...page, id: savedPage.id } : page
-        }),
-      }))
+      setDraft((currentDraft) => applySavedPageIds(currentDraft, draft, syncedResume.pages))
     } else if (activeResume) {
       setLoadState({
         kind: 'success',
@@ -1467,7 +1496,7 @@ export function StudentResumePageContent() {
     setViewMode('view')
     window.history.replaceState(null, '', `/resume?resumeId=${encodeURIComponent(result.resumeId)}`)
     setActionFeedback({ message: '이력서를 제출했습니다.', tone: 'success' })
-  }, [draft, isResumeActionPending, isResumeReady, loadState])
+  }, [draft, isResumeActionPending, isResumeReady, loadState, setDraft])
 
   useEffect(() => {
     if (!AUTO_SAVE_ENABLED || !isDraftDirty || !isEditing || isResumeActionPending || savePendingRef.current) {

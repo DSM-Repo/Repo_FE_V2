@@ -2035,9 +2035,10 @@ test.describe('student resume management', () => {
           email: 'student@example.com',
           introduce: '사용자 경험을 개선하는 개발자입니다.',
           pages: [
-            { content: '# 첫 번째 페이지 내용\n**굵은 내용**', index: 0, type: 'PROFILE' },
+            { content: '# 첫 번째 페이지 내용\n**굵은 내용**', id: '', index: 0, type: 'PROFILE' },
             {
               content: '## 프로젝트 회고',
+              id: '',
               index: 1,
               project: {
                 endDate: '2026-09-18',
@@ -2118,8 +2119,8 @@ test.describe('student resume management', () => {
         email: '',
         introduce: '',
         pages: [
-          { content: '', index: 0, type: 'PROFILE' },
-          { content: '', index: 1, type: 'PROJECT' },
+          { content: '', id: '', index: 0, type: 'PROFILE' },
+          { content: '', id: '', index: 1, type: 'PROJECT' },
         ],
         portfolioUrl: '',
         skills: [],

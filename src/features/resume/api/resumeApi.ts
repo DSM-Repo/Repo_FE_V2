@@ -258,7 +258,17 @@ function parseResumeSave(value: unknown): ResumeSave | undefined {
     return undefined
   }
 
+  const pages = value['pages'] ?? undefined
+  if (pages !== undefined && (!Array.isArray(pages) || pages.some((page) =>
+    !isJsonRecord(page) || typeof page['id'] !== 'string' || !page['id'].trim() ||
+    !Number.isInteger(page['index']) || (page['index'] as number) < 0,
+  ))) return undefined
+  const savedPages = pages as { id: string; index: number }[] | undefined
+  if (savedPages && (new Set(savedPages.map((page) => page.id)).size !== savedPages.length ||
+    new Set(savedPages.map((page) => page.index)).size !== savedPages.length)) return undefined
+
   return {
+    ...(savedPages ? { pages: savedPages.map(({ id, index }) => ({ id, index })) } : {}),
     resumeId: value['resumeId'],
     savedAt: value['savedAt'],
   }
@@ -271,11 +281,7 @@ function parseResumeAutoSave(value: unknown): ResumeAutoSave | undefined {
     return undefined
   }
 
-  return {
-    autoSaved: value['autoSaved'],
-    resumeId: savedResume.resumeId,
-    savedAt: savedResume.savedAt,
-  }
+  return { ...savedResume, autoSaved: value['autoSaved'] }
 }
 
 function parseResumeImageUpload(value: unknown): ResumeImageUpload | undefined {
@@ -518,9 +524,8 @@ async function readSaveResponseBody(response: ResumeHttpResponse): Promise<Resum
   }
 
   return {
+    ...savedResume,
     kind: 'success',
-    resumeId: savedResume.resumeId,
-    savedAt: savedResume.savedAt,
   }
 }
 
@@ -542,10 +547,8 @@ async function readAutoSaveResponseBody(response: ResumeHttpResponse): Promise<R
   }
 
   return {
-    autoSaved: autoSavedResume.autoSaved,
+    ...autoSavedResume,
     kind: 'success',
-    resumeId: autoSavedResume.resumeId,
-    savedAt: autoSavedResume.savedAt,
   }
 }
 

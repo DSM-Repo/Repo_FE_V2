@@ -809,6 +809,26 @@ test('saveResume sends resume content with bearer auth and returns parsed save s
   })
 })
 
+test('saveResume accepts legacy null pages without inventing page identities', async () => {
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    resumeId: 'resume-id', savedAt: '2026-10-29T00:00:00Z', pages: null,
+  }), { status: 200 })
+  const result = await resumeApi.saveResume({ accessToken: 'token', email: '', introduce: '', pages: [], portfolioUrl: '', skills: [] })
+  assert.deepEqual(result, { kind: 'success', resumeId: 'resume-id', savedAt: '2026-10-29T00:00:00Z' })
+})
+
+for (const run of [resumeApi.saveResume, resumeApi.autoSaveResume]) {
+  test(`${run.name} retains issued page identities from a save response`, async () => {
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      autoSaved: true, resumeId: 'resume-id', savedAt: '2026-10-29T00:00:00Z',
+      pages: [{ id: 'existing', index: 0 }, { id: 'issued', index: 1 }],
+    }), { status: 200 })
+    const result = await run({ accessToken: 'token', email: '', introduce: '', pages: [], portfolioUrl: '', skills: [] })
+    assert.equal(result.kind, 'success')
+    if (result.kind === 'success') assert.deepEqual(result.pages, [{ id: 'existing', index: 0 }, { id: 'issued', index: 1 }])
+  })
+}
+
 test('uploadResumeImage sends multipart form data with bearer auth and returns uploaded image url', async () => {
   let requestedUrl = ''
   let requestedMethod = ''

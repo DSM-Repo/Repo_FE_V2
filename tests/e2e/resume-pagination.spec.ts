@@ -33,7 +33,7 @@ function createPages(count: number): ResumePage[] {
   })
 }
 
-async function mockResume(page: Page, pages: ResumePage[]) {
+async function mockResume(page: Page, pages: ResumePage[], includeSavedPages: boolean | 'partial' | 'empty' | 'null' = false, beforeSaveResponse?: () => Promise<void>) {
   let document = {
     email: 'student@dsm.hs.kr', id: 'resume-id', introduce: '자기소개 제목\n자기소개 내용',
     isPublic: true, majorName: 'Frontend', name: '오혜민', pages,
@@ -62,7 +62,14 @@ async function mockResume(page: Page, pages: ResumePage[]) {
     const body = route.request().postDataJSON() as { pages: ResumePage[] }
     savedPages = body.pages
     document = { ...document, pages: body.pages.map((item, index) => ({ ...item, id: item.id || `saved-page-${index}` })) }
-    await route.fulfill({ json: { resumeId: document.id, savedAt: document.savedAt } })
+    await beforeSaveResponse?.()
+    const savedPageIds = document.pages.map(({ id, index }) => ({ id, index }))
+    const responsePages = includeSavedPages === 'null' ? null : includeSavedPages === 'empty' ? []
+      : includeSavedPages === 'partial' ? savedPageIds.slice(0, 1) : savedPageIds
+    await route.fulfill({ json: {
+      resumeId: document.id, savedAt: document.savedAt,
+      ...(includeSavedPages ? { pages: responsePages } : {}),
+    } })
   })
   return { getSavedPages: () => savedPages }
 }
@@ -540,5 +547,61 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1920, height: 108
       }
       await page.screenshot({ path: testInfo.outputPath(`${viewer.name}-restored-size.png`), fullPage: true })
     }
+  })
+}
+
+for (const includeSavedPages of [false, true, 'partial', 'empty', 'null'] as const) {
+  test(`new pages keep separate identities after save (response pages: ${includeSavedPages})`, async ({ page }) => {
+    await authenticateAs(page, 'STUDENT')
+    const pages = createPages(2)
+    pages[0].content = ''
+    const mocks = await mockResume(page, pages, includeSavedPages)
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+    const activity = page.getByRole('textbox', { name: '1쪽 추가 내용', exact: true })
+    await activity.fill(Array.from({ length: 19 }, (_, index) => `활동 ${index + 1}`).join('\n'))
+    await expect(page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })).toBeFocused()
+    await page.keyboard.insertText('새 페이지 내용')
+    await expect(page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })).toContainText('새 페이지 내용')
+    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await expect.poll(() => mocks.getSavedPages()?.length).toBe(3)
+    expect(mocks.getSavedPages()!.map(({ id, index }) => ({ id, index }))).toEqual([
+      { id: 'page-1', index: 0 }, { id: '', index: 1 }, { id: 'page-2', index: 2 },
+    ])
+    await page.getByRole('button', { name: '이력서 수정하기', exact: true }).click()
+    await page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true }).fill('저장 후 수정')
+    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await expect.poll(() => mocks.getSavedPages()?.[1].content).toBe('저장 후 수정')
+    expect(mocks.getSavedPages()!.map(item => item.id)).toEqual(['page-1', 'saved-page-1', 'page-2'])
+  })
+}
+
+for (const replaceSubmittedPage of [false, true]) {
+  test(`save response identities follow submitted pages during ${replaceSubmittedPage ? 'replacement' : 'insertion'}`, async ({ page }) => {
+    await authenticateAs(page, 'STUDENT')
+    let releaseSave!: () => void
+    const saveGate = new Promise<void>(resolve => { releaseSave = resolve })
+    let saveCount = 0
+    const pages = createPages(2)
+    pages[0].content = ''
+    const mocks = await mockResume(page, pages, true, async () => { if (++saveCount === 1) await saveGate })
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+    const activity = page.getByRole('textbox', { name: '1쪽 추가 내용', exact: true })
+    const fillProfile = () => activity.fill(Array.from({ length: 19 }, (_, index) => `활동 ${index + 1}`).join('\n'))
+    await fillProfile()
+    await expect(page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await expect.poll(() => mocks.getSavedPages()?.length).toBe(3)
+    if (replaceSubmittedPage) await page.getByRole('button', { name: '2쪽 삭제', exact: true }).click()
+    await fillProfile()
+    await page.getByRole('textbox', { name: '2쪽 추가 내용', exact: true }).fill('저장 중 추가한 페이지')
+    releaseSave()
+    await expect(page.getByText('이전 내용은 저장했습니다. 저장되지 않은 변경사항이 있습니다.', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await expect.poll(() => mocks.getSavedPages()?.length).toBe(replaceSubmittedPage ? 3 : 4)
+    expect(mocks.getSavedPages()!.map(item => item.id)).toEqual(replaceSubmittedPage
+      ? ['page-1', '', 'page-2'] : ['page-1', '', 'saved-page-1', 'page-2'])
+    expect(mocks.getSavedPages()![1].content).toBe('저장 중 추가한 페이지')
   })
 }
