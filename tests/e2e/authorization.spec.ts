@@ -78,6 +78,10 @@ test.describe('protected route authorization', () => {
   test('redirects a student away from a teacher route', async ({ page }) => {
     // Given: the browser has a server-issued student role token.
     await authenticateAs(page, 'STUDENT')
+    await page.route(`${apiBaseUrl}/user`, route => route.fulfill({ json: {
+      name: '테스트 학생', major: null, introduce: null, profileImageUrl: null,
+      classInfo: { grade: 1, classNumber: 1, number: 1, schoolNumber: '1101' },
+    } }))
     await page.route(`${apiBaseUrl}/alram`, async (route) => {
       await route.fulfill({ json: [] })
     })
@@ -87,6 +91,7 @@ test.describe('protected route authorization', () => {
 
     // Then: the student returns to the student home.
     await expect(page).toHaveURL(/\/home$/)
+    await expect(page.getByRole('heading', { level: 1, name: /테스트 학생/ })).toBeVisible()
   })
 
   test('redirects a teacher away from a student route', async ({ page }) => {
