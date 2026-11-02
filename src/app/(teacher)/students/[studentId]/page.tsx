@@ -538,7 +538,7 @@ export default function TeacherStudentReviewPage() {
       <section className={styles.workspace} aria-label="학생 포트폴리오 검토">
         {actionFeedback && !feedbackTarget ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}
 
-        <div className={styles.viewer} data-document-empty={loadState.kind !== 'success'}>
+        <div className={styles.viewer} data-resume-height data-document-empty={loadState.kind !== 'success'}>
           {loadState.kind === 'loading' ? (
             <div className={styles.documentEmpty} role="status">
               <strong>학생 이력서를 불러오는 중입니다.</strong>

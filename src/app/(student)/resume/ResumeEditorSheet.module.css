@@ -376,9 +376,9 @@
 .projectIntroBox {
   display: grid;
   gap: var(--space-2);
-  min-height: clamp(64px, 4.6vw, 88px);
-  padding: clamp(var(--space-3), 1vw, var(--space-4));
-  margin-top: clamp(var(--space-4), 1.35vw, var(--space-6));
+  min-height: 64px;
+  padding: var(--space-3);
+  margin-top: var(--space-4);
   border-radius: 6px;
   background: var(--repo-gray-100);
 }
@@ -409,7 +409,7 @@
 .skillSection {
   display: grid;
   gap: var(--space-2);
-  margin-top: clamp(var(--space-4), 1.3vw, var(--space-6));
+  margin-top: var(--space-4);
 }
 
 .skillList {
@@ -484,7 +484,7 @@
 
 .activityHeadingRow {
   gap: var(--space-4);
-  padding-top: clamp(var(--space-3), 1vw, var(--space-5));
+  padding-top: var(--space-3);
   border-top: 1px solid var(--repo-gray-300);
 }
 
@@ -522,7 +522,7 @@
 .activitySection {
   display: grid;
   gap: var(--space-2);
-  margin-top: clamp(var(--space-3), 1.15vw, var(--space-5));
+  margin-top: var(--space-3);
 }
 
 .richTextToolbar {
@@ -653,7 +653,7 @@
 }
 
 .projectIntroBox {
-  min-height: clamp(52px, 3.8vw, 68px);
+  min-height: 52px;
 }
 
 .projectIntroInput {
@@ -809,72 +809,6 @@
   border: 0;
 }
 
-@media (max-width: 720px) {
-  .sheet {
-    min-height: 640px;
-  }
-
-  .profileHeader {
-    grid-template-columns: 48px minmax(0, 1fr) 44px;
-    gap: 8px;
-  }
-
-  .projectHeader {
-    grid-template-columns: var(--project-image-width, 44px) minmax(0, 1fr);
-  }
-
-  .nameRow,
-  .activityHeadingRow {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .nameRow {
-    gap: 2px;
-  }
-
-  .nameInput,
-  .majorInput,
-  .emailInput {
-    flex: none;
-  }
-
-  .nameInput {
-    width: 100%;
-  }
-
-  .majorDropdown {
-    --dropdown-width: 100%;
-
-    padding-left: 0;
-    max-width: 100%;
-  }
-
-  .metaRow {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 3px;
-  }
-
-  .metaRow > span {
-    display: none;
-  }
-
-  .projectNameInput {
-    font-size: 18px;
-  }
-
-  .projectImageButton,
-  .qrButton {
-    width: 44px;
-    height: 44px;
-  }
-
-  .profileImageButton {
-    width: 48px;
-    height: 48px;
-  }
-}
 
 .projectImageEditor {
   position: relative;

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import '@/shared/styles/colors.css'
 import '@/shared/styles/typography.css'
+import '@/shared/styles/resume-font.css'
 
 export const metadata: Metadata = {
   title: {
@@ -18,6 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        <link rel="preload" href="/assets/fonts/resume/PretendardVariable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+      </head>
       <body>{children}</body>
     </html>
   )

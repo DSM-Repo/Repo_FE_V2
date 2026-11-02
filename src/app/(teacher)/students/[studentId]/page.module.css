@@ -20,7 +20,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 44px 88px 24px;
+  padding: 24px 88px 16px;
 }
 
 .toastLayer {
@@ -56,6 +56,8 @@
   position: relative;
   display: grid;
   width: 100%;
+  min-height: 0;
+  flex: 1;
   align-items: center;
   transition: width 180ms ease;
 }
@@ -65,6 +67,7 @@
 }
 
 .sheetViewport {
+  --resume-navigation-width: 128px;
   container-type: inline-size;
   display: grid;
   width: min(100%, 1380px);
@@ -167,7 +170,8 @@
 }
 
 .pageIndicator {
-  margin: 18px 0 0;
+  flex-shrink: 0;
+  margin: 12px 0 0;
   color: var(--repo-bg-main-point);
   font-size: var(--repo-font-body-large-size);
   font-weight: var(--repo-font-body-large-weight);
@@ -180,9 +184,10 @@
 
 .bottomControls {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 12px;
   transition: margin-right 180ms ease;
 }
 
@@ -595,7 +600,7 @@
 
 @media (max-height: 880px) {
   .workspace {
-    padding-top: 48px;
+    padding-top: 24px;
   }
 
   .documentEmpty {
@@ -644,6 +649,7 @@
   }
 
   .sheetViewport {
+    --resume-navigation-width: 112px;
     grid-template-columns: 36px minmax(0, 1fr) 36px;
   }
 
@@ -684,6 +690,7 @@
   }
 
   .sheetViewport {
+    --resume-navigation-width: 0px;
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
   }

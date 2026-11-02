@@ -1,3 +1,7 @@
+.viewport > article {
+  font-family: 'Repo Resume Pretendard', sans-serif;
+}
+
 .viewport {
   position: relative;
   width: var(--resume-book-sheet-width, 610.338461538px);

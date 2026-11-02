@@ -14,20 +14,36 @@ export function ResumeDocumentViewport({ className, pagesPerSpread = 2, children
     if (!viewport) return
 
     const container = viewport.closest<HTMLElement>('[data-resume-viewport]')
+    const heightContainer = viewport.closest<HTMLElement>('[data-resume-height]')
     const document = viewport.firstElementChild as HTMLElement | null
     if (!container || !document) return
+    let active = true
+    viewport.inert = viewport.ownerDocument.fonts.status === 'loading'
+    viewport.setAttribute('aria-busy', String(viewport.inert))
+    void viewport.ownerDocument.fonts.ready.then(() => {
+      if (active) {
+        viewport.inert = false
+        viewport.setAttribute('aria-busy', 'false')
+      }
+    })
 
     const updateLayout = () => {
       const headerHeight = parseFloat(getComputedStyle(viewport).getPropertyValue('--repo-size-header-min-height')) || 64
       const narrow = window.innerWidth <= 980
       const reservedHeight = window.innerWidth <= 760 ? 384 : 140
+      const availableHeight = Math.min(
+        window.innerHeight - headerHeight - reservedHeight,
+        heightContainer ? heightContainer.clientHeight - (window.innerWidth <= 760 ? 41 : 0) : Infinity,
+      )
       const availableWidth = Math.min(container.clientWidth, window.innerWidth - (narrow ? 48 : 176), 1380)
+      const navigationWidth = parseFloat(getComputedStyle(container).getPropertyValue('--resume-navigation-width'))
+      const horizontalSpace = Number.isFinite(navigationWidth) ? navigationWidth + (pagesPerSpread === 1 ? 0 : 20) : pagesPerSpread === 1 ? 0 : 148
       const documentWidth = parseFloat(getComputedStyle(document).width)
       const documentHeight = parseFloat(getComputedStyle(document).height)
       const width = Math.max(1, Math.min(
         documentWidth,
-        (availableWidth - (pagesPerSpread === 1 ? 0 : 148)) / pagesPerSpread,
-        (window.innerHeight - headerHeight - reservedHeight) * documentWidth / documentHeight,
+        (availableWidth - horizontalSpace) / pagesPerSpread,
+        availableHeight * documentWidth / documentHeight,
       ))
       const scale = width / documentWidth
       setLayout((current) => Math.abs(current.width - width) < 0.01 ? current : { width, scale })
@@ -35,8 +51,10 @@ export function ResumeDocumentViewport({ className, pagesPerSpread = 2, children
     updateLayout()
     const observer = new ResizeObserver(updateLayout)
     observer.observe(container)
+    if (heightContainer) observer.observe(heightContainer)
     window.addEventListener('resize', updateLayout)
     return () => {
+      active = false
       observer.disconnect()
       window.removeEventListener('resize', updateLayout)
     }

@@ -1,0 +1,7 @@
+@font-face {
+  font-family: 'Repo Resume Pretendard';
+  src: url('/assets/fonts/resume/PretendardVariable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}

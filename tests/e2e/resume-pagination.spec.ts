@@ -700,3 +700,110 @@ test('project periods preserve free text including ongoing after saving', async 
     await page.screenshot({ path: testInfo.outputPath(`project-period-${viewer.name}.png`), fullPage: true })
   }
 })
+
+for (const viewport of [
+  { width: 1366, height: 620 },
+  { width: 1280, height: 600 },
+  { width: 1024, height: 600 },
+  { width: 960, height: 540 },
+  { width: 800, height: 600 },
+  { width: 800, height: 1000 },
+  { width: 960, height: 1000 },
+  { width: 390, height: 650 },
+]) {
+  test(`teacher: complete pages and controls fit a short ${viewport.width}x${viewport.height} window`, async ({ page }, testInfo) => {
+    await authenticateAs(page, 'TEACHER')
+    await mockResume(page, createPages(4))
+    await page.setViewportSize(viewport)
+    await page.goto('/students/1')
+    for (const panelOpen of [false, true]) {
+      if (panelOpen) await page.getByRole('switch', { name: '피드백 보기', exact: true }).click()
+      await expect(sheets(page).first()).toBeVisible()
+      await expect.poll(() => sheets(page).first().evaluate(element => {
+        const bounds = element.getBoundingClientRect()
+        let clipped = Math.max(0, -bounds.left, -bounds.top, bounds.right - innerWidth, bounds.bottom - innerHeight)
+        for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+          const style = getComputedStyle(parent)
+          const frame = parent.getBoundingClientRect()
+          if (/(hidden|clip|auto|scroll)/.test(style.overflowY)) clipped = Math.max(clipped, frame.top - bounds.top, bounds.bottom - frame.bottom)
+          if (/(hidden|clip|auto|scroll)/.test(style.overflowX)) clipped = Math.max(clipped, frame.left - bounds.left, bounds.right - frame.right)
+        }
+        return clipped
+      })).toBeLessThanOrEqual(1)
+      for (const arrow of ['이전 페이지', '다음 페이지']) await expectInViewport(page.getByRole('button', { name: arrow, exact: true }), page)
+      await expectInViewport(page.getByRole('button', { name: /피드백 추가/ }), page)
+      if (panelOpen && viewport.width > 760) {
+        const panel = page.getByRole('complementary', { name: '피드백 목록', exact: true })
+        for (const content of [sheets(page).first(), page.getByRole('button', { name: '다음 페이지', exact: true }), page.getByLabel('학생 이력서 검토 설정', { exact: true })]) {
+          await expect.poll(async () => {
+            const panelBounds = await panel.boundingBox()
+            const contentBounds = await content.boundingBox()
+            if (!panelBounds || !contentBounds) throw new Error('Missing feedback layout')
+            return contentBounds.x + contentBounds.width - panelBounds.x
+          }).toBeLessThanOrEqual(1)
+        }
+      }
+      await page.screenshot({ path: testInfo.outputPath(`short-window-panel-${panelOpen}.png`), fullPage: true, animations: 'disabled' })
+    }
+  })
+}
+
+test('document line wrapping and writing capacity stay fixed when the window changes', async ({ page }) => {
+  await authenticateAs(page, 'STUDENT')
+  const pages = createPages(2)
+  pages[0].content = Array.from({ length: 19 }, (_, index) => `활동 ${index + 1}: 한글과 English를 함께 작성한 프로젝트 기록입니다.`).join('\n')
+  await mockResume(page, pages)
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto('/resume?resumeId=resume-id&mode=edit')
+  const editor = page.getByRole('textbox', { name: '1쪽 추가 내용', exact: true })
+  await expect(editor).toBeVisible()
+  await expect.poll(() => page.evaluate(async () => {
+    await document.fonts.ready
+    return document.fonts.check('10px "Repo Resume Pretendard"', '한글 English')
+  })).toBe(true)
+  const measure = () => editor.evaluate(element => {
+    const sheet = element.closest('article')
+    if (!sheet) throw new Error('Missing document sheet')
+    const scale = sheet.getBoundingClientRect().height / sheet.clientHeight
+    return {
+      top: Math.round((element.getBoundingClientRect().top - sheet.getBoundingClientRect().top) / scale),
+      width: element.clientWidth,
+      height: element.scrollHeight,
+      font: getComputedStyle(element).fontFamily,
+      fontSize: getComputedStyle(element).fontSize,
+      sheetHeight: sheet.clientHeight,
+    }
+  })
+  const baseline = await measure()
+  expect(baseline.font).toContain('Repo Resume Pretendard')
+  expect(baseline.fontSize).toBe('10px')
+  expect(baseline.sheetHeight).toBe(864)
+  for (const viewport of [{ width: 1366, height: 620 }, { width: 1024, height: 600 }, { width: 390, height: 650 }]) {
+    await page.setViewportSize(viewport)
+    await expect.poll(measure).toEqual(baseline)
+  }
+})
+
+test('editing waits for the document font before measuring pasted content', async ({ page }) => {
+  await authenticateAs(page, 'STUDENT')
+  await mockResume(page, createPages(2))
+  let releaseFont: (() => void) | undefined
+  const fontPending = new Promise<void>(resolve => { releaseFont = resolve })
+  await page.route('**/PretendardVariable.woff2', async route => {
+    await fontPending
+    await route.continue()
+  })
+  await page.goto('/resume?resumeId=resume-id&mode=edit', { waitUntil: 'domcontentloaded' })
+  const editor = page.locator('#resume-page-content-0')
+  const viewport = page.locator('[aria-busy]').filter({ has: editor })
+  try {
+    await expect(viewport).toHaveAttribute('inert', '')
+    await expect(viewport).toHaveAttribute('aria-busy', 'true')
+  } finally {
+    releaseFont?.()
+  }
+  await expect(viewport).toHaveAttribute('aria-busy', 'false')
+  await expect(viewport).not.toHaveAttribute('inert')
+  await editor.fill('글꼴이 로드된 다음 작성한 내용')
+  await expect(editor).toContainText('글꼴이 로드된 다음 작성한 내용')
+})
