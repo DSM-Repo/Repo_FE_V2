@@ -894,6 +894,31 @@
   outline-offset: 2px;
 }
 
+.projectImageSizePanel.projectImageSizeInline {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--repo-font-body-tiny-size);
+}
+
+.projectImageSizeInline button {
+  background: var(--repo-bg-main-point);
+}
+
+.projectImageSizeInline > span {
+  color: var(--repo-gray-400);
+  font-size: var(--repo-font-body-very-tiny-size);
+}
+
+.projectImageSizeInline :is(input, button):focus-visible {
+  outline: 2px solid var(--repo-gray-50);
+  outline-offset: 2px;
+}
+
 .markdownEditor > :is(h1, h2, h3, h4, blockquote, ul, hr) {
   margin-block: var(--space-2);
 }

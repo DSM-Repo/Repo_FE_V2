@@ -12,6 +12,7 @@ import { Dropdown, FeedbackBalloon, Icon, QrCode, type DropdownOption, type Resu
 import type { ProjectImageSize } from '@/shared/lib/projectImageSize'
 
 import { ProjectImageSizeControls } from './ProjectImageSizeControls'
+import { ProjectImageSizeModal } from './ProjectImageSizeModal'
 import { MarkdownTextarea } from './MarkdownTextarea'
 import { ProfileImagePicker } from './ProfileImagePicker'
 import styles from './ResumeEditorSheet.module.css'
@@ -69,7 +70,7 @@ export type ResumeEditorSheetProps = {
   readonly onRedo?: () => void
   readonly onContentFocused?: () => void
   readonly onInlineImagePasteUpload?: (file: File) => Promise<string | undefined>
-  readonly onImageUpload?: (input: { readonly file: File; readonly target: ResumeImageTarget }) => void
+  readonly onImageUpload?: (input: { readonly file: File; readonly target: ResumeImageTarget; readonly imageSize?: ProjectImageSize }) => void
   readonly onMajorChange?: (majorId: number) => void
   readonly onPageRichPaste?: (input: { readonly content: string; readonly pageIndex: number; readonly readCaretOffset: () => number | undefined }) => void
   readonly onPortfolioUrlClick?: () => void
@@ -173,6 +174,8 @@ function ResumeEditorSheetContent({
   const fileInputId = useId()
   const [skillInput, setSkillInput] = useState('')
   const projectImageInputRef = useRef<HTMLInputElement>(null)
+  const projectImageButtonRef = useRef<HTMLButtonElement>(null)
+  const [projectImageFile, setProjectImageFile] = useState<File | null>(null)
   const introBodyRef = useRef<HTMLTextAreaElement>(null)
   const isSkillComposingRef = useRef(false)
   const sheetClassName = [styles.sheet, className].filter(Boolean).join(' ')
@@ -226,7 +229,7 @@ function ResumeEditorSheetContent({
     return imageUploadTarget.type === 'project' && target.type === 'project' && imageUploadTarget.pageIndex === target.pageIndex
   }
 
-  const handleImageFileChange = (event: ChangeEvent<HTMLInputElement>, target: ResumeImageTarget) => {
+  const handleImageFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
 
@@ -234,7 +237,7 @@ function ResumeEditorSheetContent({
       return
     }
 
-    onImageUpload?.({ file, target })
+    setProjectImageFile(file)
   }
 
   const addSkill = () => {
@@ -319,12 +322,21 @@ function ResumeEditorSheetContent({
     return (
       <article aria-label={`이력서 작성 ${page.index + 1}쪽`} className={sheetClassName}>
         {renderPageActions()}
+        {projectImageFile ? <ProjectImageSizeModal
+          file={projectImageFile}
+          initialSize={project.imageSize}
+          onCancel={() => { setProjectImageFile(null); projectImageButtonRef.current?.focus() }}
+          onConfirm={imageSize => {
+            setProjectImageFile(null)
+            onImageUpload?.({ file: projectImageFile, target: { pageIndex, type: 'project' }, imageSize })
+          }}
+        /> : null}
         <header className={styles.projectHeader} style={project.imageSize ? { '--project-image-width': `${project.imageSize.width}px`, '--project-image-height': `${project.imageSize.height}px` } as CSSProperties : undefined}>
           <input
             accept="image/jpeg,image/png,image/webp"
             className={styles.fileInput}
             id={`${fileInputId}-project-image`}
-            onChange={(event) => handleImageFileChange(event, { pageIndex, type: 'project' })}
+            onChange={handleImageFileChange}
             ref={projectImageInputRef}
             type="file"
           />
@@ -334,6 +346,7 @@ function ResumeEditorSheetContent({
               className={styles.projectImageButton}
               disabled={isProjectImageUploading || !onImageUpload}
               onClick={() => projectImageInputRef.current?.click()}
+              ref={projectImageButtonRef}
               type="button"
               aria-label={project.imageUrl ? '프로젝트 이미지 변경' : '프로젝트 이미지 추가'}
             >

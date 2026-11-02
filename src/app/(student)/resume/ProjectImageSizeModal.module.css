@@ -1,0 +1,14 @@
+.preview {
+  display: grid;
+  min-height: 200px;
+  padding: var(--space-5);
+  place-items: center;
+  border-radius: var(--repo-radius-control);
+  background: var(--repo-gray-50);
+}
+
+.preview img {
+  display: block;
+  object-fit: contain;
+  border: 1px dashed var(--repo-gray-300);
+}

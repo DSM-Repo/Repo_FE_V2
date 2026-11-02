@@ -26,7 +26,7 @@ import {
   type ResumeSaveProject,
 } from '@/features/resume/api'
 import { getUserMe, updateUserMajor, type UserMe, type UserMeResult } from '@/features/user/api'
-import { writeProjectImageSize } from '@/shared/lib/projectImageSize'
+import { writeProjectImageSize, type ProjectImageSize } from '@/shared/lib/projectImageSize'
 import { useResumePageSize } from '@/shared/lib/useResumePageSize'
 import { splitMarkdownIntoPageChunks } from './markdownPagination'
 import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
@@ -981,7 +981,7 @@ export function StudentResumePageContent() {
   }, [draft.pages.length, handleDraftChange, pageSize])
 
   const handleImageUpload = useCallback(
-    async ({ file, target }: { readonly file: File; readonly target: ResumeImageTarget }) => {
+    async ({ file, target, imageSize }: { readonly file: File; readonly target: ResumeImageTarget; readonly imageSize?: ProjectImageSize }) => {
       if (imageUploadState.kind !== 'idle') {
         return
       }
@@ -1022,6 +1022,7 @@ export function StudentResumePageContent() {
                       project: {
                         ...(page.project ?? { endDate: '', imageUrl: '', name: '', startDate: '', summary: '' }),
                         imageUrl: result.imageUrl,
+                        imageSize,
                       },
                     }
                   : page,

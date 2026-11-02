@@ -807,3 +807,190 @@ test('editing waits for the document font before measuring pasted content', asyn
   await editor.fill('글꼴이 로드된 다음 작성한 내용')
   await expect(editor).toContainText('글꼴이 로드된 다음 작성한 내용')
 })
+
+async function createProjectUploadPhoto(page: Page) {
+  const dataUrl = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 240
+    canvas.height = 120
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Project image fixture requires a canvas context')
+    context.fillStyle = '#526678'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = '#ffffff'
+    context.fillRect(80, 20, 80, 80)
+    return canvas.toDataURL('image/png')
+  })
+  return { buffer: Buffer.from(dataUrl.split(',')[1], 'base64'), mimeType: 'image/png', name: '프로젝트 로고.png' }
+}
+
+for (const width of [390, 1280]) {
+  test(`project upload previews chosen dimensions before sending and preserves them in every reader at ${width}px`, async ({ page }, testInfo) => {
+    await authenticateAs(page, 'STUDENT')
+    const pages = createPages(2)
+    const projectBody = pages[1].content
+    const mocks = await mockResume(page, pages, true)
+    const imageUrl = `${apiBaseUrl}/project-upload.png`
+    let uploads = 0
+    await page.route(`${apiBaseUrl}/image`, route => {
+      uploads += 1
+      return route.fulfill({ status: 201, json: { imageUrl, key: 'project-upload.png' } })
+    })
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+    const photo = await createProjectUploadPhoto(page)
+    await page.route(imageUrl, route => route.fulfill({ contentType: 'image/png', body: photo.buffer }))
+    if (width === 390) await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+    const chooser = page.waitForEvent('filechooser')
+    await page.getByRole('button', { name: '프로젝트 이미지 추가', exact: true }).click()
+    await (await chooser).setFiles(photo)
+
+    const dialog = page.getByRole('dialog', { name: '프로젝트 이미지 크기 조절', exact: true })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('img', { name: '프로젝트 이미지 미리보기', exact: true })).toBeVisible()
+    expect(uploads).toBe(0)
+    const imageWidth = dialog.getByRole('spinbutton', { name: '프로젝트 이미지 가로', exact: true })
+    const imageHeight = dialog.getByRole('spinbutton', { name: '프로젝트 이미지 세로', exact: true })
+    await imageWidth.fill('120')
+    await imageHeight.fill('60')
+    await imageHeight.press('Tab')
+    await expect(imageWidth).toHaveValue('120')
+    await expect(imageHeight).toHaveValue('60')
+    await expectInViewport(dialog.getByRole('button', { name: '적용하기', exact: true }), page)
+    await page.screenshot({ path: testInfo.outputPath(`project-upload-preview-${width}.png`), fullPage: true })
+    expect(uploads).toBe(0)
+    await dialog.getByRole('button', { name: '적용하기', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect.poll(() => uploads).toBe(1)
+    const editorImage = page.getByRole('button', { name: '프로젝트 이미지 변경', exact: true }).locator('img')
+    await expect(editorImage).toHaveAttribute('src', imageUrl)
+    await expect(editorImage).toHaveCSS('width', '120px')
+    await expect(editorImage).toHaveCSS('height', '60px')
+    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await expect.poll(() => mocks.getSavedPages()?.[1].content).toBe(`<!-- repo:project-image-size=120x60 -->\n${projectBody}`)
+    expect(mocks.getSavedPages()?.[1].project?.imageUrl).toBe(imageUrl)
+
+    for (const viewer of viewers) {
+      await page.evaluate(token => localStorage.setItem('repo.auth.accessToken', token), createTestAccessToken(viewer.role))
+      await page.goto(viewer.path)
+      if (width === 390) await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+      const image = page.getByRole('img', { name: '프로젝트 2 이미지', exact: true })
+      await expect(image).toHaveCSS('width', '120px')
+      await expect(image).toHaveCSS('height', '60px')
+      await expect(image).toHaveCSS('object-fit', 'contain')
+    }
+  })
+
+  test(`cancelling project upload keeps the existing image and dimensions at ${width}px`, async ({ page }) => {
+    await authenticateAs(page, 'STUDENT')
+    const pages = createPages(2)
+    const oldImageUrl = `${apiBaseUrl}/original-project.png`
+    const project = pages[1].project
+    if (!project) throw new Error('Expected a project fixture')
+    project.imageUrl = oldImageUrl
+    pages[1].content = `<!-- repo:project-image-size=100x70 -->\n${pages[1].content}`
+    const originalContent = pages[1].content
+    const mocks = await mockResume(page, pages, true)
+    let uploads = 0
+    await page.route(`${apiBaseUrl}/image`, route => {
+      uploads += 1
+      return route.fulfill({ status: 500, json: { message: '취소한 업로드는 전송되면 안 됩니다.' } })
+    })
+    await page.setViewportSize({ width, height: 900 })
+    const photo = await createProjectUploadPhoto(page)
+    await page.route(oldImageUrl, route => route.fulfill({ contentType: 'image/png', body: photo.buffer }))
+    await page.goto('/resume?resumeId=resume-id&mode=edit')
+    if (width === 390) await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+    const trigger = page.getByRole('button', { name: '프로젝트 이미지 변경', exact: true })
+    for (const cancel of ['button', 'escape']) {
+      const chooser = page.waitForEvent('filechooser')
+      await trigger.click()
+      await (await chooser).setFiles(photo)
+      const dialog = page.getByRole('dialog', { name: '프로젝트 이미지 크기 조절', exact: true })
+      await expect(dialog).toBeVisible()
+      await dialog.getByRole('spinbutton', { name: '프로젝트 이미지 가로', exact: true }).fill('140')
+      if (cancel === 'button') await dialog.getByRole('button', { name: '취소', exact: true }).click()
+      else await page.keyboard.press('Escape')
+      await expect(dialog).toHaveCount(0)
+      await expect(trigger).toBeFocused()
+      await expect(trigger.locator('img')).toHaveAttribute('src', oldImageUrl)
+      await expect(trigger.locator('img')).toHaveCSS('width', '100px')
+      await expect(trigger.locator('img')).toHaveCSS('height', '70px')
+      expect(uploads).toBe(0)
+    }
+    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await expect.poll(() => mocks.getSavedPages()?.[1].content).toBe(originalContent)
+    expect(mocks.getSavedPages()?.[1].project?.imageUrl).toBe(oldImageUrl)
+  })
+}
+
+test('broken and failed project image uploads preserve the old image and allow resizing on retry', async ({ page }) => {
+  await authenticateAs(page, 'STUDENT')
+  const pages = createPages(2)
+  const project = pages[1].project
+  if (!project) throw new Error('Expected a project fixture')
+  const oldImageUrl = `${apiBaseUrl}/existing-project.png`
+  const newImageUrl = `${apiBaseUrl}/retried-project.png`
+  const projectBody = pages[1].content
+  project.imageUrl = oldImageUrl
+  pages[1].content = `<!-- repo:project-image-size=100x70 -->\n${projectBody}`
+  const mocks = await mockResume(page, pages, true)
+  const photo = await createProjectUploadPhoto(page)
+  for (const imageUrl of [oldImageUrl, newImageUrl]) {
+    await page.route(imageUrl, route => route.fulfill({ contentType: 'image/png', body: photo.buffer }))
+  }
+  let uploads = 0
+  await page.route(`${apiBaseUrl}/image`, route => {
+    uploads += 1
+    return route.fulfill(uploads === 1
+      ? { status: 500, json: { error: { message: '이미지 서버 오류' } } }
+      : { status: 201, json: { imageUrl: newImageUrl, key: 'retried-project.png' } })
+  })
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/resume?resumeId=resume-id&mode=edit')
+  const trigger = page.getByRole('button', { name: '프로젝트 이미지 변경', exact: true })
+  const originalImage = trigger.locator('img')
+  const selectFile = async (file: typeof photo) => {
+    const chooser = page.waitForEvent('filechooser')
+    await trigger.click()
+    await (await chooser).setFiles(file)
+  }
+  const dialog = page.getByRole('dialog', { name: '프로젝트 이미지 크기 조절', exact: true })
+  await selectFile({ buffer: Buffer.from('broken'), mimeType: 'image/png', name: 'broken.png' })
+  await expect(dialog.getByRole('alert')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: '적용하기', exact: true })).toBeDisabled()
+  expect(uploads).toBe(0)
+  await dialog.getByRole('button', { name: '취소', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(originalImage).toHaveAttribute('src', oldImageUrl)
+  await expect(originalImage).toHaveCSS('width', '100px')
+  await expect(originalImage).toHaveCSS('height', '70px')
+
+  for (const attempt of [0, 1]) {
+    await selectFile(photo)
+    await expect(dialog.getByRole('img', { name: '프로젝트 이미지 미리보기', exact: true })).toBeVisible()
+    const imageWidth = dialog.getByRole('spinbutton', { name: '프로젝트 이미지 가로', exact: true })
+    const imageHeight = dialog.getByRole('spinbutton', { name: '프로젝트 이미지 세로', exact: true })
+    await expect(imageWidth).toHaveValue('100')
+    await expect(imageHeight).toHaveValue('70')
+    await imageWidth.fill('120')
+    await imageHeight.fill('60')
+    await imageHeight.press('Tab')
+    await dialog.getByRole('button', { name: '적용하기', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect.poll(() => uploads).toBe(attempt + 1)
+    if (attempt === 0) {
+      await expect(page.getByRole('alert').filter({ hasText: '이미지 서버 오류' })).toBeVisible()
+      await expect(trigger).toBeEnabled()
+      await expect(originalImage).toHaveAttribute('src', oldImageUrl)
+      await expect(originalImage).toHaveCSS('width', '100px')
+      await expect(originalImage).toHaveCSS('height', '70px')
+    }
+  }
+  await expect(originalImage).toHaveAttribute('src', newImageUrl)
+  await expect(originalImage).toHaveCSS('width', '120px')
+  await expect(originalImage).toHaveCSS('height', '60px')
+  await page.getByRole('button', { name: '저장', exact: true }).click()
+  await expect.poll(() => mocks.getSavedPages()?.[1].content).toBe(`<!-- repo:project-image-size=120x60 -->\n${projectBody}`)
+  expect(mocks.getSavedPages()?.[1].project?.imageUrl).toBe(newImageUrl)
+})

@@ -86,7 +86,7 @@ test.describe('student resume management', () => {
       const chooser = page.waitForEvent('filechooser')
       await page.getByRole('button', { name: `${target} 이미지 추가` }).click()
       await (await chooser).setFiles({ buffer: validProfilePng, mimeType: 'image/png', name: 'race.png' })
-      if (target === '프로필') await page.getByRole('button', { name: '적용하기' }).click()
+      await page.getByRole('button', { name: '적용하기' }).click()
       await started.promise
       await page.getByLabel('자기소개 제목').fill('업로드 중 최신 입력')
       await page.getByLabel('프로젝트 이름').fill('최신 프로젝트')
@@ -121,7 +121,8 @@ test.describe('student resume management', () => {
     for (const attempt of [0, 1]) {
       const chooser = page.waitForEvent('filechooser')
       await page.getByRole('button', { name: '프로젝트 이미지 추가' }).click()
-      await (await chooser).setFiles({ buffer: Buffer.from('png'), mimeType: 'image/png', name: 'race.png' })
+      await (await chooser).setFiles({ buffer: validProfilePng, mimeType: 'image/png', name: 'race.png' })
+      await page.getByRole('dialog', { name: '프로젝트 이미지 크기 조절' }).getByRole('button', { name: '적용하기' }).click()
       if (attempt === 0) {
         await started.promise
         await page.getByRole('button', { name: '작성 취소' }).click()
@@ -850,10 +851,11 @@ test.describe('student resume management', () => {
     await page.getByRole('button', { name: '프로젝트 이미지 추가' }).click()
     const fileChooser = await fileChooserPromise
     await fileChooser.setFiles({
-      buffer: Buffer.from('fake png bytes'),
+      buffer: validProfilePng,
       mimeType: 'image/png',
       name: 'project.png',
     })
+    await page.getByRole('dialog', { name: '프로젝트 이미지 크기 조절' }).getByRole('button', { name: '적용하기' }).click()
 
     await expect.poll(() => imageUploadRequested).toBe(true)
     expect(imageUploadContentType).toContain('multipart/form-data')
@@ -907,10 +909,11 @@ test.describe('student resume management', () => {
     await page.getByRole('button', { name: '프로젝트 이미지 추가' }).click()
     const fileChooser = await fileChooserPromise
     await fileChooser.setFiles({
-      buffer: Buffer.from('fake png bytes'),
+      buffer: validProfilePng,
       mimeType: 'image/png',
       name: 'project.png',
     })
+    await page.getByRole('dialog', { name: '프로젝트 이미지 크기 조절' }).getByRole('button', { name: '적용하기' }).click()
 
     const projectImage = page.getByRole('button', { name: '프로젝트 이미지 변경' }).locator('img')
     await expect(projectImage).toBeVisible()
