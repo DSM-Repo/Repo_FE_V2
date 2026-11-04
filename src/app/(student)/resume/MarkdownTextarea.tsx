@@ -4,6 +4,7 @@ import type { ResumeMarkdownImageSize } from '@/shared/lib/resumeMarkdownImageSi
 
 import { MarkdownToolbarIcon } from './MarkdownToolbarIcon'
 import { MarkdownImageSizeDialog, type MarkdownImagePreview } from './MarkdownImageSizeDialog'
+import { ProfileImageCropModal } from './ProfileImageCropModal'
 import styles from './ResumeEditorSheet.module.css'
 import { focusMarkdownCaret, readMarkdownCaretOffset } from './markdownEditorSelection'
 import {
@@ -67,6 +68,7 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
   const editorRef = useRef<HTMLDivElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const imageInputId = useId()
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const selectedImageRef = useRef<HTMLImageElement>(null)
   const [selectedImage, setSelectedImage] = useState<MarkdownImagePreview>()
   const latestValueRef = useRef(value)
@@ -347,11 +349,13 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
       return
     }
 
-    void readClipboardImage(file, onImagePasteUpload).then((imageMarkdown) => {
-      if (!imageMarkdown || !insertImageMarkdown(imageMarkdown)) {
-        return
-      }
+    setAttachmentFile(file)
+  }
 
+  const confirmAttachment = (file: File) => {
+    setAttachmentFile(null)
+    void readClipboardImage(file, onImagePasteUpload).then((imageMarkdown) => {
+      if (!imageMarkdown || !insertImageMarkdown(imageMarkdown)) return
       syncMarkdownValue(onRichPaste)
     })
   }
@@ -510,6 +514,9 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
         spellCheck
         suppressContentEditableWarning
       />
+      {attachmentFile ? <ProfileImageCropModal file={attachmentFile} title="첨부 이미지 조정"
+        onCancel={() => { setAttachmentFile(null); editorRef.current?.focus() }}
+        onConfirm={confirmAttachment} /> : null}
       {selectedImage ? <MarkdownImageSizeDialog image={selectedImage}
         onCancel={() => { setSelectedImage(undefined); selectedImageRef.current?.focus() }}
         onConfirm={resizeImage} /> : null}

@@ -198,3 +198,104 @@ test('an oversized first project image moves to a continuation page without losi
   expect(overflow).toBeLessThanOrEqual(1)
   await page.screenshot({ path: testInfo.outputPath('inline-image-size-continuation.png'), fullPage: true })
 })
+
+test('attaching a body photo opens square crop controls before upload and preserves the selected crop on save', async ({ page }, testInfo) => {
+  const { editor, getSavedContent } = await prepareResume(page, 1280)
+  const imageUrl = `${apiBaseUrl}/body-cropped.png`
+  let uploaded: Buffer | undefined
+  let uploads = 0
+  await page.route(`${apiBaseUrl}/image`, async route => {
+    uploads += 1
+    const body = route.request().postDataBuffer()
+    if (!body) throw new Error('Expected multipart image upload.')
+    const form = await new Request(`${apiBaseUrl}/image`, {
+      method: 'POST', headers: route.request().headers(), body: new Uint8Array(body),
+    }).formData()
+    const file = form.get('image')
+    if (!(file instanceof File)) throw new Error('Expected cropped image file.')
+    expect(file.type).toBe('image/png')
+    uploaded = Buffer.from(await file.arrayBuffer())
+    await route.fulfill({ status: 201, json: { imageUrl, key: 'body-cropped.png' } })
+  })
+  await page.route(imageUrl, route => route.fulfill({ contentType: 'image/png', body: uploaded }))
+  const encodedPhoto = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 800; canvas.height = 400
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Canvas required.')
+    context.fillStyle = '#e04b50'
+    context.fillRect(0, 0, 800, 400)
+    context.fillStyle = '#2277cc'
+    context.fillRect(400, 200, 400, 200)
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  const file = { name: 'body-photo.png', mimeType: 'image/png', buffer: Buffer.from(encodedPhoto, 'base64') }
+  const toolbar = page.getByLabel('프로젝트 작성 도구', { exact: true })
+  const dialog = page.getByRole('dialog', { name: '첨부 이미지 조정', exact: true })
+
+  for (const cancel of [true, false]) {
+    await editor.evaluate(element => {
+      element.focus()
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      range.collapse(false)
+      const selection = window.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    })
+    const chooser = page.waitForEvent('filechooser')
+    await toolbar.getByRole('button', { name: '이미지', exact: true }).click()
+    await (await chooser).setFiles(file)
+    await expect(dialog).toBeVisible()
+    expect(uploads).toBe(0)
+    await expect(editor.locator('img')).toHaveCount(2)
+    if (cancel) {
+      await dialog.getByRole('button', { name: '취소', exact: true }).click()
+      await expect(dialog).toHaveCount(0)
+      await expect(editor).toHaveAttribute('data-markdown-value', originalContent)
+      continue
+    }
+    const selection = dialog.getByRole('group', { name: '프로필 사진 자르기 위치' })
+    const before = await selection.boundingBox()
+    const handle = await selection.getByRole('button', { name: '오른쪽 아래 크기 조절', exact: true }).boundingBox()
+    if (!before || !handle) throw new Error('Crop selection must be measurable.')
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(handle.x + handle.width / 2 - 25, handle.y + handle.height / 2 - 25)
+    await page.mouse.up()
+    const after = await selection.boundingBox()
+    if (!after) throw new Error('Resized crop must be measurable.')
+    expect(after.width).toBeLessThan(before.width)
+    expect(after.width).toBeCloseTo(after.height, 1)
+    await dialog.getByRole('slider', { name: '확대', exact: true }).fill('2')
+    await dialog.getByRole('slider', { name: '가로 위치', exact: true }).fill('1')
+    await dialog.getByRole('slider', { name: '세로 위치', exact: true }).fill('1')
+    await page.screenshot({ path: testInfo.outputPath('body-attachment-crop.png') })
+    await dialog.getByRole('button', { name: '적용하기', exact: true }).click()
+  }
+
+  await expect(dialog).toHaveCount(0)
+  await expect.poll(() => uploads).toBe(1)
+  await expect(editor.locator('img')).toHaveCount(3)
+  if (!uploaded) throw new Error('Confirmed crop must be uploaded.')
+  expect(uploaded.readUInt32BE(16)).toBe(512)
+  expect(uploaded.readUInt32BE(20)).toBe(512)
+  const pixel = await page.evaluate(async base64 => {
+    const photo = new Image()
+    photo.src = `data:image/png;base64,${base64}`
+    await photo.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = 512; canvas.height = 512
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Canvas required.')
+    context.drawImage(photo, 0, 0)
+    return Array.from(context.getImageData(256, 256, 1, 1).data)
+  }, uploaded.toString('base64'))
+  expect(pixel).toEqual([34, 119, 204, 255])
+  await expect(editor.getByRole('img', { name: 'body-photo-profile.png', exact: true })).toHaveAttribute('src', imageUrl)
+  await page.getByRole('button', { name: '저장', exact: true }).click()
+  await expect.poll(getSavedContent).toContain(`![body-photo-profile.png](${imageUrl})`)
+  expect(getSavedContent()).toContain(originalContent)
+  await page.goto('/resume?resumeId=resume-id')
+  await expect(page.getByRole('img', { name: 'body-photo-profile.png', exact: true })).toHaveAttribute('src', imageUrl)
+})

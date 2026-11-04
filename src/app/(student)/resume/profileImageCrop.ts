@@ -1,5 +1,16 @@
 export type CropPosition = { readonly x: number; readonly y: number; readonly zoom: number }
 export type ImageDimensions = { readonly width: number; readonly height: number }
+export type CropCorner = 'nw' | 'ne' | 'sw' | 'se'
+
+const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value))
+
+function toCropPosition(dimensions: ImageDimensions, crop: { x: number; y: number; size: number }): CropPosition {
+  return {
+    x: dimensions.width > crop.size ? clamp(crop.x / (dimensions.width - crop.size), 0, 1) : 0.5,
+    y: dimensions.height > crop.size ? clamp(crop.y / (dimensions.height - crop.size), 0, 1) : 0.5,
+    zoom: Math.min(dimensions.width, dimensions.height) / crop.size,
+  }
+}
 
 export function getProfileCrop(dimensions: ImageDimensions, position: CropPosition) {
   const size = Math.min(dimensions.width, dimensions.height) / position.zoom
@@ -15,13 +26,33 @@ export function moveProfileCrop(
   position: CropPosition,
   movement: { readonly x: number; readonly y: number },
 ): CropPosition {
-  const { size } = getProfileCrop(dimensions, position)
-  const clamp = (value: number) => Math.min(1, Math.max(0, value))
-  return {
-    ...position,
-    x: dimensions.width > size ? clamp(position.x - movement.x * size / (dimensions.width - size)) : 0.5,
-    y: dimensions.height > size ? clamp(position.y - movement.y * size / (dimensions.height - size)) : 0.5,
-  }
+  const crop = getProfileCrop(dimensions, position)
+  return toCropPosition(dimensions, {
+    ...crop,
+    x: crop.x + movement.x * dimensions.width,
+    y: crop.y + movement.y * dimensions.height,
+  })
+}
+
+export function resizeProfileCrop(
+  dimensions: ImageDimensions,
+  position: CropPosition,
+  corner: CropCorner,
+  movement: { readonly x: number; readonly y: number },
+): CropPosition {
+  const crop = getProfileCrop(dimensions, position)
+  const left = corner === 'nw' || corner === 'sw'
+  const top = corner === 'nw' || corner === 'ne'
+  const anchorX = left ? crop.x + crop.size : crop.x
+  const anchorY = top ? crop.y + crop.size : crop.y
+  const maximum = Math.min(left ? anchorX : dimensions.width - anchorX, top ? anchorY : dimensions.height - anchorY)
+  const delta = ((left ? -movement.x : movement.x) + (top ? -movement.y : movement.y)) / 2
+  const size = clamp(crop.size + delta, Math.min(dimensions.width, dimensions.height) / 3, maximum)
+  return toCropPosition(dimensions, {
+    size,
+    x: left ? anchorX - size : anchorX,
+    y: top ? anchorY - size : anchorY,
+  })
 }
 
 export async function exportProfileCrop(image: HTMLImageElement, position: CropPosition, name: string): Promise<File> {

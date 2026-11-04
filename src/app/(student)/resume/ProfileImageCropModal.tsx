@@ -5,22 +5,28 @@ import { createPortal } from 'react-dom'
 
 import { Button } from '@/shared/ui'
 
-import { exportProfileCrop, getProfileCrop, moveProfileCrop, type CropPosition } from './profileImageCrop'
+import { exportProfileCrop, getProfileCrop, moveProfileCrop, resizeProfileCrop, type CropCorner, type CropPosition } from './profileImageCrop'
 import styles from './ProfileImageCropModal.module.css'
 
 type Props = {
+  readonly title?: string
   readonly file: File
   readonly onCancel: () => void
   readonly onConfirm: (file: File) => void
 }
 
 type ImageState = { readonly kind: 'loading' } | { readonly kind: 'ready'; readonly image: HTMLImageElement } | { readonly kind: 'error'; readonly message: string }
+const corners: readonly { corner: CropCorner; label: string }[] = [
+  { corner: 'nw', label: '왼쪽 위 크기 조절' }, { corner: 'ne', label: '오른쪽 위 크기 조절' },
+  { corner: 'sw', label: '왼쪽 아래 크기 조절' }, { corner: 'se', label: '오른쪽 아래 크기 조절' },
+]
 
-export function ProfileImageCropModal({ file, onCancel, onConfirm }: Props) {
+export function ProfileImageCropModal({ file, title = '프로필 사진 조정', onCancel, onConfirm }: Props) {
   const id = useId()
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
   const activeRef = useRef(true)
-  const dragRef = useRef<{ x: number; y: number } | null>(null)
+  const dragRef = useRef<{ x: number; y: number; position: CropPosition; corner?: CropCorner } | null>(null)
   const validationMessage = file.size === 0 ? '업로드할 이미지가 없습니다.'
     : file.size > 50 * 1024 * 1024 ? '이미지는 50MB 이하만 업로드할 수 있습니다.'
     : !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? 'JPEG, PNG, WebP 이미지만 업로드할 수 있습니다.' : ''
@@ -57,23 +63,26 @@ export function ProfileImageCropModal({ file, onCancel, onConfirm }: Props) {
     : null
   const crop = dimensions ? getProfileCrop(dimensions, position) : null
 
-  const move = (x: number, y: number, viewportWidth: number) => {
-    if (!dimensions || pending) return
-    setPosition((current) => moveProfileCrop(dimensions, current, { x: x / viewportWidth, y: y / viewportWidth }))
-  }
-
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current) return
-    move(event.clientX - dragRef.current.x, event.clientY - dragRef.current.y, event.currentTarget.clientWidth)
-    dragRef.current = { x: event.clientX, y: event.clientY }
+    const drag = dragRef.current
+    const preview = previewRef.current
+    if (!drag || !preview || !dimensions || pending) return
+    const movement = { x: (event.clientX - drag.x) / preview.clientWidth, y: (event.clientY - drag.y) / preview.clientHeight }
+    setPosition(drag.corner
+      ? resizeProfileCrop(dimensions, drag.position, drag.corner, { x: movement.x * dimensions.width, y: movement.y * dimensions.height })
+      : moveProfileCrop(dimensions, drag.position, movement))
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const directions: Record<string, readonly [number, number]> = { ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, -10], ArrowDown: [0, 10] }
     const movement = directions[event.key]
-    if (!movement) return
+    const preview = previewRef.current
+    if (!movement || !dimensions || !preview || pending) return
     event.preventDefault()
-    move(movement[0], movement[1], event.currentTarget.clientWidth)
+    const corner = event.target instanceof HTMLElement ? event.target.dataset.cropCorner as CropCorner | undefined : undefined
+    setPosition((current) => corner
+      ? resizeProfileCrop(dimensions, current, corner, { x: movement[0] * dimensions.width / preview.clientWidth, y: movement[1] * dimensions.height / preview.clientHeight })
+      : moveProfileCrop(dimensions, current, { x: movement[0] / preview.clientWidth, y: movement[1] / preview.clientHeight }))
   }
 
   const confirm = async () => {
@@ -100,22 +109,32 @@ export function ProfileImageCropModal({ file, onCancel, onConfirm }: Props) {
     <dialog aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} className={styles.dialog} onCancel={(event) => { event.preventDefault(); cancel() }} ref={dialogRef}>
       <div className={styles.content}>
         <header>
-          <h2 className={styles.title} id={`${id}-title`}>프로필 사진 조정</h2>
-          <p className={styles.description} id={`${id}-description`}>사진을 움직여 원 안에 맞춰주세요. 방향키로도 조정할 수 있어요.</p>
+          <h2 className={styles.title} id={`${id}-title`}>{title}</h2>
+          <p className={styles.description} id={`${id}-description`}>네모 영역을 움직이거나 모서리를 끌어 사진을 잘라주세요. 방향키로도 조정할 수 있어요.</p>
         </header>
         {imageState.kind === 'ready' && dimensions && crop ? <>
-          <div
+          <div className={styles.preview} ref={previewRef}
+            style={{ width: `min(${280 * dimensions.width / Math.max(dimensions.width, dimensions.height)}px, 100%)`, aspectRatio: `${dimensions.width} / ${dimensions.height}` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- Local object URL with crop geometry shared by the canvas export. */}
+            <img alt="프로필 사진 미리보기" draggable={false} src={imageState.image.src} />
+            <div
             aria-label="프로필 사진 자르기 위치"
-            className={styles.preview}
+            className={styles.guide}
+            data-profile-crop-selection=""
+            style={{ left: `${crop.x / dimensions.width * 100}%`, top: `${crop.y / dimensions.height * 100}%`, width: `${crop.size / dimensions.width * 100}%`, height: `${crop.size / dimensions.height * 100}%` }}
             onKeyDown={handleKeyDown}
             onLostPointerCapture={() => { dragRef.current = null }}
             onPointerDown={(event) => {
               if (pending || event.button !== 0) return
-              event.currentTarget.focus()
+              const target = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>('[data-crop-corner]') : null
+              const focusTarget = target ?? event.currentTarget
+              focusTarget.focus()
+              event.preventDefault()
               event.currentTarget.setPointerCapture(event.pointerId)
-              dragRef.current = { x: event.clientX, y: event.clientY }
+              dragRef.current = { x: event.clientX, y: event.clientY, position, corner: target?.dataset.cropCorner as CropCorner | undefined }
             }}
             onPointerMove={handlePointerMove}
+            onPointerCancel={() => { dragRef.current = null }}
             onPointerUp={(event) => {
               dragRef.current = null
               if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
@@ -123,9 +142,9 @@ export function ProfileImageCropModal({ file, onCancel, onConfirm }: Props) {
             role="group"
             tabIndex={0}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- Local object URL with crop geometry shared by the canvas export. */}
-            <img alt="프로필 사진 미리보기" draggable={false} src={imageState.image.src} style={{ width: `${dimensions.width / crop.size * 100}%`, height: `${dimensions.height / crop.size * 100}%`, left: `${-crop.x / crop.size * 100}%`, top: `${-crop.y / crop.size * 100}%` }} />
-            <span aria-hidden="true" className={styles.guide} />
+            {corners.map(({ corner, label }) => <button aria-label={label} className={styles.corner} data-crop-corner={corner}
+              disabled={pending} key={corner} type="button" />)}
+            </div>
           </div>
           <div className={styles.controls}>
             {([
