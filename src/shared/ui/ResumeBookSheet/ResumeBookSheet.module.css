@@ -456,6 +456,10 @@
   object-fit: contain;
 }
 
+.markdownImage[width][height] {
+  max-height: none;
+}
+
 @media (max-width: 520px) {
   .sheet {
     width: calc(100vw - 32px);

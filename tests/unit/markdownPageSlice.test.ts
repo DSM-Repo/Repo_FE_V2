@@ -24,6 +24,17 @@ test('image and link syntax remains indivisible at page boundaries', () => {
   assert.equal(safeMarkdownPageBoundary('앞 [링크](https://example.com) 뒤', 15), 2)
 })
 
+test('image dimensions remain attached to the image across every candidate page boundary', () => {
+  const image = '![그림](https://example.com/image.png){width=320 height=180}'
+  const value = `앞 ${image} 뒤`
+  for (let boundary = 3; boundary < 2 + image.length; boundary++) {
+    assert.equal(safeMarkdownPageBoundary(value, boundary), 2)
+  }
+  const end = 2 + image.length
+  assert.equal(safeMarkdownPageBoundary(value, end), end)
+  assert.equal(markdownPageSlice(value, 2, end).content, image)
+})
+
 test('closing delimiters stay with the preceding visible text instead of creating ghost chunks', () => {
   for (const value of ['**abcdef**', '*abcdef*', '<u>abcdef</u>']) {
     const closing = value.startsWith('<u>') ? 4 : value.startsWith('**') ? 2 : 1

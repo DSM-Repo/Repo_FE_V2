@@ -1,7 +1,7 @@
-const inlinePattern = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|<u>([\s\S]*?)<\/u>)/g
+import { createResumeMarkdownInlinePattern } from '../../../shared/lib/resumeMarkdownImageSize'
 
 export function safeMarkdownPageBoundary(value: string, boundary: number): number {
-  for (const match of value.matchAll(inlinePattern)) {
+  for (const match of value.matchAll(createResumeMarkdownInlinePattern())) {
     const start = match.index
     const end = start + match[0].length
     if (boundary <= start || boundary >= end) continue
@@ -23,7 +23,7 @@ export function markdownPageSlice(value: string, start: number, end: number) {
     const blockPrefix = /^(?:> ?)*(?:#{1,4} |- )?/.exec(value.slice(lineStart))?.[0] ?? ''
     if (start >= lineStart + blockPrefix.length) prefix = blockPrefix
   }
-  for (const match of value.matchAll(inlinePattern)) {
+  for (const match of value.matchAll(createResumeMarkdownInlinePattern())) {
     if (match[2] !== undefined || match[4] !== undefined) continue
     const open = match[6] !== undefined ? '**' : match[7] !== undefined ? '*' : '<u>'
     const close = match[8] !== undefined ? '</u>' : open

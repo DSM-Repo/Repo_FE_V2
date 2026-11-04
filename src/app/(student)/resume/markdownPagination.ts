@@ -48,7 +48,7 @@ export function splitMarkdownIntoPageChunks(value: string, pageIndex: number) {
     renderEditorMarkdown(probe, text, editorStyles)
     // Reserve image space before an external image has loaded, too.
     for (const image of probe.querySelectorAll('img')) {
-      if (!image.complete || !image.naturalHeight) image.style.height = '128px'
+      if (!image.hasAttribute('height') && (!image.complete || !image.naturalHeight)) image.style.height = '128px'
     }
     return probe.scrollHeight <= height + 1
   }
@@ -79,8 +79,16 @@ export function splitMarkdownIntoPageChunks(value: string, pageIndex: number) {
         boundary = next < boundary ? next : safeMarkdownPageBoundary(value, boundary - 5)
       }
       if (boundary > start && /[\uD800-\uDBFF]/.test(value[boundary - 1]) && /[\uDC00-\uDFFF]/.test(value[boundary])) boundary -= 1
-      // An indivisible image/link taller than a page remains editable without corrupting its syntax.
-      if (boundary <= start) return [markdownPageSlice(value, 0, value.length)]
+      if (boundary <= start) {
+        // A profile/project header can leave less room than a continuation page.
+        // Retry once there, preserving the original page and its header.
+        if (chunks.length === 0 && continuationHeight > firstHeight) {
+          chunks.push(markdownPageSlice(value, 0, 0))
+          continue
+        }
+        // Content taller than even a continuation page remains intact and editable.
+        return [markdownPageSlice(value, 0, value.length)]
+      }
       chunks.push(markdownPageSlice(value, start, boundary))
       start = boundary
       if (chunks.length > 5) return [...chunks, markdownPageSlice(value, start, value.length)]

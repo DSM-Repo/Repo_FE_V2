@@ -1,3 +1,4 @@
+import { createResumeMarkdownInlinePattern, formatMarkdownImageSize, parseMarkdownImageSize, readMarkdownImageSize, type ResumeMarkdownImageSize } from '@/shared/lib/resumeMarkdownImageSize'
 import { parseResumeMarkdown, hasNestedQuoteBlocks, RESUME_QUOTE_BREAK, type ResumeMarkdownBlock } from '@/shared/lib/resumeMarkdown'
 
 import { normalizeDisplayImageUrl } from '@/shared/api/imageUrl'
@@ -105,14 +106,14 @@ function escapeMarkdownInline(value: string) {
   return value.replace(/\[/g, '\\[').replace(/\]/g, '\\]')
 }
 
-function toMarkdownImage(src: string, alt: string) {
+function toMarkdownImage(src: string, alt: string, size?: ResumeMarkdownImageSize) {
   const normalizedSrc = normalizeDisplayImageUrl(src, RESUME_API_BASE_URL)
 
   if (!normalizedSrc || normalizedSrc.startsWith('blob:')) {
     return ''
   }
 
-  return `![${escapeMarkdownInline(alt.trim() || '이미지')}](${normalizedSrc})`
+  return `![${escapeMarkdownInline(alt.trim() || '이미지')}](${normalizedSrc})${formatMarkdownImageSize(size)}`
 }
 
 function isImageHref(value: string) {
@@ -133,7 +134,7 @@ function inlineHtmlToMarkdown(node: Node): string {
   }
 
   if (node.tagName === 'IMG') {
-    return toMarkdownImage(node.getAttribute('src') ?? '', node.getAttribute('alt') ?? '')
+    return toMarkdownImage(node.getAttribute('src') ?? '', node.getAttribute('alt') ?? '', parseMarkdownImageSize(node.getAttribute('width'), node.getAttribute('height')))
   }
 
   const text = Array.from(node.childNodes).map(inlineHtmlToMarkdown).join('')
@@ -176,7 +177,7 @@ function htmlElementToMarkdownLines(element: HTMLElement): readonly string[] {
   }
 
   if (element.tagName === 'IMG') {
-    const image = toMarkdownImage(element.getAttribute('src') ?? '', element.getAttribute('alt') ?? '')
+    const image = toMarkdownImage(element.getAttribute('src') ?? '', element.getAttribute('alt') ?? '', parseMarkdownImageSize(element.getAttribute('width'), element.getAttribute('height')))
     return image ? [image] : []
   }
 
@@ -314,7 +315,7 @@ export function toHeadingShortcut(value: string, selectionStart: number) {
 export const toEditableMarkdownBlocks = parseResumeMarkdown
 
 function appendInlineNodes(parent: HTMLElement, value: string): void {
-  const pattern = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|<u>([\s\S]*?)<\/u>)/g
+  const pattern = createResumeMarkdownInlinePattern()
   let currentIndex = 0
   let match = pattern.exec(value)
 
@@ -338,6 +339,16 @@ function appendInlineNodes(parent: HTMLElement, value: string): void {
       const imageSrc = normalizeDisplayImageUrl(imageHref, RESUME_API_BASE_URL)
       const image = document.createElement('img')
       image.dataset.markdownImage = ''
+      image.contentEditable = 'false'
+      image.tabIndex = 0
+      image.title = '이미지 크기 조절'
+      const size = readMarkdownImageSize(matchText)
+      if (size) {
+        image.width = size.width
+        image.height = size.height
+        image.style.width = `${size.width}px`
+        image.style.height = `${size.height}px`
+      }
       image.setAttribute('alt', imageAlt)
       image.setAttribute('src', imageSrc || imageHref)
       parent.append(image)
@@ -638,7 +649,8 @@ function serializeInlineMarkdown(node: Node): string {
     case 'IMG': {
       const src = node.getAttribute('src') ?? ''
       const alt = node.getAttribute('alt') ?? ''
-      return src ? `![${alt}](${src})` : alt
+      const size = parseMarkdownImageSize(node.getAttribute('width'), node.getAttribute('height'))
+      return src ? `![${alt}](${src})${formatMarkdownImageSize(size)}` : alt
     }
     default:
       return text

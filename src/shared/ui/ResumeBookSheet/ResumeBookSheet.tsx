@@ -1,3 +1,4 @@
+import { createResumeMarkdownInlinePattern, readMarkdownImageSize } from '@/shared/lib/resumeMarkdownImageSize'
 import { parseResumeMarkdown, hasNestedQuoteBlocks, type ResumeMarkdownBlock } from '@/shared/lib/resumeMarkdown'
 import type { ProjectImageSize } from '@/shared/lib/projectImageSize'
 
@@ -106,7 +107,7 @@ function renderMarkdownText(value: string) {
 }
 
 function renderMarkdownInline(value: string): readonly ReactNode[] {
-  const pattern = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*|<u>([\s\S]*?)<\/u>)/g
+  const pattern = createResumeMarkdownInlinePattern()
   const nodes: ReactNode[] = []
   let currentIndex = 0
   let match = pattern.exec(value)
@@ -130,10 +131,12 @@ function renderMarkdownInline(value: string): readonly ReactNode[] {
 
     if (imageAlt !== undefined && imageSrc !== undefined) {
       const safeImageSrc = toSafeImageSrc(imageSrc)
+      const size = readMarkdownImageSize(matchText)
       nodes.push(
         safeImageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element -- Markdown image sources may be remote or data URLs pasted from an editor.
-          <img alt={imageAlt} className={styles.markdownImage} key={key} src={safeImageSrc} />
+          <img alt={imageAlt} className={styles.markdownImage} key={key} src={safeImageSrc}
+            width={size?.width} height={size?.height} style={size ? { width: size.width, height: size.height } : undefined} />
         ) : (
           <span key={key}>{imageAlt}</span>
         ),
