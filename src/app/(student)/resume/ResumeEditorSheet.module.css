@@ -794,6 +794,16 @@
   margin: var(--space-2) 0;
   border-radius: 6px;
   object-fit: contain;
+  cursor: pointer;
+}
+
+.markdownEditor img[width][height] {
+  max-height: none;
+}
+
+.markdownEditor img:focus-visible {
+  outline: 2px solid var(--repo-main);
+  outline-offset: 2px;
 }
 
 .srOnly {

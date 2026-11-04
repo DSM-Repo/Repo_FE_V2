@@ -1,0 +1,62 @@
+.preview {
+  display: grid;
+  height: 220px;
+  padding: var(--space-4);
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--repo-radius-control);
+  background: var(--repo-gray-50);
+}
+
+.preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.preview img[data-default] {
+  max-height: 128px;
+}
+
+.controls {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.controls label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.controls input {
+  width: 88px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--repo-gray-400);
+  border-radius: var(--repo-radius-control);
+  background: var(--repo-bg-main);
+  color: inherit;
+  font: inherit;
+}
+
+.controls p {
+  margin: 0;
+  color: var(--repo-gray-400);
+}
+
+.controls button {
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--repo-radius-control);
+  background: var(--repo-bg-main-point);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.controls :is(input, button):focus-visible {
+  outline: 2px solid var(--repo-gray-50);
+  outline-offset: 2px;
+}

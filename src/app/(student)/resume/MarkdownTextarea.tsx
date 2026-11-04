@@ -1,6 +1,9 @@
-import { Fragment, useId, useEffect, useRef, useCallback, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react'
+import { Fragment, useId, useEffect, useRef, useCallback, useState, type ChangeEvent, type ClipboardEvent, type KeyboardEvent, type MouseEvent } from 'react'
+
+import type { ResumeMarkdownImageSize } from '@/shared/lib/resumeMarkdownImageSize'
 
 import { MarkdownToolbarIcon } from './MarkdownToolbarIcon'
+import { MarkdownImageSizeDialog, type MarkdownImagePreview } from './MarkdownImageSizeDialog'
 import styles from './ResumeEditorSheet.module.css'
 import { focusMarkdownCaret, readMarkdownCaretOffset } from './markdownEditorSelection'
 import {
@@ -64,6 +67,8 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
   const editorRef = useRef<HTMLDivElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const imageInputId = useId()
+  const selectedImageRef = useRef<HTMLImageElement>(null)
+  const [selectedImage, setSelectedImage] = useState<MarkdownImagePreview>()
   const latestValueRef = useRef(value)
   const pendingValueRef = useRef<string | undefined>(undefined)
   const lastPaginatedValueRef = useRef<string | undefined>(undefined)
@@ -96,11 +101,12 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
   }, [value, focusOffset, onFocused])
 
   const runHistoryAction = useCallback((action: () => void) => {
+    setSelectedImage(undefined)
     pendingValueRef.current = undefined
     lastPaginatedValueRef.current = undefined
     savedSelectionRangeRef.current = undefined
     action()
-  }, [])
+  }, [setSelectedImage])
 
   useEffect(() => {
     const editor = editorRef.current
@@ -141,6 +147,40 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
     pendingValueRef.current = nextValue
     onChange(nextValue)
     notifyPagination(nextValue)
+  }
+
+  const resizeImage = (size: ResumeMarkdownImageSize | undefined) => {
+    const editor = editorRef.current
+    const image = selectedImageRef.current
+    setSelectedImage(undefined)
+    if (!editor || !image || !editor.contains(image)) return
+
+    if (size) {
+      image.width = size.width
+      image.height = size.height
+      image.style.width = `${size.width}px`
+      image.style.height = `${size.height}px`
+    } else {
+      image.removeAttribute('width')
+      image.removeAttribute('height')
+      image.style.removeProperty('width')
+      image.style.removeProperty('height')
+    }
+    editor.focus()
+    const range = document.createRange()
+    range.setStartAfter(image)
+    range.collapse(true)
+    const selection = window.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+    savedSelectionRangeRef.current = range.cloneRange()
+    syncMarkdownValue(onRichPaste)
+  }
+
+  const selectImage = (image: HTMLImageElement) => {
+    selectedImageRef.current = image
+    setSelectedImage({ src: image.src, width: image.offsetWidth, height: image.offsetHeight,
+      naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight })
   }
 
   const saveEditorSelection = () => {
@@ -351,6 +391,12 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLImageElement && event.key === 'Enter') {
+      event.preventDefault()
+      event.stopPropagation()
+      selectImage(event.target)
+      return
+    }
     if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.nativeEvent.isComposing) {
       const key = event.key.toLowerCase()
       const historyAction = key === 'z' ? (event.shiftKey ? onRedo : onUndo)
@@ -453,6 +499,9 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
         id={id}
         onBlur={handleEditorChange}
         onInput={handleEditorChange}
+        onClick={event => {
+          if (event.target instanceof HTMLImageElement) selectImage(event.target)
+        }}
         onCompositionEnd={() => syncMarkdownValue(onRichPaste)}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
@@ -461,6 +510,9 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
         spellCheck
         suppressContentEditableWarning
       />
+      {selectedImage ? <MarkdownImageSizeDialog image={selectedImage}
+        onCancel={() => { setSelectedImage(undefined); selectedImageRef.current?.focus() }}
+        onConfirm={resizeImage} /> : null}
     </>
   )
 }
