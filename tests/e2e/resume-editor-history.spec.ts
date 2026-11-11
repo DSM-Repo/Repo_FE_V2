@@ -43,6 +43,45 @@ async function paste(editor: Locator, text: string, html = '') {
   }, { text, html })
 }
 
+for (const listFirst of [true, false]) {
+  for (const control of ['toolbar', 'shortcut']) {
+    test(`bold bullet text survives save and reload with list first ${listFirst} via ${control}`, async ({ page }) => {
+      const { editor, getSavedPages } = await prepareEditor(page)
+      if (listFirst) {
+        await editor.fill('')
+        await page.getByRole('button', { name: '글머리 기호', exact: true }).first().click()
+        await page.keyboard.insertText('저장 후에도 굵은 글머리')
+      } else {
+        await editor.fill('저장 후에도 굵은 글머리')
+      }
+      await editor.press('ControlOrMeta+a')
+      if (control === 'toolbar') await page.getByRole('button', { name: '굵게', exact: true }).first().click()
+      else await editor.press('ControlOrMeta+b')
+      if (!listFirst) {
+        await page.getByRole('button', { name: '글머리 기호', exact: true }).first().click()
+      }
+      await page.getByRole('button', { name: '저장', exact: true }).click()
+      await expect.poll(() => getSavedPages()?.[0].content).toBe('- **저장 후에도 굵은 글머리**')
+      const preview = page.getByLabel('이력서 미리보기').locator('li strong')
+      await expect(preview).toHaveText('저장 후에도 굵은 글머리')
+      expect(await preview.evaluate(element => Number(getComputedStyle(element).fontWeight)))
+        .toBeGreaterThan(await preview.evaluate(element => Number(getComputedStyle(element.parentElement!).fontWeight)))
+      await page.reload()
+      await expect(preview).toHaveText('저장 후에도 굵은 글머리')
+      await page.getByRole('button', { name: '이력서 수정하기' }).click()
+      const bold = editor.locator('li strong, li b')
+      await expect(bold).toHaveText('저장 후에도 굵은 글머리')
+      expect(await bold.evaluate(element => Number(getComputedStyle(element).fontWeight)))
+        .toBeGreaterThan(await bold.evaluate(element => Number(getComputedStyle(element.parentElement!).fontWeight)))
+      await editor.press('ControlOrMeta+a')
+      await page.getByRole('button', { name: '굵게', exact: true }).first().click()
+      await page.getByRole('button', { name: '저장', exact: true }).click()
+      await expect.poll(() => getSavedPages()?.[0].content).toBe('- 저장 후에도 굵은 글머리')
+      await expect(preview).toHaveCount(0)
+    })
+  }
+}
+
 test('undo and redo target the most recent rich paste while preserving earlier typing', async ({ page }) => {
   const { editor } = await prepareEditor(page)
   await editor.click()

@@ -286,14 +286,19 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
         break
       case 'bold':
         {
-          const previousWeight = editor.style.fontWeight
+          const properties = ['font-weight', '--repo-font-resume-small-weight', '--repo-font-title-small-weight', '--repo-font-title-tiny-weight']
+          const previousWeights = properties.map((property) => ({
+            property,
+            value: editor.style.getPropertyValue(property),
+            priority: editor.style.getPropertyPriority(property),
+          }))
 
           try {
-            // Keep inherited 600 weight from being mistaken for an existing semantic bold mark.
-            editor.style.fontWeight = '400'
+            // Block styles (including lists) must not be mistaken for a semantic bold mark.
+            for (const property of properties) editor.style.setProperty(property, '400')
             document.execCommand(command, false)
           } finally {
-            editor.style.fontWeight = previousWeight
+            for (const { property, value, priority } of previousWeights) editor.style.setProperty(property, value, priority)
           }
         }
         break

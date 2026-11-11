@@ -769,8 +769,9 @@
   background: var(--repo-gray-300);
 }
 
-.markdownEditor strong {
-  font-weight: var(--repo-font-title-tiny-weight);
+.markdownEditor strong,
+.markdownEditor b {
+  font-weight: bolder;
 }
 
 .markdownEditor em {
