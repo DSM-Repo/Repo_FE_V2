@@ -575,7 +575,7 @@ export default function TeacherStudentReviewPage() {
                       className={styles.documentSheet}
                       content={toSheetContent(resume, page)}
                       feedbackMarkers={toPageFeedbackMarkers(page)}
-                      key={page?.id ?? pageIndex}
+                      key={`${pageIndex}:${page?.id ?? ''}`}
                       onFeedbackPointSelect={isPlacingFeedback ? (point) => handleFeedbackPointSelect(page, point) : undefined}
                     />
                   )

@@ -107,6 +107,47 @@ test.describe('teacher student portfolio review', () => {
     )
   })
 
+  for (const pageId of ['', 'repeated-page-id']) {
+    test(`does not leave stale sheets after navigation with ${pageId ? 'repeated' : 'empty'} page IDs`, async ({ page }, testInfo) => {
+      await mockTeacherResumeReview(page)
+      const resume = createResumeResponse()
+      await page.route(`${apiBaseUrl}/resume/students/1`, (route) => route.fulfill({
+        json: {
+          ...resume,
+          pages: Array.from({ length: 4 }, (_, index) => ({
+            content: `고유한 ${index + 1}쪽 본문`,
+            id: index < 2 ? `page-${index}` : pageId,
+            index,
+            type: index === 0 ? 'PROFILE' : 'FREE',
+          })),
+        },
+      }))
+      await page.setViewportSize({ width: 1528, height: 854 })
+      await page.goto('/students/1')
+
+      const preview = page.getByLabel('학생 이력서 미리보기', { exact: true })
+      const labels = () => preview.getByRole('article').evaluateAll((sheets) => sheets.map((sheet) => sheet.getAttribute('aria-label')))
+      for (let cycle = 0; cycle < 3; cycle += 1) {
+        await expect.poll(labels).toEqual(['김학생 이력서 1쪽', '김학생 이력서 2쪽'])
+        await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+        await expect.poll(labels).toEqual(['김학생 이력서 3쪽', '김학생 이력서 4쪽'])
+        await page.getByRole('button', { name: '이전 페이지', exact: true }).click()
+      }
+      await expect.poll(labels).toEqual(['김학생 이력서 1쪽', '김학생 이력서 2쪽'])
+      await testInfo.attach('teacher-spread-after-navigation', {
+        body: await page.screenshot(),
+        contentType: 'image/png',
+      })
+
+      await page.setViewportSize({ width: 927, height: 702 })
+      await expect.poll(labels).toEqual(['김학생 이력서 1쪽'])
+      await page.getByRole('button', { name: '다음 페이지', exact: true }).click()
+      await expect.poll(labels).toEqual(['김학생 이력서 2쪽'])
+      await page.setViewportSize({ width: 1528, height: 854 })
+      await expect.poll(labels).toEqual(['김학생 이력서 1쪽', '김학생 이력서 2쪽'])
+    })
+  }
+
   for (const isPublic of [false, true]) {
     test(`uses server visibility ${isPublic} instead of an opposite legacy override`, async ({ page }) => {
       await mockTeacherResumeReview(page, { isPublic })
