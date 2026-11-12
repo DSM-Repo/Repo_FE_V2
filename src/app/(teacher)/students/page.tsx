@@ -7,16 +7,11 @@ import {
   getStudentResumeStatuses,
   type ResumeStudentStatus,
 } from '@/features/resume/api';
-import type { AppHeaderItem, LinkRowTone } from '@/shared/ui';
+import { teacherNavigationItems } from '@/features/teacher/navigation';
+import type { LinkRowTone } from '@/shared/ui';
 import { AppHeader, ClassCard, LinkRow, SearchField, Toast } from '@/shared/ui';
 
 import styles from './page.module.css';
-
-const navigationItems = [
-  { href: '/majors', label: '전공 관리', value: 'majors' },
-  { href: '/students', label: '학생 관리', value: 'students' },
-  { href: '/library', label: '도서관', value: 'library' },
-] satisfies readonly AppHeaderItem[];
 
 const grades = [
   { label: '1학년', value: 1 },
@@ -225,7 +220,7 @@ function TeacherStudentsContent() {
       className={styles.page}
       data-dialog-open={selectedClass ? 'true' : 'false'}
     >
-      <AppHeader activeItem="students" items={navigationItems} showLogout />
+      <AppHeader activeItem="students" items={teacherNavigationItems} showLogout />
       {loadState.kind === 'failure' ? (
         <div className={styles.toastLayer}>
           <Toast variant="error">{loadState.message}</Toast>

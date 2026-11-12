@@ -157,7 +157,8 @@ All spacing derives from 4px.
 
 ### AuthCard
 - **Structure**: 340px dark brand panel + 470px light form panel
-- **Variants**: login, signup step, reversed teacher login
+- **Variants**: student login, company code login, signup step, reversed teacher login
+- **Company login**: the form presents the company code field and login button. The brand panel provides a return to student login.
 - **States**: default, pending, error, success
 - **Responsive**: desktop uses a stable 810px by 484px card; mobile reflows to a single 430px column
 

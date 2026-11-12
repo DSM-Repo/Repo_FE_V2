@@ -13,9 +13,10 @@ import type {
   AuthRefreshToken,
   AuthSignupInput,
   AuthSignupResult,
+  CompanyLoginInput,
 } from './authApi.types'
 import { getAuthRoleFromAccessToken } from './authAccessToken'
-import { postAuthJsonRequest, postAuthRefreshRequest } from './authHttpClient'
+import { postAuthJsonRequest, postAuthRefreshRequest, type AuthRequestResponse } from './authHttpClient'
 import { readServerErrorMessage } from '../../../shared/api/serverErrorMessage'
 
 type JsonRecord = {
@@ -70,11 +71,19 @@ function parseAuthRefreshToken(value: unknown): AuthRefreshToken | undefined {
 }
 
 export async function loginWithAuthApi(input: AuthLoginInput): Promise<AuthLoginResult> {
-  const response = await postAuthJsonRequest('user/login', input)
+  return readLoginResult(await postAuthJsonRequest('user/login', input), 'password')
+}
 
+export async function loginCompanyWithAuthApi(input: CompanyLoginInput): Promise<AuthLoginResult> {
+  return readLoginResult(await postAuthJsonRequest('company/login', input), 'company')
+}
+
+async function readLoginResult(response: AuthRequestResponse, loginMethod: 'password' | 'company'): Promise<AuthLoginResult> {
   if (response.kind !== 'response') {
     return response
   }
+
+  const isCompanyLogin = loginMethod === 'company'
 
   if (response.value.ok) {
     let responseBody: unknown
@@ -91,7 +100,7 @@ export async function loginWithAuthApi(input: AuthLoginInput): Promise<AuthLogin
 
     const token = parseAuthLoginToken(responseBody)
 
-    if (!token) {
+    if (!token || (isCompanyLogin && token.role !== 'company')) {
       return INVALID_LOGIN_RESPONSE
     }
 
@@ -102,10 +111,12 @@ export async function loginWithAuthApi(input: AuthLoginInput): Promise<AuthLogin
     }
   }
 
-  if (response.value.status === 401 || response.value.status === 403) {
+  if (response.value.status === 401 || (!isCompanyLogin && response.value.status === 403)) {
     return {
       kind: 'invalid-credentials',
-      message: await readServerErrorMessage(response.value, '이메일 또는 비밀번호를 확인해주세요.'),
+      message: isCompanyLogin
+        ? '기업 인증 코드를 확인해주세요.'
+        : await readServerErrorMessage(response.value, '이메일 또는 비밀번호를 확인해주세요.'),
     }
   }
 

@@ -18,14 +18,21 @@ export function ResumeDocumentViewport({ className, pagesPerSpread = 2, children
     const document = viewport.firstElementChild as HTMLElement | null
     if (!container || !document) return
     let active = true
-    viewport.inert = viewport.ownerDocument.fonts.status === 'loading'
-    viewport.setAttribute('aria-busy', String(viewport.inert))
-    void viewport.ownerDocument.fonts.ready.then(() => {
-      if (active) {
-        viewport.inert = false
-        viewport.setAttribute('aria-busy', 'false')
+    const fonts = viewport.ownerDocument.fonts
+    const resumeFont = '16px "Repo Resume Pretendard"'
+    const sample = '이력서'
+    const isFontPending = !fonts.check(resumeFont, sample)
+    viewport.inert = isFontPending
+    viewport.setAttribute('aria-busy', String(isFontPending))
+    if (isFontPending) {
+      const finishFontLoad = () => {
+        if (active) {
+          viewport.inert = false
+          viewport.setAttribute('aria-busy', 'false')
+        }
       }
-    })
+      void fonts.load(resumeFont, sample).then(finishFontLoad, finishFontLoad)
+    }
 
     const updateLayout = () => {
       const headerHeight = parseFloat(getComputedStyle(viewport).getPropertyValue('--repo-size-header-min-height')) || 64

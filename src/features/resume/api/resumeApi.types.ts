@@ -50,9 +50,8 @@ export type Resume = {
   readonly submissionStatus: string
 }
 
-export type ResumeDetailInput = {
+export type MyResumeInput = {
   readonly accessToken: string
-  readonly resumeId: string
 }
 
 export type ResumeStudentDetailInput = {
@@ -99,13 +98,16 @@ export type ResumeVisibility = {
   readonly isPublic: boolean
 }
 
+export type SavedResumePage = { readonly id: string; readonly index: number }
+
 export type ResumeSubmission = {
+  readonly pages?: readonly SavedResumePage[]
   readonly resumeId: string
   readonly submissionStatus: string
 }
 
 export type ResumeSave = {
-  readonly pages?: readonly { readonly id: string; readonly index: number }[]
+  readonly pages?: readonly SavedResumePage[]
   readonly resumeId: string
   readonly savedAt: string
 }

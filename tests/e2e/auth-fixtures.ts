@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 
-export type TestAuthRole = 'STUDENT' | 'TEACHER'
+export type TestAuthRole = 'STUDENT' | 'TEACHER' | 'COMPANY'
 
 export function createTestAccessToken(role: TestAuthRole) {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url')

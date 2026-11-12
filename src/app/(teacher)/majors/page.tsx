@@ -4,16 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { getSavedAccessToken } from '@/features/auth/api'
 import { createMajor, deleteMajor, getMajors, getMajorStudents, type Major as ApiMajor, type MajorStudent as ApiMajorStudent } from '@/features/major/api'
-import type { AppHeaderItem, MajorListItem, ToastVariant } from '@/shared/ui'
+import { teacherNavigationItems } from '@/features/teacher/navigation'
+import type { MajorListItem, ToastVariant } from '@/shared/ui'
 import { AppHeader, Button, Dropdown, LinkRow, MajorInputGroup, MajorList, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
-
-const navigationItems = [
-  { href: '/majors', label: '전공 관리', value: 'majors' },
-  { href: '/students', label: '학생 관리', value: 'students' },
-  { href: '/library', label: '도서관', value: 'library' },
-] satisfies readonly AppHeaderItem[]
 
 type Major = MajorListItem & {
   readonly createdAt?: string
@@ -313,7 +308,7 @@ export default function TeacherMajorsPage() {
 
   return (
     <main className={styles.page} data-major-selected={selectedMajor ? 'true' : 'false'}>
-      <AppHeader activeItem="majors" items={navigationItems} showLogout />
+      <AppHeader activeItem="majors" items={teacherNavigationItems} showLogout />
 
       <section className={styles.content} aria-labelledby="majors-title">
         {notice ? (

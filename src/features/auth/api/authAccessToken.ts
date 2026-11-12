@@ -63,8 +63,11 @@ export function getAuthSubjectClaimFromAccessToken(accessToken: string): string 
   return typeof subject === 'string' && subject.trim() ? subject : undefined
 }
 
-export function getAuthRoleFromAccessToken(accessToken: string): AuthLoginRole | undefined {
-  const payload = parseAuthAccessTokenPayload(accessToken)
+export function getAuthRoleFromAccessToken(
+  accessToken: string,
+  options?: { readonly ignoreExpiration?: boolean },
+): AuthLoginRole | undefined {
+  const payload = parseAuthAccessTokenPayload(accessToken, options)
 
   if (!payload) {
     return undefined
@@ -76,6 +79,10 @@ export function getAuthRoleFromAccessToken(accessToken: string): AuthLoginRole |
 
   if (payload['role'] === 'TEACHER') {
     return 'teacher'
+  }
+
+  if (payload['role'] === 'COMPANY') {
+    return 'company'
   }
 
   return undefined

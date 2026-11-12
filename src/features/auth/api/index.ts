@@ -1,4 +1,4 @@
-export { loginWithAuthApi, refreshAuthToken, sendEmailVerificationCode, signupWithAuthApi, verifyEmailCode } from './authApi'
+export { loginCompanyWithAuthApi, loginWithAuthApi, refreshAuthToken, sendEmailVerificationCode, signupWithAuthApi, verifyEmailCode } from './authApi'
 export { getAuthRoleFromAccessToken } from './authAccessToken'
 export { sendAuthenticatedRequest } from './authenticatedRequest'
 export { getAuthorizedRole, isCurrentAuthSession } from './authSessionRefresh'

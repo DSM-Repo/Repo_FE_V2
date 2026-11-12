@@ -41,7 +41,7 @@ async function mockResume(page: Page, pages: ResumePage[], includeSavedPages: bo
     skills: ['React'], submissionStatus: 'ONGOING',
   }
   let savedPages: ResumePage[] | undefined
-  for (const path of ['/resume/resume-id', '/resume/students/1']) {
+  for (const path of ['/resume', '/resume/students/1']) {
     await page.route(`${apiBaseUrl}${path}`, route => route.fulfill({ json: document }))
   }
   await page.route(`${apiBaseUrl}/user`, route => route.fulfill({ json: {
@@ -857,7 +857,7 @@ for (const width of [390, 1280]) {
     await expect(imageWidth).toHaveValue('120')
     await expect(imageHeight).toHaveValue('60')
     await expectInViewport(dialog.getByRole('button', { name: '적용하기', exact: true }), page)
-    await page.screenshot({ path: testInfo.outputPath(`project-upload-preview-${width}.png`), fullPage: true })
+    await page.screenshot({ path: testInfo.outputPath(`project-upload-preview-${width}.png`) })
     expect(uploads).toBe(0)
     await dialog.getByRole('button', { name: '적용하기', exact: true }).click()
     await expect(dialog).toHaveCount(0)

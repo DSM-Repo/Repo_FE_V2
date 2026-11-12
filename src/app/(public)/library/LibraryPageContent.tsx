@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-import { getSavedAccessToken, getSavedAuthRole, type AuthLoginRole } from '@/features/auth/api'
+import { getSavedAccessToken } from '@/features/auth/api'
 import { getDepartmentFromSchoolNumber } from '@/app/(student)/resume/ResumeEditorSheet'
 import {
   getLibraryBooks,
@@ -15,24 +15,13 @@ import {
   type LibraryResumePage,
   type LibrarySearchStudent,
 } from '@/features/library/api'
+import { getLibraryNavigationItems } from '@/features/library/navigation'
 import type { InternalHref } from '@/shared/lib/internalHref'
-import type { AppHeaderItem, LibraryBookCardProps, ResumeBookSheetContent } from '@/shared/ui'
+import type { LibraryBookCardProps, ResumeBookSheetContent } from '@/shared/ui'
 import { useResumePageSize } from '@/shared/lib/useResumePageSize'
 import { AppHeader, Button, CheckboxOption, LibraryBookCard, ResumeFeedbackSheet, SearchField, Tag, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
-
-const studentNavigationItems = [
-  { href: '/home', label: '홈', value: 'home' },
-  { href: '/resume', label: '이력서 관리', value: 'resume' },
-  { href: '/library', label: '도서관', value: 'library' },
-] satisfies readonly AppHeaderItem[]
-
-const teacherNavigationItems = [
-  { href: '/majors', label: '전공 관리', value: 'majors' },
-  { href: '/students', label: '학생 관리', value: 'students' },
-  { href: '/library', label: '도서관', value: 'library' },
-] satisfies readonly AppHeaderItem[]
 
 const LIBRARY_STUDENT_FETCH_SIZE = 100
 const fallbackClassFilters = [1, 2, 3, 4] as const
@@ -92,14 +81,10 @@ type LibraryFilters = {
   readonly majors: readonly string[]
 }
 
-function subscribeToSavedAuthRole(onStoreChange: () => void) {
+function subscribeToSavedAccessToken(onStoreChange: () => void) {
   window.addEventListener('storage', onStoreChange)
 
   return () => window.removeEventListener('storage', onStoreChange)
-}
-
-function getSavedAuthRoleSnapshot(): AuthLoginRole {
-  return getSavedAuthRole() ?? 'student'
 }
 
 function getSavedAccessTokenSnapshot(): string | undefined {
@@ -108,10 +93,6 @@ function getSavedAccessTokenSnapshot(): string | undefined {
 
 function getServerAccessTokenSnapshot(): string | undefined {
   return undefined
-}
-
-function getServerAuthRoleSnapshot(): AuthLoginRole {
-  return 'student'
 }
 
 function toLibraryBookCard(book: LibraryBookGroup): LibraryBookCardProps {
@@ -302,9 +283,8 @@ function toLibrarySheetPages(
 
 export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) {
   const searchParams = useSearchParams()
-  const role = useSyncExternalStore(subscribeToSavedAuthRole, getSavedAuthRoleSnapshot, getServerAuthRoleSnapshot)
   const accessToken = useSyncExternalStore(
-    subscribeToSavedAuthRole,
+    subscribeToSavedAccessToken,
     getSavedAccessTokenSnapshot,
     getServerAccessTokenSnapshot,
   )
@@ -317,7 +297,7 @@ export function LibraryPageContent({ showsLoadError }: LibraryPageContentProps) 
   const [activeFilters, setActiveFilters] = useState<LibraryFilters>({ classes: [], majors: [] })
   const [draftFilters, setDraftFilters] = useState<LibraryFilters>({ classes: [], majors: [] })
   const selectedDate = parseSelectedDate(searchParams.get('date'))
-  const navigationItems = role === 'teacher' ? teacherNavigationItems : studentNavigationItems
+  const navigationItems = getLibraryNavigationItems(accessToken)
   const libraryBooks = loadState.kind === 'success' ? loadState.books.map(toLibraryBookCard) : []
   const normalizedSearchKeyword = searchKeyword.trim()
   const searchedStudents = useMemo(

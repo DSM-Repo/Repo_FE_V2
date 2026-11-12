@@ -18,7 +18,7 @@ for (const type of ['PROFILE', 'PROJECT', 'FREE'] as const) {
     }
     let created: { pageId: string; x: number; y: number; comment: string } | undefined
     await authenticateAs(page, 'TEACHER')
-    for (const path of ['/resume/students/1', '/resume/resume-id']) {
+    for (const path of ['/resume/students/1', '/resume']) {
       await page.route(`${apiBaseUrl}${path}`, route => route.fulfill({ json: document }))
     }
     await page.route(`${apiBaseUrl}/user`, route => route.fulfill({ json: {

@@ -17,7 +17,7 @@ async function prepareEditor(page: Page) {
     ] as SavedPage[],
   }
   let savedPages: SavedPage[] | undefined
-  await page.route(`${apiBaseUrl}/resume/resume-id`, route => route.fulfill({ json: document }))
+  await page.route(`${apiBaseUrl}/resume`, route => route.fulfill({ json: document }))
   await page.route(`${apiBaseUrl}/user`, route => route.fulfill({ json: {
     name: '오혜민', major: 'Frontend', introduce: document.introduce, profileImageUrl: null,
     classInfo: { grade: 2, classNumber: 2, number: 1, schoolNumber: '2201' },

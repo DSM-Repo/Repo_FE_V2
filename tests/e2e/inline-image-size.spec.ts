@@ -33,7 +33,7 @@ async function prepareResume(page: Page, width: number, options: {
     ] satisfies SavedPage[],
   }
   let savedPages: readonly SavedPage[] | undefined
-  for (const path of ['/resume/resume-id', '/resume/students/1']) {
+  for (const path of ['/resume', '/resume/students/1']) {
     await page.route(`${apiBaseUrl}${path}`, route => route.fulfill({ json: document }))
   }
   await page.route(`${apiBaseUrl}/user`, route => route.fulfill({ json: {
@@ -99,7 +99,7 @@ for (const width of [390, 1280]) {
     await dialog.getByRole('spinbutton', { name: '본문 이미지 세로', exact: true }).fill('180')
     await dialog.getByRole('spinbutton', { name: '본문 이미지 세로', exact: true }).press('Tab')
     await expect(dialog.getByRole('button', { name: '적용하기', exact: true })).toBeInViewport()
-    await page.screenshot({ path: testInfo.outputPath(`inline-image-size-${width}.png`), fullPage: true })
+    await page.screenshot({ path: testInfo.outputPath(`inline-image-size-${width}.png`) })
     await dialog.getByRole('button', { name: '적용하기', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     await expectSize(firstImage, 320, 180)

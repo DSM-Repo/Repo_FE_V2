@@ -25,6 +25,7 @@ test.beforeEach(async ({ page }) => {
   await authenticateAs(page, 'STUDENT')
   await page.route(`${apiBaseUrl}/user`, (route) => route.fulfill({ status: 500 }))
   await page.route(`${apiBaseUrl}/major`, (route) => route.fulfill({ json: { majors: [], numberOfData: 0 } }))
+  await page.route(`${apiBaseUrl}/resume`, (route) => route.fulfill({ status: 404 }))
   await page.goto('/resume?mode=edit')
 })
 

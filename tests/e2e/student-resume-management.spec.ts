@@ -1,4 +1,6 @@
-import type { Locator } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
+
+import type { Resume, ResumeSavePage } from '../../src/features/resume/api/resumeApi.types'
 
 import { apiBaseUrl, expect, test } from './test-fixtures'
 
@@ -35,6 +37,13 @@ function raceResume(id: string, introduce: string) {
   }
 }
 
+async function mockExistingResume(page: Page) {
+  const resume = raceResume('resume-id', '')
+  await page.route(`${apiBaseUrl}/resume`, (route) => route.fulfill({
+    json: { ...resume, pages: resume.pages.map((item, index) => ({ ...item, id: `server-page-${index + 1}` })) },
+  }))
+}
+
 test.describe('student resume management', () => {
   test.beforeEach(async ({ page }) => {
     await authenticateAs(page, 'STUDENT')
@@ -48,29 +57,38 @@ test.describe('student resume management', () => {
         status: 200,
       })
     })
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
-      await route.fulfill({
-        body: JSON.stringify({
-          email: '',
-          id: 'resume-id',
-          introduce: '',
-          isPublic: false,
-          majorName: '',
-          name: '',
-          pages: [
-            { content: '', id: 'server-page-1', index: 0, type: 'PROFILE' },
-            { content: '', id: 'server-page-2', index: 1, type: 'PROJECT' },
-          ],
-          portfolioUrl: '',
-          profileImageUrl: '',
-          savedAt: '2026-09-20T10:00:00.000Z',
-          skills: [],
-          submissionStatus: 'ONGOING',
-        }),
-        contentType: 'application/json',
-        status: 200,
-      })
+    let savedResume: Resume | undefined
+    page.on('response', (response) => {
+      const url = response.url()
+      const mutations = ['save', 'auto-save', 'submit']
+      if (!response.ok() || !mutations.some((mutation) => url === `${apiBaseUrl}/resume/${mutation}`)) {
+        return
+      }
+
+      const body = response.request().postDataJSON() as Pick<Resume, 'email' | 'introduce' | 'portfolioUrl' | 'profileImageUrl' | 'skills'> & {
+        pages: readonly ResumeSavePage[]
+      }
+      savedResume = {
+        ...raceResume('resume-id', body.introduce),
+        ...body,
+        pages: body.pages.map((item, index) => ({
+          ...item,
+          id: item.id || `server-page-${index + 1}`,
+          project: item.project && {
+            endDate: item.project.endDate ?? '',
+            imageUrl: item.project.imageUrl ?? '',
+            name: item.project.name ?? '',
+            startDate: item.project.startDate ?? '',
+            summary: item.project.summary ?? '',
+          },
+        })),
+        profileImageUrl: body.profileImageUrl ?? '',
+        submissionStatus: url.endsWith('/submit') ? 'SUBMITTED' : 'ONGOING',
+      }
     })
+    await page.route(`${apiBaseUrl}/resume`, (route) =>
+      route.fulfill(savedResume ? { json: savedResume } : { status: 404 }),
+    )
   })
 
   for (const target of ['프로필', '프로젝트']) {
@@ -140,34 +158,33 @@ test.describe('student resume management', () => {
     await expect(image).toHaveAttribute('src', new URL('/new.png', page.url()).href)
   })
 
-  test('race: late document A cannot overwrite loaded document B', async ({ page }) => {
-    const oldLoad = Promise.withResolvers<void>()
+  test('loads the current resume with bearer auth and ignores a stale URL ID', async ({ page }) => {
+    const response = Promise.withResolvers<void>()
     const started = Promise.withResolvers<void>()
-    await page.route(`${apiBaseUrl}/resume/race-a`, async (route) => {
+    let loads = 0
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
+      loads += 1
+      expect(route.request().method()).toBe('GET')
+      expect(route.request().headers()['authorization']).toMatch(/^Bearer /)
       started.resolve()
-      await oldLoad.promise
-      await route.fulfill({ json: raceResume('race-a', '늦은 A') })
+      await response.promise
+      await route.fulfill({ json: raceResume('current-resume', '서버의 내 이력서') })
     })
-    await page.route(`${apiBaseUrl}/resume/race-b`, (route) => route.fulfill({ json: raceResume('race-b', '현재 B') }))
-    await page.goto('/resume?resumeId=race-a&mode=edit')
+    await page.goto('/resume?mode=edit')
     await started.promise
     await expect(page.getByLabel('자기소개 제목')).toHaveCount(0)
+    await expect(page.getByRole('article')).toHaveCount(0)
     await expect(page.getByRole('button', { name: '이력서 수정하기' })).toBeDisabled()
-    await expect(page.getByRole('button', { exact: true, name: '저장' })).toHaveCount(0)
-    await page.evaluate(() => window.history.pushState(null, '', '/resume?resumeId=race-b&mode=edit'))
-    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
-    const finished = page.waitForEvent('requestfinished', (request) => request.url() === `${apiBaseUrl}/resume/race-a`)
-    oldLoad.resolve()
-    await finished
-    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
-    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
-    await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), studentResumeIdStorageKey)).toBe('race-b')
+    await page.evaluate(() => window.history.pushState(null, '', '/resume?resumeId=stale-id&mode=edit'))
+    response.resolve()
+    await expect(page.getByLabel('자기소개 제목')).toHaveValue('서버의 내 이력서')
+    expect(loads).toBe(1)
   })
 
   test('race: failed lookup cannot save a blank replacement and can retry', async ({ page }) => {
     let saves = 0
     let loads = 0
-    await page.route(`${apiBaseUrl}/resume/race-failed`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
       loads += 1
       await route.fulfill(loads === 1 ? { status: 500 } : { json: raceResume('race-failed', '복구된 원본') })
     })
@@ -186,60 +203,6 @@ test.describe('student resume management', () => {
     await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeEnabled()
   })
 
-  test('race: delayed upload from document A cannot change document B', async ({ page }) => {
-    const upload = Promise.withResolvers<void>()
-    const started = Promise.withResolvers<void>()
-    await page.route(`${apiBaseUrl}/image`, async (route) => {
-      started.resolve()
-      await upload.promise
-      await route.fulfill({ json: { imageUrl: new URL('/old-document.png', page.url()).href, key: 'old-document.png' }, status: 201 })
-    })
-    await page.route(`${apiBaseUrl}/resume/race-b`, (route) => route.fulfill({ json: raceResume('race-b', '현재 B') }))
-    await page.goto('/resume?resumeId=resume-id&mode=edit')
-    const chooser = page.waitForEvent('filechooser')
-    await page.getByRole('button', { name: '프로필 이미지 추가' }).click()
-    await (await chooser).setFiles({ buffer: validProfilePng, mimeType: 'image/png', name: 'race.png' })
-    await page.getByRole('button', { name: '적용하기' }).click()
-    await started.promise
-    await page.evaluate(() => window.history.pushState(null, '', '/resume?resumeId=race-b&mode=edit'))
-    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
-    const finished = page.waitForEvent('requestfinished', (request) => request.url() === `${apiBaseUrl}/image`)
-    upload.resolve()
-    await finished
-    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
-    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
-    await expect(page.getByRole('button', { name: '프로필 이미지 변경' })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: '프로필 이미지 추가' })).toBeEnabled()
-  })
-
-  test('race: late post-save lookup cannot restore the previous document', async ({ page }) => {
-    const lookup = Promise.withResolvers<void>()
-    const started = Promise.withResolvers<void>()
-    await page.route('**/resume/save', (route) => route.fulfill({
-      json: { resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' },
-    }))
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
-      started.resolve()
-      await lookup.promise
-      await route.fulfill({ json: raceResume('resume-id', '늦은 저장 조회') })
-    })
-    await page.route(`${apiBaseUrl}/resume/race-b`, (route) => route.fulfill({ json: raceResume('race-b', '현재 B') }))
-    await page.goto('/resume?mode=edit')
-    await page.getByLabel('자기소개 제목').fill('첫 저장')
-    await page.getByRole('button', { exact: true, name: '저장' }).click()
-    await started.promise
-    await page.evaluate(() => window.history.pushState(null, '', '/resume?resumeId=race-b&mode=edit'))
-    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
-    const finished = page.waitForEvent('requestfinished', (request) => request.url() === `${apiBaseUrl}/resume/resume-id`)
-    lookup.resolve()
-    await finished
-    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
-    await expect(page).toHaveURL('/resume?resumeId=race-b&mode=edit')
-    await expect(page.getByLabel('자기소개 제목')).toHaveValue('현재 B')
-    await expect(page.getByRole('button', { exact: true, name: '저장' })).toBeEnabled()
-    await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), studentResumeIdStorageKey)).toBe('race-b')
-  })
-
   test('race: typing during manual save stays editable and the next save preserves page IDs', async ({ page }) => {
     const save = Promise.withResolvers<void>()
     const started = Promise.withResolvers<void>()
@@ -252,6 +215,7 @@ test.describe('student resume management', () => {
       }
       await route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
     })
+    await mockExistingResume(page)
     await page.goto('/resume?resumeId=resume-id&mode=edit')
     await page.getByLabel('자기소개 제목').fill('첫 저장 내용')
     await page.getByRole('button', { exact: true, name: '저장' }).click()
@@ -320,7 +284,11 @@ test.describe('student resume management', () => {
     const lookup = Promise.withResolvers<void>()
     const started = Promise.withResolvers<void>()
     const payloads: unknown[] = []
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
+      if (payloads.length === 0) {
+        await route.fulfill({ status: 404 })
+        return
+      }
       started.resolve()
       await lookup.promise
       await route.fulfill({ json: raceResume('resume-id', '첫 저장') })
@@ -347,7 +315,11 @@ test.describe('student resume management', () => {
   test('race: failed page ID lookup reports partial success and retries on the next save', async ({ page }) => {
     let lookups = 0
     const payloads: unknown[] = []
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
+      if (payloads.length === 0) {
+        await route.fulfill({ status: 404 })
+        return
+      }
       lookups += 1
       await route.fulfill(lookups === 1 ? { status: 500 } : { json: raceResume('resume-id', '보존된 입력') })
     })
@@ -382,7 +354,7 @@ test.describe('student resume management', () => {
       let lookups = 0
       let autoSaves = 0
       await page.clock.install()
-      await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+      await page.route(`${apiBaseUrl}/resume`, async (route) => {
         lookups += 1
         await route.fulfill({ json: raceResume('resume-id', '조회 원본') })
       })
@@ -428,6 +400,7 @@ test.describe('student resume management', () => {
       await manualSave.promise
       await route.fulfill({ json: { resumeId: 'resume-id', savedAt: '2026-09-20T10:00:00.000Z' } })
     })
+    await mockExistingResume(page)
     await page.goto('/resume?resumeId=resume-id&mode=edit')
     await page.getByLabel('자기소개 제목').fill('이전 입력')
     await page.clock.runFor(0)
@@ -450,7 +423,7 @@ test.describe('student resume management', () => {
     expect(autoSaves).toBe(0)
   })
 
-  test('opens resume management in preview mode before editing', async ({ page }) => {
+  test('shows an editable blank template when the current resume returns 404', async ({ page }) => {
     await page.setViewportSize({ height: 1080, width: 1920 })
     await page.goto('/resume')
 
@@ -481,8 +454,13 @@ test.describe('student resume management', () => {
 
   test('submits the resume with the draft body from edit mode', async ({ page }) => {
     let saveRequestCount = 0
+    let lookupCount = 0
     let submitRequestBody: unknown
 
+    await page.route(`${apiBaseUrl}/resume`, (route) => {
+      lookupCount += 1
+      return route.fulfill({ status: 404 })
+    })
     await page.route('**/resume/save', async (route) => {
       saveRequestCount += 1
       await route.fulfill({ status: 500 })
@@ -490,7 +468,11 @@ test.describe('student resume management', () => {
     await page.route(`${apiBaseUrl}/resume/submit`, async (route) => {
       submitRequestBody = route.request().postDataJSON()
       await route.fulfill({
-        body: JSON.stringify({ resumeId: 'resume-id', submissionStatus: 'SUBMITTED' }),
+        body: JSON.stringify({
+          pages: [{ id: 'submitted-profile', index: 0 }, { id: 'submitted-project', index: 1 }],
+          resumeId: 'resume-id',
+          submissionStatus: 'SUBMITTED',
+        }),
         contentType: 'application/json',
         status: 200,
       })
@@ -507,6 +489,7 @@ test.describe('student resume management', () => {
     await expect(page.getByRole('button', { name: '이력서 수정하기' })).toBeVisible()
     await expect(page.getByRole('button', { exact: true, name: '저장' })).toHaveCount(0)
     await expect(page).toHaveURL('/resume?resumeId=resume-id')
+    expect(lookupCount).toBe(1)
   })
 
   test('waits for the student response instead of flashing sample identity data', async ({ page }) => {
@@ -564,7 +547,7 @@ test.describe('student resume management', () => {
         status: 200,
       })
     })
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
       await releaseResumeRequest.promise
       await route.fulfill({
         body: JSON.stringify({
@@ -650,6 +633,7 @@ test.describe('student resume management', () => {
         status: 200,
       })
     })
+    await mockExistingResume(page)
     await page.setViewportSize({ height: 1080, width: 1920 })
     await page.goto('/resume?resumeId=resume-id&mode=feedback')
 
@@ -928,7 +912,7 @@ test.describe('student resume management', () => {
     let autoSavedPortfolioUrl = ''
     let savedPortfolioUrl = ''
 
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
       await route.fulfill({
         body: JSON.stringify({
           email: '',
@@ -1116,7 +1100,7 @@ test.describe('student resume management', () => {
         status: 200,
       })
     })
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
       await route.fulfill({
         body: JSON.stringify({
           email: 'student@example.com',
@@ -1171,7 +1155,7 @@ test.describe('student resume management', () => {
         status: 200,
       })
     })
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
       await route.fulfill({
         body: JSON.stringify({
           email: 'student@example.com',
@@ -1218,7 +1202,7 @@ test.describe('student resume management', () => {
         status: 200,
       })
     })
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
       await route.fulfill({
         body: JSON.stringify({
           email: 'student@example.com',
@@ -1328,7 +1312,7 @@ test.describe('student resume management', () => {
         contentType: 'image/svg+xml',
       })
     })
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
       await route.fulfill({ json: { ...raceResume('resume-id', ''), name: '프로필 테스트', profileImageUrl: imageUrl } })
     })
     await page.goto('/resume?resumeId=resume-id&mode=edit')
@@ -1678,7 +1662,7 @@ test.describe('student resume management', () => {
     test(`keeps Shift Enter quotes connected after save and reload at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 })
       let resume = raceResume('resume-id', '')
-      await page.route(`${apiBaseUrl}/resume/resume-id`, (route) => route.fulfill({ json: resume }))
+      await page.route(`${apiBaseUrl}/resume`, (route) => route.fulfill({ json: resume }))
       await page.route('**/resume/save', async (route) => {
         const body = route.request().postDataJSON() as { pages: typeof resume.pages }
         resume = { ...resume, pages: body.pages.map((item, index) => ({ ...item, id: `saved-${index}` })) }
@@ -2007,7 +1991,11 @@ test.describe('student resume management', () => {
         status: 200,
       })
     })
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
+      if (saveRequestCount === 0) {
+        await route.fulfill({ status: 404 })
+        return
+      }
       await route.fulfill({
         body: JSON.stringify({
           email: 'student@example.com',
@@ -2158,7 +2146,7 @@ test.describe('student resume management', () => {
   })
 
   test('updates a loaded resume with server page ids and preserves unedited free pages', async ({ page }) => {
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
       await route.fulfill({
         body: JSON.stringify({
           email: 'student@example.com',
@@ -2213,7 +2201,7 @@ test.describe('student resume management', () => {
     await page.addInitScript(() => {
       window.localStorage.setItem('repo.resume.id.student%40dsm.hs.kr', 'resume-id')
     })
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
       await route.fulfill({
         body: JSON.stringify({
           id: 'resume-id',
@@ -2245,13 +2233,13 @@ test.describe('student resume management', () => {
     await expect(page.getByLabel('1쪽 추가 내용')).toContainText('저장된 활동')
   })
 
-  test('restores a legacy saved resume id when reopening resume management', async ({ page }) => {
+  test('fetches the current resume even when a stale legacy ID is cached', async ({ page }) => {
     let resumeRequestCount = 0
 
     await page.addInitScript(() => {
-      window.localStorage.setItem('repo.resume.id', 'resume-id')
+      window.localStorage.setItem('repo.resume.id', 'stale-resume-id')
     })
-    await page.route(`${apiBaseUrl}/resume/resume-id`, async (route) => {
+    await page.route(`${apiBaseUrl}/resume`, async (route) => {
       resumeRequestCount += 1
       await route.fulfill({
         body: JSON.stringify({

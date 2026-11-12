@@ -5,7 +5,7 @@ import type {
   ResumeAutoSave,
   ResumeAutoSaveInput,
   ResumeAutoSaveResult,
-  ResumeDetailInput,
+  MyResumeInput,
   ResumeDetailResult,
   ResumeImageUpload,
   ResumeImageUploadInput,
@@ -28,6 +28,7 @@ import type {
   ResumeVisibility,
   ResumeVisibilityInput,
   ResumeVisibilityResult,
+  SavedResumePage,
 } from './resumeApi.types'
 import {
   getResumeRequest,
@@ -249,10 +250,37 @@ function parseResumeSubmission(value: unknown): ResumeSubmission | undefined {
     return undefined
   }
 
+  const pages = parseSavedResumePages(value['pages'])
+  if (pages === null) {
+    return undefined
+  }
+
   return {
+    ...(pages ? { pages } : {}),
     resumeId: value['resumeId'],
     submissionStatus: value['submissionStatus'],
   }
+}
+
+function parseSavedResumePages(value: unknown): readonly SavedResumePage[] | null | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+
+  if (!Array.isArray(value) || value.some((page) =>
+    !isJsonRecord(page) || typeof page['id'] !== 'string' || !page['id'].trim() ||
+    !Number.isInteger(page['index']) || (page['index'] as number) < 0,
+  )) {
+    return null
+  }
+
+  const pages = (value as SavedResumePage[]).map(({ id, index }) => ({ id, index }))
+  if (new Set(pages.map((page) => page.id)).size !== pages.length ||
+      new Set(pages.map((page) => page.index)).size !== pages.length) {
+    return null
+  }
+
+  return pages
 }
 
 function parseResumeSave(value: unknown): ResumeSave | undefined {
@@ -260,17 +288,13 @@ function parseResumeSave(value: unknown): ResumeSave | undefined {
     return undefined
   }
 
-  const pages = value['pages'] ?? undefined
-  if (pages !== undefined && (!Array.isArray(pages) || pages.some((page) =>
-    !isJsonRecord(page) || typeof page['id'] !== 'string' || !page['id'].trim() ||
-    !Number.isInteger(page['index']) || (page['index'] as number) < 0,
-  ))) return undefined
-  const savedPages = pages as { id: string; index: number }[] | undefined
-  if (savedPages && (new Set(savedPages.map((page) => page.id)).size !== savedPages.length ||
-    new Set(savedPages.map((page) => page.index)).size !== savedPages.length)) return undefined
+  const pages = parseSavedResumePages(value['pages'])
+  if (pages === null) {
+    return undefined
+  }
 
   return {
-    ...(savedPages ? { pages: savedPages.map(({ id, index }) => ({ id, index })) } : {}),
+    ...(pages ? { pages } : {}),
     resumeId: value['resumeId'],
     savedAt: value['savedAt'],
   }
@@ -502,9 +526,8 @@ async function readSubmissionResponseBody(response: ResumeHttpResponse): Promise
   }
 
   return {
+    ...submission,
     kind: 'success',
-    resumeId: submission.resumeId,
-    submissionStatus: submission.submissionStatus,
   }
 }
 
@@ -621,7 +644,7 @@ async function readStudentStatusResponseBody(response: ResumeHttpResponse): Prom
   }
 }
 
-export async function getResumeById(input: ResumeDetailInput): Promise<ResumeDetailResult> {
+export async function getMyResume(input: MyResumeInput): Promise<ResumeDetailResult> {
   const response = await getResumeRequest(input)
 
   if (response.kind !== 'response') {
