@@ -108,6 +108,25 @@ test.describe('protected route authorization', () => {
     await expect(page).toHaveURL(/\/students$/)
   })
 
+  test('refreshes a company session and redirects protected routes to the library', async ({ page }) => {
+    const accessToken = createTestAccessToken('COMPANY')
+    await authenticateWithAccessToken(page, createExpiredAccessToken('COMPANY'), 'company-refresh-token')
+    await page.route(`${apiBaseUrl}/user/refresh`, async (route) => {
+      expect(route.request().headers()['refresh-token']).toBe('company-refresh-token')
+      await route.fulfill({ json: { accessToken } })
+    })
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${accessToken}`)
+      await route.fulfill({ json: [] })
+    })
+
+    for (const path of ['/home', '/resume', '/students', '/majors', '/companies']) {
+      await page.goto(path)
+      await expect(page).toHaveURL(/\/library$/)
+      await expect(page.getByRole('navigation', { name: '주요 메뉴' }).getByRole('link')).toHaveText(['도서관'])
+    }
+  })
+
   test('refreshes a stale access token before authorizing a protected route', async ({ page }) => {
     const refreshedAccessToken = createTestAccessToken('STUDENT')
     let refreshRequestCount = 0

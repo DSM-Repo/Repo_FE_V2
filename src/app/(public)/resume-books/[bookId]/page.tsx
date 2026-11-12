@@ -12,16 +12,11 @@ import {
   type LibraryResume,
   type LibraryResumePage,
 } from '@/features/library/api'
-import type { AppHeaderItem, ResumeBookSheetContent } from '@/shared/ui'
+import { getLibraryNavigationItems } from '@/features/library/navigation'
+import type { ResumeBookSheetContent } from '@/shared/ui'
 import { AppHeader, Button, ResumeFeedbackSheet, SearchField } from '@/shared/ui'
 
 import styles from './page.module.css'
-
-const navigationItems = [
-  { href: '/home', label: '홈', value: 'home' },
-  { href: '/resume', label: '이력서 관리', value: 'resume' },
-  { href: '/library', label: '도서관', value: 'library' },
-] satisfies readonly AppHeaderItem[]
 
 type ResumeLoadState =
   | {
@@ -164,7 +159,7 @@ export default function ResumeBookPage() {
 
   return (
     <main className={styles.page}>
-      <AppHeader activeItem="library" items={navigationItems} />
+      <AppHeader activeItem="library" items={getLibraryNavigationItems(accessToken)} showLogout={Boolean(accessToken)} />
       <section className={styles.workspace} aria-label="레주메북 포트폴리오 열람">
         <div className={styles.contentLayer}>
           {pageState.kind === 'loading' ? (

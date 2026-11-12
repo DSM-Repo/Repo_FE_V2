@@ -136,6 +136,36 @@ test('loginWithAuthApi rejects an access token without a supported role', async 
   })
 })
 
+test('company login sends only the code and accepts the COMPANY token', async () => {
+  const code = ' abcd efgh ijkl mnop '
+  const tokens = { accessToken: createAccessToken('COMPANY'), refreshToken: 'company-refresh', tokenType: 'Bearer' }
+  globalThis.fetch = async (url, init) => {
+    assert.equal(String(url), 'https://auth.example.test/company/login')
+    assert.equal(init?.method, 'POST')
+    assert.equal(init?.body, JSON.stringify({ code }))
+    return Response.json(tokens)
+  }
+
+  const result = await authApi.loginCompanyWithAuthApi({ code })
+  assert.equal(result.kind, 'success')
+  assert.deepEqual(result.token, { ...tokens, role: 'company' })
+})
+
+test('company login reports invalid codes and rejects unexpected roles', async () => {
+  globalThis.fetch = async () => Response.json({ code: 'COMPANY_CODE_INVALID' }, { status: 401 })
+  assert.deepEqual(await authApi.loginCompanyWithAuthApi({ code: 'invalid' }), {
+    kind: 'invalid-credentials',
+    message: '기업 인증 코드를 확인해주세요.',
+  })
+
+  globalThis.fetch = async () => Response.json({
+    accessToken: createAccessToken('TEACHER'),
+    refreshToken: 'refresh',
+    tokenType: 'Bearer',
+  })
+  assert.equal((await authApi.loginCompanyWithAuthApi({ code: 'ABCD-EFGH-IJKL-MNOP' })).kind, 'server-error')
+})
+
 test('refreshAuthToken posts the refresh token header and returns a new access token', async () => {
   let requestedUrl = ''
   let requestedMethod = ''

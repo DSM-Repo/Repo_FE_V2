@@ -79,8 +79,8 @@ src/
 | `/login`, `/signup` | `(auth)/login/page.tsx`, `(auth)/signup/page.tsx` | 인증 |
 | `/home`, `/resume` | `(student)/home/page.tsx`, `(student)/resume/page.tsx` | student guard |
 | `/students`, `/students/[studentId]` | `(teacher)/students/page.tsx`, `(teacher)/students/[studentId]/page.tsx` | teacher guard, 상세 본문 연결 후속 |
-| `/majors` | `(teacher)/majors/page.tsx` | teacher guard |
-| `/library` | `(public)/library/page.tsx` | 내부 도서관, 클라이언트 토큰으로 API 조회 |
+| `/majors`, `/companies` | `(teacher)/majors/page.tsx`, `(teacher)/companies/page.tsx` | teacher guard |
+| `/library` | `(public)/library/page.tsx` | 학생·교사·기업 도서관, 클라이언트 토큰으로 API 조회 |
 | `/resume-books/[bookId]` | `(public)/resume-books/[bookId]/page.tsx` | 현재 bookId를 숫자 studentId로 해석하는 HTML 시트 |
 | `/[portfolioSlug]` | `(public)/[portfolioSlug]/page.tsx` | 공개 조회 미연결, 항상 404 |
 | `/component-showcase` | `component-showcase/page.tsx` | 공통 UI 확인 |
@@ -103,7 +103,7 @@ src/
 - 한글 slug를 허용합니다.
 - 브라우저와 서버 내부에서는 한글 path가 percent-encoding될 수 있으므로, 저장/조회 시에는 canonical slug 값을 기준으로 처리합니다.
 - slug는 공개 URL 네임스페이스에서 unique해야 합니다.
-- `/home`, `/resume`, `/students`, `/majors`, `/library`, `/login`, `/signup`, `/resume-books`, `/component-showcase`, `/api` 등 실제 앱 경로와 충돌하지 않아야 합니다. 현재 예약어 구현의 보완은 S08/D09 범위입니다.
+- `/home`, `/resume`, `/students`, `/majors`, `/companies`, `/library`, `/login`, `/signup`, `/resume-books`, `/component-showcase`, `/api` 등 실제 앱 경로와 충돌하지 않아야 합니다. 현재 예약어 구현의 보완은 S08/D09 범위입니다.
 - 중복 slug가 발생하면 suffix 또는 별도 식별 규칙을 둡니다.
 - 공개 URL slug 변경 이력/redirect 정책은 후속 결정으로 둡니다.
 
@@ -112,6 +112,7 @@ src/
 - 프론트엔드는 route guard로 UX 수준의 접근 제어를 제공한다.
 - 실제 보안은 백엔드 authorization이 책임진다.
 - 학생/선생님 모두 접근 가능한 공통 기능은 별도 shared route로 둔다.
+- 기업 계정은 코드로 로그인하고 도서관으로 이동한다. 학생·교사 전용 경로에 접근하면 도서관으로 돌아간다.
 
 ## API 연동 방향
 
@@ -119,6 +120,7 @@ src/
 
 ```txt
 features/auth/api
+features/company/api
 features/user/api
 features/resume/api
 features/feedback/api
@@ -144,6 +146,7 @@ features/notification/api
 
 - HTTPS 화면에서 HTTP API를 사용하면 `src/shared/api/clientApiBaseUrl.ts`가 같은 출처의 `/api/backend/*`로 전환한다. 해당 API route의 HTTP IPv4 전송은 Workers sockets를 사용하므로 Next에서의 E2E와 Workers 검증을 구분한다.
 - `POST /image`는 multipart의 `image` 파일 필드를 사용하며 프로필/프로젝트 업로드에 연결되어 있다. 본문 이미지와 실환경 검증은 D03/S04에 남아 있다.
+- 학생 이력서 편집기는 진입 시 토큰으로 `GET /resume`을 호출하고, 404이면 빈 템플릿을 표시한다.
 - PDF 생성/변환은 서버 책임이다. 프론트 요청/상태/결과 계약과 Viewer 선택은 D10 대기이며, 현재 도서관의 HTML 시트는 PDF Viewer 구현이 아니다.
 
 ## 레거시 구조를 그대로 따르지 않는 이유

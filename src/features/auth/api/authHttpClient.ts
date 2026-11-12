@@ -1,6 +1,6 @@
 'use client'
 
-import type { AuthEmailSendInput, AuthEmailVerifyInput, AuthLoginInput, AuthRefreshInput, AuthSignupInput } from './authApi.types'
+import type { AuthEmailSendInput, AuthEmailVerifyInput, AuthLoginInput, AuthRefreshInput, AuthSignupInput, CompanyLoginInput } from './authApi.types'
 import { buildClientApiUrl, getClientApiConfig } from '../../../shared/api/clientApiBaseUrl'
 
 type AuthApiConfig =
@@ -13,8 +13,8 @@ type AuthApiConfig =
       readonly message: string
     }
 
-type AuthJsonRequestInput = AuthEmailSendInput | AuthEmailVerifyInput | AuthLoginInput | AuthSignupInput
-type AuthJsonRequestPath = 'user/email/send' | 'user/email/verify' | 'user/login' | 'user/signup'
+type AuthJsonRequestInput = AuthEmailSendInput | AuthEmailVerifyInput | AuthLoginInput | AuthSignupInput | CompanyLoginInput
+type AuthJsonRequestPath = 'user/email/send' | 'user/email/verify' | 'user/login' | 'user/signup' | 'company/login'
 type AuthRefreshRequestPath = 'user/refresh'
 export type AuthRequestFailure = {
   readonly kind: 'configuration-error' | 'network-error'

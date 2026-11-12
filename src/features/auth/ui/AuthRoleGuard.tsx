@@ -11,15 +11,12 @@ import {
 } from '@/features/auth/api'
 import { Button, Toast } from '@/shared/ui'
 
+import { authHomePath } from './authHomePath'
+
 type AuthRoleGuardProps = {
   readonly children: ReactNode
   readonly requiredRole: AuthLoginRole
 }
-
-const roleHomePath = {
-  student: '/home',
-  teacher: '/students',
-} as const satisfies Record<AuthLoginRole, string>
 
 export function AuthRoleGuard({ children, requiredRole }: AuthRoleGuardProps) {
   const router = useRouter()
@@ -59,7 +56,7 @@ export function AuthRoleGuard({ children, requiredRole }: AuthRoleGuardProps) {
           return
         case 'authorized':
           if (result.role !== requiredRole) {
-            router.replace(roleHomePath[result.role])
+            router.replace(authHomePath[result.role])
             return
           }
           setIsAuthorized(true)

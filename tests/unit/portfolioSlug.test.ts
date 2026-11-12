@@ -3,7 +3,7 @@ import test from 'node:test'
 import { isReservedPortfolioSlug, normalizePortfolioSlug } from '../../src/shared/lib/portfolioSlug.js'
 
 test('recognizes actual application routes as reserved slugs', () => {
-  for (const slug of ['home', 'resume', 'students', 'majors', 'library', 'signup', 'component-showcase', 'api', 'resume-books']) {
+  for (const slug of ['home', 'resume', 'students', 'majors', 'companies', 'library', 'signup', 'component-showcase', 'api', 'resume-books']) {
     assert.equal(isReservedPortfolioSlug(slug), true, slug)
   }
 })

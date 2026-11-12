@@ -1,4 +1,4 @@
-export type AuthLoginRole = 'student' | 'teacher'
+export type AuthLoginRole = 'student' | 'teacher' | 'company'
 export type AuthSignupRole = 'STUDENT'
 
 export type AuthEmailSendInput = {
@@ -33,6 +33,10 @@ export type AuthEmailVerifyResult =
 export type AuthLoginInput = {
   readonly email: string
   readonly password: string
+}
+
+export type CompanyLoginInput = {
+  readonly code: string
 }
 
 export type AuthLoginToken = {

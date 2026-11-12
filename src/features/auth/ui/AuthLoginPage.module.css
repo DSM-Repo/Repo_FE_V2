@@ -120,7 +120,7 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  min-height: 28px;
+  min-height: 44px;
   padding: 0;
   border: 0;
   color: var(--repo-gray-400);
@@ -132,8 +132,22 @@
   cursor: pointer;
 }
 
-.switchButton:hover {
+.switchButton:hover:not(:disabled) {
   color: var(--repo-gray-50);
+}
+
+.switchButton:focus-visible {
+  outline: 2px solid var(--repo-gray-50);
+  outline-offset: 2px;
+}
+
+.switchButton:disabled {
+  cursor: default;
+}
+
+.roleSwitches {
+  display: grid;
+  gap: var(--space-2);
 }
 
 .switchIcon {
@@ -198,6 +212,15 @@
   margin: 0 0 14px;
 }
 
+.companyCodeField :has(> input:focus-visible) {
+  outline: 2px solid var(--repo-text-black);
+  outline-offset: 2px;
+}
+
+.companyCodeField input::placeholder {
+  color: var(--repo-gray-700);
+}
+
 .label {
   color: var(--repo-text-black);
   font-size: var(--repo-font-body-tiny-size);
@@ -211,13 +234,18 @@
   height: 16px;
 }
 
-.errorFeedback {
+.errorFeedback,
+.companyErrorFeedback {
   margin: 0;
   color: var(--repo-state-error);
   font-size: var(--repo-font-body-small-size);
   font-weight: var(--repo-font-body-small-weight);
   line-height: var(--repo-font-body-small-line-height);
   letter-spacing: 0;
+}
+
+.companyErrorFeedback {
+  color: color-mix(in srgb, var(--repo-state-error), var(--repo-text-black) 26%);
 }
 
 .submitGroup {

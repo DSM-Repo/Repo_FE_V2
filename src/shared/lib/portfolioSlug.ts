@@ -1,5 +1,5 @@
 const RESERVED_PORTFOLIO_SLUGS = new Set([
-  '_next', 'api', 'component-showcase', 'dev', 'favicon.ico', 'home', 'library',
+  '_next', 'api', 'companies', 'component-showcase', 'dev', 'favicon.ico', 'home', 'library',
   'login', 'majors', 'resume', 'resume-books', 'robots.txt', 'signup', 'sitemap.xml',
   'students', 'teacher',
 ])

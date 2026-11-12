@@ -12,17 +12,12 @@ import {
   type Resume,
   type ResumePage,
 } from '@/features/resume/api'
-import type { AppHeaderItem, ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
+import { teacherNavigationItems } from '@/features/teacher/navigation'
+import type { ResumeBookSheetContent, ResumeBookSheetFeedbackMarker } from '@/shared/ui'
 import { useResumePageSize } from '@/shared/lib/useResumePageSize'
 import { AppHeader, Icon, ResumeFeedbackSheet, Switch, Toast } from '@/shared/ui'
 
 import styles from './page.module.css'
-
-const navigationItems = [
-  { href: '/majors', label: '전공 관리', value: 'majors' },
-  { href: '/students', label: '학생 관리', value: 'students' },
-  { href: '/library', label: '도서관', value: 'library' },
-] satisfies readonly AppHeaderItem[]
 
 type LoadState =
   | { readonly kind: 'loading' }
@@ -533,7 +528,7 @@ export default function TeacherStudentReviewPage() {
 
   return (
     <main className={styles.page} data-feedback-panel-open={isFeedbackOpen} data-feedback-placement={isPlacingFeedback}>
-      <AppHeader activeItem="students" items={navigationItems} showLogout />
+      <AppHeader activeItem="students" items={teacherNavigationItems} showLogout />
 
       <section className={styles.workspace} aria-label="학생 포트폴리오 검토">
         {actionFeedback && !feedbackTarget ? <div className={styles.toastLayer}><Toast variant={actionFeedback.tone}>{actionFeedback.message}</Toast></div> : null}

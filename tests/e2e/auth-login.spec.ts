@@ -134,6 +134,55 @@ test.describe('auth login route', () => {
     await expect(mainNavigation.getByRole('link', { name: '학생 관리' })).toHaveAttribute('aria-current', 'page')
   })
 
+  test('signs in with only a company code and exposes library navigation', async ({ page }) => {
+    const accessToken = createTestAccessToken('COMPANY')
+    const validCode = ' abcd efgh ijkl mnop '
+    await page.route(`${apiBaseUrl}/company/login`, async (route) => {
+      expect(route.request().method()).toBe('POST')
+      const body = route.request().postDataJSON()
+      if (body.code !== validCode) {
+        expect(body).toEqual({ code: 'incorrect' })
+        await route.fulfill({ status: 401, json: { code: 'COMPANY_CODE_INVALID' } })
+        return
+      }
+      expect(body).toEqual({ code: validCode })
+      await route.fulfill({ json: { accessToken, refreshToken: 'company-refresh-token', tokenType: 'Bearer' } })
+    })
+    await page.route(`${apiBaseUrl}/library`, async (route) => {
+      expect(route.request().headers()['authorization']).toBe(`Bearer ${accessToken}`)
+      await route.fulfill({ json: [] })
+    })
+    await page.route(`${apiBaseUrl}/library/1`, (route) =>
+      route.fulfill({ status: 404, json: { message: '공개 이력서가 없습니다.' } }),
+    )
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/login')
+    await page.getByRole('button', { name: '기업으로 전환하기' }).click()
+    await expect(page.getByRole('heading', { name: '기업 로그인' })).toBeVisible()
+    await expect(page.getByLabel('이메일')).toHaveCount(0)
+    await expect(page.getByRole('link', { name: '회원가입' })).toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+
+    const codeInput = page.getByLabel('기업 인증 코드')
+    await codeInput.fill('incorrect')
+    await codeInput.press('Enter')
+    await expect(page.getByRole('form', { name: '기업 로그인' }).getByRole('alert')).toHaveText('기업 인증 코드를 확인해주세요.')
+    await codeInput.fill(validCode)
+    await codeInput.press('Enter')
+    await expect(page).toHaveURL(/\/library$/)
+    await expect(page.getByText('공개된 포트폴리오 책이 없습니다.')).toBeVisible()
+    const navigation = page.getByRole('navigation', { name: '주요 메뉴' })
+    await expect(navigation.getByRole('link')).toHaveText(['도서관'])
+    expect(await page.evaluate(() => localStorage.getItem('repo.auth.refreshToken'))).toBe('company-refresh-token')
+
+    await page.goto('/resume-books/1')
+    await expect(navigation.getByRole('link')).toHaveText(['도서관'])
+    await expect(page.getByText('공개 이력서가 없습니다.', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '로그아웃' }).click()
+    await expect(page).toHaveURL(/\/login$/)
+  })
+
   test('keeps the teacher header when a teacher opens the library', async ({ page }) => {
     await page.route('**/user/login', async (route) => {
       await route.fulfill({
