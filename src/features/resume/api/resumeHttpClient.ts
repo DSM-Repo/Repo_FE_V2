@@ -2,7 +2,7 @@
 
 import type {
   ResumeAutoSaveInput,
-  ResumeDetailInput,
+  MyResumeInput,
   ResumeImageUploadInput,
   ResumeSaveInput,
   ResumeStudentDetailInput,
@@ -79,10 +79,8 @@ async function sendResumeRequest(path: string, init: RequestInit): Promise<Resum
   })
 }
 
-export async function getResumeRequest(input: ResumeDetailInput): Promise<ResumeRequestResponse> {
-  const encodedResumeId = encodeURIComponent(input.resumeId)
-
-  return sendResumeRequest(`resume/${encodedResumeId}`, {
+export async function getResumeRequest(input: MyResumeInput): Promise<ResumeRequestResponse> {
+  return sendResumeRequest('resume', {
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
     },

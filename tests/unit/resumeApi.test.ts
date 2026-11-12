@@ -16,7 +16,7 @@ test.afterEach(() => {
 })
 
 const resumeErrorOperations = [
-  { name: 'getResumeById', run: () => resumeApi.getResumeById({ accessToken: 'token', resumeId: 'resume-id' }) },
+  { name: 'getMyResume', run: () => resumeApi.getMyResume({ accessToken: 'token' }) },
   { name: 'getStudentResumeById', run: () => resumeApi.getStudentResumeById({ accessToken: 'token', studentId: 11 }) },
   { name: 'getStudentResumeStatuses', run: () => resumeApi.getStudentResumeStatuses({ accessToken: 'token' }) },
   { name: 'updateResumeVisibility', run: () => resumeApi.updateResumeVisibility({ accessToken: 'token', studentId: 11, isPublic: true }) },
@@ -40,7 +40,7 @@ for (const operation of resumeErrorOperations) {
       assert.equal(result.message, message, `${operation.name}: ${status}`)
       const expectedKind = status === 401 || status === 403
         ? 'forbidden'
-        : status === 404 && (operation.name === 'getResumeById' || operation.name === 'getStudentResumeById')
+        : status === 404 && (operation.name === 'getMyResume' || operation.name === 'getStudentResumeById')
           ? 'not-found'
           : status === 400 && operation.name === 'uploadResumeImage'
             ? 'validation-error'
@@ -68,7 +68,7 @@ test('resume HTTP failures keep the timeout active until the error body is read'
     return response
   }
 
-  assert.deepEqual(await resumeApi.getResumeById({ accessToken: 'token', resumeId: 'resume-id' }), {
+  assert.deepEqual(await resumeApi.getMyResume({ accessToken: 'token' }), {
     kind: 'forbidden',
     message: '서버가 반환한 권한 오류',
   })
@@ -77,7 +77,7 @@ test('resume HTTP failures keep the timeout active until the error body is read'
 
 test('resume HTTP failures use a fallback when the server provides no message', async () => {
   globalThis.fetch = async () => new Response(null, { status: 404 })
-  assert.deepEqual(await resumeApi.getResumeById({ accessToken: 'token', resumeId: 'resume-id' }), {
+  assert.deepEqual(await resumeApi.getMyResume({ accessToken: 'token' }), {
     kind: 'not-found',
     message: '이력서를 찾을 수 없습니다.',
   })
@@ -265,7 +265,7 @@ for (const invalidField of [{ submissionStatus: 'UNKNOWN' }, { submissionStatus:
   })
 }
 
-test('getResumeById sends the resume id with bearer auth and returns parsed resume data', async () => {
+test('getMyResume fetches the current resume with bearer auth and returns parsed resume data', async () => {
   let requestedUrl = ''
   let requestedMethod = ''
   let requestedAuthorization = ''
@@ -297,12 +297,9 @@ test('getResumeById sends the resume id with bearer auth and returns parsed resu
     )
   }
 
-  const result = await resumeApi.getResumeById({
-    accessToken: 'access-token',
-    resumeId: '66c73ec4c92f1d2d087e9012',
-  })
+  const result = await resumeApi.getMyResume({ accessToken: 'access-token' })
 
-  assert.equal(requestedUrl, 'https://api.example.test/resume/66c73ec4c92f1d2d087e9012')
+  assert.equal(requestedUrl, 'https://api.example.test/resume')
   assert.equal(requestedMethod, 'GET')
   assert.equal(requestedAuthorization, 'Bearer access-token')
   assert.deepEqual(result, {
@@ -385,7 +382,7 @@ test('getStudentResumeById sends the student id with bearer auth and returns par
   })
 })
 
-test('getResumeById accepts nullable optional resume fields from the server contract', async () => {
+test('getMyResume accepts nullable optional resume fields from the server contract', async () => {
   globalThis.fetch = async () =>
     new Response(
       JSON.stringify({
@@ -425,10 +422,7 @@ test('getResumeById accepts nullable optional resume fields from the server cont
       },
     )
 
-  const result = await resumeApi.getResumeById({
-    accessToken: 'access-token',
-    resumeId: 'resume-id',
-  })
+  const result = await resumeApi.getMyResume({ accessToken: 'access-token' })
 
   assert.deepEqual(result, {
     kind: 'success',
@@ -464,7 +458,7 @@ test('getResumeById accepts nullable optional resume fields from the server cont
   })
 })
 
-test('getResumeById returns server-error when the response body is not a resume', async () => {
+test('getMyResume returns server-error when the response body is not a resume', async () => {
   globalThis.fetch = async () =>
     new Response(JSON.stringify({ id: 'resume-id' }), {
       headers: {
@@ -473,10 +467,7 @@ test('getResumeById returns server-error when the response body is not a resume'
       status: 200,
     })
 
-  const result = await resumeApi.getResumeById({
-    accessToken: 'access-token',
-    resumeId: 'resume-id',
-  })
+  const result = await resumeApi.getMyResume({ accessToken: 'access-token' })
 
   assert.deepEqual(result, {
     kind: 'server-error',
@@ -484,7 +475,7 @@ test('getResumeById returns server-error when the response body is not a resume'
   })
 })
 
-test('getResumeById keeps the request timeout active until the response body is parsed', async () => {
+test('getMyResume keeps the request timeout active until the response body is parsed', async () => {
   let clearTimeoutCallCount = 0
 
   globalThis.clearTimeout = (timeoutId) => {
@@ -523,16 +514,13 @@ test('getResumeById keeps the request timeout active until the response body is 
     return response
   }
 
-  const result = await resumeApi.getResumeById({
-    accessToken: 'access-token',
-    resumeId: '66c73ec4c92f1d2d087e9012',
-  })
+  const result = await resumeApi.getMyResume({ accessToken: 'access-token' })
 
   assert.equal(result.kind, 'success')
   assert.equal(clearTimeoutCallCount, 1)
 })
 
-test('getResumeById returns network-error when the response body stream fails', async () => {
+test('getMyResume returns network-error when the response body stream fails', async () => {
   globalThis.fetch = async () => {
     const response = new Response(null, {
       headers: {
@@ -550,10 +538,7 @@ test('getResumeById returns network-error when the response body stream fails', 
     return response
   }
 
-  const result = await resumeApi.getResumeById({
-    accessToken: 'access-token',
-    resumeId: '66c73ec4c92f1d2d087e9012',
-  })
+  const result = await resumeApi.getMyResume({ accessToken: 'access-token' })
 
   assert.deepEqual(result, {
     kind: 'network-error',
@@ -632,7 +617,11 @@ test('submitResume sends bearer auth and returns parsed submission state', async
     requestedBody = String(init?.body)
     requestedContentType = new Headers(init?.headers).get('Content-Type') ?? ''
 
-    return new Response(JSON.stringify({ resumeId: 'resume-id', submissionStatus: 'SUBMITTED' }), {
+    return new Response(JSON.stringify({
+      pages: [{ id: 'saved-page-id', index: 0 }],
+      resumeId: 'resume-id',
+      submissionStatus: 'SUBMITTED',
+    }), {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -668,6 +657,7 @@ test('submitResume sends bearer auth and returns parsed submission state', async
   assert.deepEqual(result, {
     kind: 'success',
     resumeId: 'resume-id',
+    pages: [{ id: 'saved-page-id', index: 0 }],
     submissionStatus: 'SUBMITTED',
   })
 })
@@ -1123,7 +1113,7 @@ test('resume readers extract project image dimensions while leaving other page c
     ],
   }))
   for (const run of [
-    () => resumeApi.getResumeById({ accessToken: 'token', resumeId: 'resume-id' }),
+    () => resumeApi.getMyResume({ accessToken: 'token' }),
     () => resumeApi.getStudentResumeById({ accessToken: 'token', studentId: 1 }),
   ]) {
     const result = await run()

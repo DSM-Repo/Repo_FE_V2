@@ -14,7 +14,7 @@ async function mockResume(page: Page) {
     ] as PageBody[],
   }
   let saved: PageBody[] | undefined
-  await page.route(`${apiBaseUrl}/resume/capacity-resume`, route => route.fulfill({ json: document }))
+  await page.route(`${apiBaseUrl}/resume`, route => route.fulfill({ json: document }))
   await page.route(`${apiBaseUrl}/user`, route => route.fulfill({ json: {
     name: '오혜민', major: 'Frontend', introduce: document.introduce, profileImageUrl: null,
     classInfo: { grade: 2, classNumber: 2, number: 1, schoolNumber: '2201' },

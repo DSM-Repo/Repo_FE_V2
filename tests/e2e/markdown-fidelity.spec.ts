@@ -10,7 +10,7 @@ async function openEditor(page: Page) {
   }
   await page.route(`${apiBaseUrl}/user`, route => route.fulfill({ status: 500 }))
   await page.route(`${apiBaseUrl}/major`, route => route.fulfill({ json: { majors: [], numberOfData: 0 } }))
-  await page.route(`${apiBaseUrl}/resume/resume-id`, route => route.fulfill({ json: resume }))
+  await page.route(`${apiBaseUrl}/resume`, route => route.fulfill({ json: resume }))
   await page.route(`${apiBaseUrl}/feedback?*`, route => route.fulfill({ json: { content: [], totalElements: 0 } }))
   await page.route(`${apiBaseUrl}/resume/save`, async route => {
     const body = route.request().postDataJSON() as { pages: typeof resume.pages }

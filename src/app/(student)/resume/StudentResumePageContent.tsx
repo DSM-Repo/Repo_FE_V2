@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type SetStateAction } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 
 import { getSavedAccessToken } from '@/features/auth/api'
 import {
@@ -13,8 +13,7 @@ import { getMajors, type Major } from '@/features/major/api'
 import {
   autoSaveResume,
   clearSavedResumeId,
-  getResumeById,
-  getSavedResumeId,
+  getMyResume,
   saveResume,
   saveResumeId,
   submitResume,
@@ -85,7 +84,7 @@ function reindexDraftPages(pages: readonly ResumeDraftPage[]) {
 
 type LoadState =
   | {
-      readonly kind: 'idle'
+      readonly kind: 'empty'
     }
   | {
       readonly kind: 'loading'
@@ -410,11 +409,9 @@ function toNormalizedPortfolioUrl(value: string) {
 }
 
 export function StudentResumePageContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const requestedResumeId = searchParams.get('resumeId') ?? ''
   const requestedMode = searchParams.get('mode')
-  const [loadState, setLoadState] = useState<LoadState>({ kind: 'idle' })
+  const [loadState, setLoadState] = useState<LoadState>({ kind: 'loading' })
   const [viewMode, setViewMode] = useState<ViewMode>(() => toInitialViewMode(requestedMode))
   const [draft, setDraftState] = useState<ResumeDraft>(() => trackDraftPages(defaultResumeDraft))
   const setDraft = useCallback((nextDraft: SetStateAction<ResumeDraft>) => {
@@ -440,7 +437,6 @@ export function StudentResumePageContent() {
   const viewedResumeIdRef = useRef<string | undefined>(undefined)
   const documentSessionRef = useRef(0)
   const loadRequestRef = useRef(0)
-  const attemptedResumeIdRef = useRef('')
   const draftRevisionRef = useRef(0)
   const lastDraftChangeAtRef = useRef(0)
   const savePendingRef = useRef(false)
@@ -538,15 +534,8 @@ export function StudentResumePageContent() {
     }
   }, [])
 
-  const loadResume = useCallback(async (nextResumeId: string, syncUrl: boolean) => {
-    const trimmedResumeId = nextResumeId.trim()
-
-    if (!trimmedResumeId) {
-      return
-    }
-
+  const loadResume = useCallback(async () => {
     const loadRequest = ++loadRequestRef.current
-    attemptedResumeIdRef.current = trimmedResumeId
     documentSessionRef.current += 1
     setIsDraftDirty(false)
     setImageUploadState({ kind: 'idle' })
@@ -565,10 +554,7 @@ export function StudentResumePageContent() {
     viewedResumeIdRef.current = undefined
     setActionFeedback(undefined)
 
-    const result = await getResumeById({
-      accessToken,
-      resumeId: trimmedResumeId,
-    })
+    const result = await getMyResume({ accessToken })
 
     if (loadRequestRef.current !== loadRequest) {
       return
@@ -585,37 +571,39 @@ export function StudentResumePageContent() {
       })
       setLoadState({ kind: 'success', resume: result.resume })
 
-      if (syncUrl) {
-        router.replace(`/resume?resumeId=${encodeURIComponent(result.resume.id)}`, { scroll: false })
-      }
-
       return
     }
 
-    viewedResumeIdRef.current = undefined
-    if (getSavedResumeId() === trimmedResumeId) {
+    if (result.kind === 'not-found') {
       clearSavedResumeId()
+      undoDraftsRef.current = []
+      redoDraftsRef.current = []
+      setDraft(() => userRef.current ? applyUserToDraft(defaultResumeDraft, userRef.current) : defaultResumeDraft)
+      setLoadState({ kind: 'empty' })
+      return
     }
+
     setLoadState({ kind: 'failure', message: toFailureMessage(result) })
-  }, [router, setDraft])
+  }, [setDraft])
 
   useEffect(() => {
-    const resumeIdToLoad = requestedResumeId || getSavedResumeId() || ''
+    let isActive = true
 
-    if (resumeIdToLoad && viewedResumeIdRef.current !== resumeIdToLoad) {
-      void loadResume(resumeIdToLoad, !requestedResumeId)
-    }
+    void Promise.resolve().then(() => {
+      if (isActive) {
+        return loadResume()
+      }
+    })
 
     return () => {
+      isActive = false
       loadRequestRef.current += 1
       documentSessionRef.current += 1
     }
-  }, [loadResume, requestedResumeId])
+  }, [loadResume])
 
   const resume = loadState.kind === 'success' ? loadState.resume : undefined
-  const isResumeReady = loadState.kind === 'success'
-    ? !requestedResumeId || loadState.resume.id === requestedResumeId
-    : loadState.kind === 'idle' && !requestedResumeId && !getSavedResumeId()
+  const isResumeReady = loadState.kind === 'success' || loadState.kind === 'empty'
   const isImageUploading = imageUploadState.kind === 'uploading'
   const isResumeActionPending = saveSubmitState !== 'idle' || majorSubmitState === 'pending' || isImageUploading
   const isEditing = isResumeReady && viewMode === 'edit'
@@ -623,7 +611,7 @@ export function StudentResumePageContent() {
     ? { ...toResumeDraft(resume), pages: [...resume.pages].sort((left, right) => left.index - right.index).map(toDraftPage) }
     : draft
   const canAddPage = isEditing && draft.pages.length < MAX_RESUME_PAGE_COUNT
-  const visiblePageSlotCount = displayedDraft.pages.length + (canAddPage ? 1 : 0)
+  const visiblePageSlotCount = isResumeReady ? displayedDraft.pages.length + (canAddPage ? 1 : 0) : 0
   const pageSize = useResumePageSize(980)
   const maxSpreadStartIndex = Math.max(0, Math.floor((visiblePageSlotCount - 1) / pageSize) * pageSize)
   const normalizedSpreadStartIndex = Math.min(spreadStartIndex - (spreadStartIndex % pageSize), maxSpreadStartIndex)
@@ -717,11 +705,7 @@ export function StudentResumePageContent() {
 
     const loadFeedbacks = async () => {
       if (!resume?.id) {
-        const hasPendingResumeLookup =
-          loadState.kind === 'loading' ||
-          (loadState.kind === 'idle' && Boolean(requestedResumeId.trim() || getSavedResumeId()))
-
-        if (hasPendingResumeLookup) {
+        if (loadState.kind === 'loading') {
           setFeedbackLoadState({ kind: 'loading' })
           return
         }
@@ -771,7 +755,7 @@ export function StudentResumePageContent() {
     return () => {
       isActive = false
     }
-  }, [loadState.kind, requestedResumeId, resume?.id, viewMode])
+  }, [loadState.kind, resume?.id, viewMode])
 
   const handleCompleteAllFeedbacks = useCallback(async () => {
     if (feedbackLoadState.kind !== 'success' || feedbackSubmitState.kind !== 'idle') {
@@ -1197,10 +1181,7 @@ export function StudentResumePageContent() {
 
       const syncedResumeResult = pages.some((page) => !page.id.trim() &&
         !result.pages?.some((savedPage) => savedPage.index === page.index))
-        ? await getResumeById({
-            accessToken,
-            resumeId: result.resumeId,
-          })
+        ? await getMyResume({ accessToken })
         : undefined
       const syncedResume = syncedResumeResult?.kind === 'success' ? syncedResumeResult.resume : undefined
       const savedPageIds = syncedResume?.pages ?? result.pages
@@ -1408,11 +1389,9 @@ export function StudentResumePageContent() {
     saveResumeId(result.resumeId)
     isAutoSaveBlockedRef.current = false
 
-    const syncedResumeResult = pages.some((page) => !page.id.trim())
-      ? await getResumeById({
-          accessToken,
-          resumeId: result.resumeId,
-        })
+    const syncedResumeResult = pages.some((page) => !page.id.trim() &&
+      !result.pages?.some((savedPage) => savedPage.index === page.index))
+      ? await getMyResume({ accessToken })
       : undefined
     const syncedResume = syncedResumeResult?.kind === 'success' ? syncedResumeResult.resume : undefined
 
@@ -1420,30 +1399,30 @@ export function StudentResumePageContent() {
       return
     }
 
-    if (syncedResume) {
-      setLoadState({ kind: 'success', resume: { ...syncedResume, submissionStatus: result.submissionStatus } })
-      setDraft((currentDraft) => applySavedPageIds(currentDraft, draft, syncedResume.pages))
-    } else if (activeResume) {
-      setLoadState({
-        kind: 'success',
-        resume: {
-          ...activeResume,
-          email: draft.email,
-          introduce: joinIntroduction(draft),
-          pages,
-          portfolioUrl: draft.portfolioUrl,
-          profileImageUrl: draft.profileImageUrl,
-          skills: draft.skills,
-          submissionStatus: result.submissionStatus,
-        },
-      })
-    }
+    const savedPageIds = syncedResume?.pages ?? result.pages
+    const savedPages = pages.map((page) => {
+      const savedPage = savedPageIds?.find((candidate) => candidate.index === page.index)
+      return savedPage ? { ...page, id: savedPage.id } : page
+    })
+    const submittedResume = syncedResume ?? (activeResume ? {
+      ...activeResume,
+      email: draft.email,
+      introduce: joinIntroduction(draft),
+      pages: savedPages,
+      portfolioUrl: draft.portfolioUrl,
+      profileImageUrl: draft.profileImageUrl,
+      skills: draft.skills,
+    } : toSavedDraftResume({
+      draft,
+      pages: savedPages,
+      resumeId: result.resumeId,
+      savedAt: '',
+    }))
 
-    setLoadState((currentState) =>
-      currentState.kind === 'success' && currentState.resume.id === result.resumeId
-        ? { kind: 'success', resume: { ...currentState.resume, submissionStatus: result.submissionStatus } }
-        : currentState,
-    )
+    setLoadState({ kind: 'success', resume: { ...submittedResume, submissionStatus: result.submissionStatus } })
+    if (savedPageIds) {
+      setDraft((currentDraft) => applySavedPageIds(currentDraft, draft, savedPageIds))
+    }
     if (draftRevisionRef.current === saveRevision) {
       setIsDraftDirty(false)
     }
@@ -1608,9 +1587,11 @@ export function StudentResumePageContent() {
             </button>
           </div>
 
-          <p className={styles.pageCount}>
-            {visiblePageCount} / {displayedDraft.pages.length}
-          </p>
+          {isResumeReady ? (
+            <p className={styles.pageCount}>
+              {visiblePageCount} / {displayedDraft.pages.length}
+            </p>
+          ) : null}
 
           {isResumeReady && viewMode !== 'view' ? (
             <>
@@ -1648,7 +1629,7 @@ export function StudentResumePageContent() {
               {loadState.kind === 'failure' ? (
                 <p className={styles.loadingMessage} role="alert">
                   {loadState.message}
-                  <button onClick={() => void loadResume(attemptedResumeIdRef.current, !requestedResumeId)} type="button">
+                  <button onClick={() => void loadResume()} type="button">
                     이력서 다시 불러오기
                   </button>
                 </p>

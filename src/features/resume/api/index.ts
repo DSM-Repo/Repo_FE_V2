@@ -1,7 +1,7 @@
 export {
   autoSaveResume,
   cancelResumeSubmission,
-  getResumeById,
+  getMyResume,
   getStudentResumeById,
   getStudentResumeStatuses,
   saveResume,
@@ -15,7 +15,7 @@ export type {
   ResumeAutoSave,
   ResumeAutoSaveInput,
   ResumeAutoSaveResult,
-  ResumeDetailInput,
+  MyResumeInput,
   ResumeDetailResult,
   ResumeImageUpload,
   ResumeImageUploadInput,
