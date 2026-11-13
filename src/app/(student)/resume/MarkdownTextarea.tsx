@@ -4,7 +4,6 @@ import type { ResumeMarkdownImageSize } from '@/shared/lib/resumeMarkdownImageSi
 
 import { MarkdownToolbarIcon } from './MarkdownToolbarIcon'
 import { MarkdownImageSizeDialog, type MarkdownImagePreview } from './MarkdownImageSizeDialog'
-import { ProfileImageCropModal } from './ProfileImageCropModal'
 import styles from './ResumeEditorSheet.module.css'
 import { focusMarkdownCaret, readMarkdownCaretOffset } from './markdownEditorSelection'
 import {
@@ -48,9 +47,10 @@ function toEditorStyles() {
   }
 }
 
-function readClipboardImage(file: File, onImagePasteUpload?: (file: File) => Promise<string | undefined>) {
+function readImageMarkdown(file: File, onImagePasteUpload?: (file: File) => Promise<string | undefined>) {
+  const alt = file.name.replace(/[\[\]\r\n]/g, ' ').trim() || '이미지'
   if (onImagePasteUpload) {
-    return onImagePasteUpload(file).then((imageUrl) => imageUrl ? `![${file.name || '이미지'}](${imageUrl})` : '')
+    return onImagePasteUpload(file).then((imageUrl) => imageUrl ? `![${alt}](${imageUrl})` : '')
   }
 
   return new Promise<string>((resolve) => {
@@ -58,7 +58,7 @@ function readClipboardImage(file: File, onImagePasteUpload?: (file: File) => Pro
 
     reader.addEventListener('error', () => resolve(''))
     reader.addEventListener('load', () => {
-      resolve(typeof reader.result === 'string' ? `![${file.name || '이미지'}](${reader.result})` : '')
+      resolve(typeof reader.result === 'string' ? `![${alt}](${reader.result})` : '')
     })
     reader.readAsDataURL(file)
   })
@@ -68,7 +68,6 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
   const editorRef = useRef<HTMLDivElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const imageInputId = useId()
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
   const selectedImageRef = useRef<HTMLImageElement>(null)
   const [selectedImage, setSelectedImage] = useState<MarkdownImagePreview>()
   const latestValueRef = useRef(value)
@@ -202,7 +201,7 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
     savedSelectionRangeRef.current = range.cloneRange()
   }
 
-  const restoreEditorSelection = () => {
+  const restoreEditorSelection = (savedRange: Range | undefined) => {
     const editor = editorRef.current
     const selection = window.getSelection()
 
@@ -210,7 +209,7 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
       return undefined
     }
 
-    const range = savedSelectionRangeRef.current?.cloneRange() ?? (selection.rangeCount > 0 ? selection.getRangeAt(0) : document.createRange())
+    const range = savedRange?.cloneRange() ?? (selection.rangeCount > 0 ? selection.getRangeAt(0) : document.createRange())
 
     if (!editor.contains(range.commonAncestorContainer)) {
       range.selectNodeContents(editor)
@@ -224,7 +223,7 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
   }
 
   const insertMarkdownLink = (href: string) => {
-    const selection = restoreEditorSelection()
+    const selection = restoreEditorSelection(savedSelectionRangeRef.current)
 
     if (!selection) {
       return false
@@ -248,17 +247,6 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
     range.collapse(true)
     selection.removeAllRanges()
     selection.addRange(range)
-
-    return true
-  }
-
-  const insertImageMarkdown = (markdown: string) => {
-    const editor = editorRef.current
-    const selection = restoreEditorSelection()
-
-    if (!editor || !selection || !insertMarkdownAtSelection(editor, selection, markdown, toEditorStyles())) {
-      return false
-    }
 
     return true
   }
@@ -354,13 +342,13 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
       return
     }
 
-    setAttachmentFile(file)
-  }
+    const attachmentRange = savedSelectionRangeRef.current?.cloneRange()
+    void readImageMarkdown(file, onImagePasteUpload).then((imageMarkdown) => {
+      const editor = editorRef.current
+      if (!editor || !imageMarkdown) return
 
-  const confirmAttachment = (file: File) => {
-    setAttachmentFile(null)
-    void readClipboardImage(file, onImagePasteUpload).then((imageMarkdown) => {
-      if (!imageMarkdown || !insertImageMarkdown(imageMarkdown)) return
+      const selection = restoreEditorSelection(attachmentRange)
+      if (!selection || !insertMarkdownAtSelection(editor, selection, imageMarkdown, toEditorStyles())) return
       syncMarkdownValue(onRichPaste)
     })
   }
@@ -390,7 +378,7 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
     if (imageFiles.length === 0) {
       insertPaste([])
     } else {
-      void Promise.all(imageFiles.map((file) => readClipboardImage(file, onImagePasteUpload))).then(insertPaste)
+      void Promise.all(imageFiles.map((file) => readImageMarkdown(file, onImagePasteUpload))).then(insertPaste)
     }
   }
 
@@ -519,9 +507,6 @@ export function MarkdownTextarea({ className, id, focusOffset, label, onChange, 
         spellCheck
         suppressContentEditableWarning
       />
-      {attachmentFile ? <ProfileImageCropModal file={attachmentFile} title="첨부 이미지 조정"
-        onCancel={() => { setAttachmentFile(null); editorRef.current?.focus() }}
-        onConfirm={confirmAttachment} /> : null}
       {selectedImage ? <MarkdownImageSizeDialog image={selectedImage}
         onCancel={() => { setSelectedImage(undefined); selectedImageRef.current?.focus() }}
         onConfirm={resizeImage} /> : null}
