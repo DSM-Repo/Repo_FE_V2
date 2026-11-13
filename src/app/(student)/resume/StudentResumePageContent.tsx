@@ -1022,7 +1022,7 @@ export function StudentResumePageContent() {
     const accessToken = getSavedAccessToken()
 
     if (!accessToken) {
-      setActionFeedback({ message: '로그인 후 붙여넣은 이미지를 업로드할 수 있습니다.', tone: 'error' })
+      setActionFeedback({ message: '로그인 후 본문 이미지를 업로드할 수 있습니다.', tone: 'error' })
       return undefined
     }
 
@@ -1038,7 +1038,7 @@ export function StudentResumePageContent() {
       return undefined
     }
 
-    setActionFeedback({ message: '붙여넣은 이미지를 업로드했습니다.', tone: 'success' })
+    setActionFeedback({ message: '본문 이미지를 업로드했습니다.', tone: 'success' })
     return result.imageUrl
   }, [])
 
