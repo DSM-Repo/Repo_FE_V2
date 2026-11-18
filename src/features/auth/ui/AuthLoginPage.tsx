@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useState } from 'react'
 
-import { loginCompanyWithAuthApi, loginWithAuthApi, saveAuthTokens, type AuthLoginResult, type AuthLoginRole } from '@/features/auth/api'
+import { loginWithAuthApi, saveAuthTokens, type AuthLoginResult, type AuthLoginRole } from '@/features/auth/api'
 import { Button, Icon, Input, Logo } from '@/shared/ui'
 
 import { AuthAccountPrompt } from './AuthAccountPrompt'
+import { CompanyCodeLogin } from './CompanyCodeLogin'
 import { authHomePath } from './authHomePath'
 import styles from './AuthLoginPage.module.css'
 
@@ -22,7 +23,7 @@ type LoginContent = {
   title: string
 }
 
-const LOGIN_CONTENT: Record<AuthLoginRole, LoginContent> = {
+const LOGIN_CONTENT: Record<Exclude<AuthLoginRole, 'company'>, LoginContent> = {
   student: {
     description: 'DSM학생들을 위한 이력서 관리 플랫폼, Repo',
     switchLabel: '선생님으로 전환하기',
@@ -32,11 +33,6 @@ const LOGIN_CONTENT: Record<AuthLoginRole, LoginContent> = {
     description: 'DSM선생님을 위한 이력서 관리 플랫폼, Repo',
     switchLabel: '학생으로 전환하기',
     title: '선생님 로그인',
-  },
-  company: {
-    description: '기업 인증 코드로 도서관을 이용할 수 있습니다.',
-    switchLabel: '학생으로 전환하기',
-    title: '기업 로그인',
   },
 }
 
@@ -60,12 +56,12 @@ export function AuthLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [code, setCode] = useState('')
   const [touchedFields, setTouchedFields] = useState(emptyTouchedFields)
   const [submitState, setSubmitState] = useState<SubmitState>('idle')
   const [feedback, setFeedback] = useState<AuthLoginFailure>()
+  if (role === 'company') return <CompanyCodeLogin />
+
   const content = LOGIN_CONTENT[role]
-  const isCompany = role === 'company'
   const nextRole = role === 'student' ? 'teacher' : 'student'
   const layoutClassName = role === 'teacher' ? styles.teacherLayout : styles.studentLayout
   const passwordType = showPassword ? 'text' : 'password'
@@ -73,7 +69,7 @@ export function AuthLoginPage() {
   const passwordIconName = showPassword ? 'eye' : 'eye-off'
   const emailHasValue = hasValue(email)
   const passwordHasValue = hasValue(password)
-  const isFormValid = isCompany ? hasValue(code) : emailHasValue && passwordHasValue
+  const isFormValid = emailHasValue && passwordHasValue
   const isSubmitting = submitState === 'pending'
   const emailErrorMessage = touchedFields.email && !emailHasValue ? '이메일을 입력해주세요.' : undefined
   const passwordErrorMessage = touchedFields.password && !passwordHasValue ? '비밀번호를 입력해주세요.' : undefined
@@ -107,7 +103,7 @@ export function AuthLoginPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!isCompany) setTouchedFields(filledTouchedFields)
+    setTouchedFields(filledTouchedFields)
     setFeedback(undefined)
 
     if (!isFormValid || isSubmitting) {
@@ -115,9 +111,7 @@ export function AuthLoginPage() {
     }
 
     setSubmitState('pending')
-    const result = isCompany
-      ? await loginCompanyWithAuthApi({ code })
-      : await loginWithAuthApi({ email: email.trim(), password })
+    const result = await loginWithAuthApi({ email: email.trim(), password })
 
     setSubmitState('idle')
 
@@ -143,75 +137,48 @@ export function AuthLoginPage() {
           {content.title}
         </h1>
 
-        {isCompany ? (
-          <div className={`${styles.fieldGroup} ${styles.companyCodeField}`}>
-            <label className={styles.label} htmlFor="login-company-code">
-              기업 인증 코드
-            </label>
-            <Input
-              aria-describedby={feedback ? 'login-feedback' : undefined}
-              autoCapitalize="off"
-              autoComplete="off"
-              error={feedback?.kind === 'invalid-credentials'}
-              id="login-company-code"
-              name="code"
-              onChange={(event) => {
-                setCode(event.target.value)
-                clearFeedback()
-              }}
-              placeholder="XXXX-XXXX-XXXX-XXXX"
-              readOnly={isSubmitting}
-              required
-              spellCheck={false}
-              value={code}
-            />
-          </div>
-        ) : (
-          <>
-            <div className={styles.fieldGroup}>
-              <label className={styles.label} htmlFor="login-email">
-                이메일
-              </label>
-              <Input
-                autoComplete="email"
-                errorMessage={emailErrorMessage}
-                id="login-email"
-                name="email"
-                onBlur={() => markFieldTouched('email')}
-                onChange={handleEmailChange}
-                placeholder="이메일을 입력해주세요."
-                readOnly={isSubmitting}
-                required
-                type="email"
-                value={email}
-              />
-            </div>
+        <div className={styles.fieldGroup}>
+          <label className={styles.label} htmlFor="login-email">
+            이메일
+          </label>
+          <Input
+            autoComplete="email"
+            errorMessage={emailErrorMessage}
+            id="login-email"
+            name="email"
+            onBlur={() => markFieldTouched('email')}
+            onChange={handleEmailChange}
+            placeholder="이메일을 입력해주세요."
+            readOnly={isSubmitting}
+            required
+            type="email"
+            value={email}
+          />
+        </div>
 
-            <div className={styles.fieldGroup}>
-              <label className={styles.label} htmlFor="login-password">
-                비밀번호
-              </label>
-              <Input
-                autoComplete="current-password"
-                errorMessage={passwordErrorMessage}
-                id="login-password"
-                name="password"
-                onBlur={() => markFieldTouched('password')}
-                onChange={handlePasswordChange}
-                onRightIconClick={() => setShowPassword((currentValue) => !currentValue)}
-                placeholder="비밀번호를 입력해주세요."
-                rightIcon={<Icon className={styles.passwordIcon} name={passwordIconName} />}
-                rightIconAriaLabel={passwordToggleLabel}
-                readOnly={isSubmitting}
-                required
-                type={passwordType}
-                value={password}
-              />
-            </div>
-          </>
-        )}
+        <div className={styles.fieldGroup}>
+          <label className={styles.label} htmlFor="login-password">
+            비밀번호
+          </label>
+          <Input
+            autoComplete="current-password"
+            errorMessage={passwordErrorMessage}
+            id="login-password"
+            name="password"
+            onBlur={() => markFieldTouched('password')}
+            onChange={handlePasswordChange}
+            onRightIconClick={() => setShowPassword((currentValue) => !currentValue)}
+            placeholder="비밀번호를 입력해주세요."
+            rightIcon={<Icon className={styles.passwordIcon} name={passwordIconName} />}
+            rightIconAriaLabel={passwordToggleLabel}
+            readOnly={isSubmitting}
+            required
+            type={passwordType}
+            value={password}
+          />
+        </div>
         {loginErrorMessage ? (
-          <p className={isCompany ? styles.companyErrorFeedback : styles.errorFeedback} id="login-feedback" role="alert">
+          <p className={styles.errorFeedback} id="login-feedback" role="alert">
             {loginErrorMessage}
           </p>
         ) : null}
@@ -220,14 +187,12 @@ export function AuthLoginPage() {
           <Button className={styles.submitButton} disabled={!isFormValid || isSubmitting} type="submit">
             {isSubmitting ? '로그인 중' : '로그인'}
           </Button>
-          {!isCompany ? (
-            <AuthAccountPrompt
-              className={styles.accountPrompt}
-              href="/signup"
-              linkLabel="회원가입"
-              prompt="계정이 없으신가요?"
-            />
-          ) : null}
+          <AuthAccountPrompt
+            className={styles.accountPrompt}
+            href="/signup"
+            linkLabel="회원가입"
+            prompt="계정이 없으신가요?"
+          />
         </div>
       </form>
     </section>
@@ -247,12 +212,10 @@ export function AuthLoginPage() {
           <span>{content.switchLabel}</span>
           <Icon className={styles.switchIcon} name="chevron-right" />
         </button>
-        {!isCompany ? (
-          <button className={styles.switchButton} disabled={isSubmitting} onClick={() => handleRoleSwitch('company')} type="button">
-            <span>기업으로 전환하기</span>
-            <Icon className={styles.switchIcon} name="chevron-right" />
-          </button>
-        ) : null}
+        <button className={styles.switchButton} disabled={isSubmitting} onClick={() => handleRoleSwitch('company')} type="button">
+          <span>기업으로 전환하기</span>
+          <Icon className={styles.switchIcon} name="chevron-right" />
+        </button>
       </div>
     </aside>
   )
