@@ -136,12 +136,12 @@ test.describe('auth login route', () => {
 
   test('signs in with only a company code and exposes library navigation', async ({ page }) => {
     const accessToken = createTestAccessToken('COMPANY')
-    const validCode = ' abcd efgh ijkl mnop '
+    const validCode = 'ABCD-EFGH-IJKL-MNOP'
     await page.route(`${apiBaseUrl}/company/login`, async (route) => {
       expect(route.request().method()).toBe('POST')
       const body = route.request().postDataJSON()
       if (body.code !== validCode) {
-        expect(body).toEqual({ code: 'incorrect' })
+        expect(body).toEqual({ code: '1234-5678-9012-3456' })
         await route.fulfill({ status: 401, json: { code: 'COMPANY_CODE_INVALID' } })
         return
       }
@@ -159,17 +159,33 @@ test.describe('auth login route', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/login')
     await page.getByRole('button', { name: '기업으로 전환하기' }).click()
-    await expect(page.getByRole('heading', { name: '기업 로그인' })).toBeVisible()
+    const title = '인증 코드를 입력해 주세요.'
+    await expect(page.getByRole('heading', { name: title })).toBeVisible()
     await expect(page.getByLabel('이메일')).toHaveCount(0)
     await expect(page.getByRole('link', { name: '회원가입' })).toHaveCount(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
 
-    const codeInput = page.getByLabel('기업 인증 코드')
-    await codeInput.fill('incorrect')
-    await codeInput.press('Enter')
-    await expect(page.getByRole('form', { name: '기업 로그인' }).getByRole('alert')).toHaveText('기업 인증 코드를 확인해주세요.')
-    await codeInput.fill(validCode)
-    await codeInput.press('Enter')
+    const codeInputs = page.getByRole('group', { name: '기업 인증 코드' }).getByRole('textbox')
+    const submit = page.getByRole('button', { name: '입장하기' })
+    await expect(codeInputs).toHaveCount(4)
+    await expect(submit).toBeDisabled()
+
+    await codeInputs.first().focus()
+    await page.keyboard.type('123456789012')
+    await expect(codeInputs.last()).toBeFocused()
+    await expect(submit).toBeDisabled()
+    await page.keyboard.type('3456')
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('form', { name: title }).getByRole('alert')).toHaveText('기업 인증 코드를 확인해주세요.')
+
+    await codeInputs.last().evaluate((input) => {
+      const clipboardData = new DataTransfer()
+      clipboardData.setData('text/plain', ' abcd-efgh ijkl-mnop ')
+      input.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData }))
+    })
+    await expect(codeInputs.first()).toHaveValue('ABCD')
+    await expect(codeInputs.last()).toHaveValue('MNOP')
+    await submit.click()
     await expect(page).toHaveURL(/\/library$/)
     await expect(page.getByText('공개된 포트폴리오 책이 없습니다.')).toBeVisible()
     const navigation = page.getByRole('navigation', { name: '주요 메뉴' })

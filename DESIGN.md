@@ -48,6 +48,7 @@ Repo-V2 is a dark, quiet school-work surface: compact, direct, and built for rep
 | Body/medium | `--repo-font-body-medium-*` | Input text and row actions |
 | Body/small | `--repo-font-body-small-*` | Default form text |
 | Body/tiny | `--repo-font-body-tiny-*` | Footer/legal text |
+| Body/multiline | `--repo-font-body-multiline-line-height` | 150% line height for wrapped control labels and guidance |
 
 ### Font Stack
 
@@ -81,6 +82,8 @@ All spacing derives from 4px.
 - Components are fluid by default and receive width from their parent.
 - Reusable controls target app-scale CSS pixels, not exported screenshot pixels: rows 56px, headers 64px, inputs 56px by default.
 - Mobile support is basic reflow protection, not final polish for this milestone.
+
+Layout: 기업 인증 화면 — 좌상단 Repo 로고와 화면 중앙의 단일 폼 → cover (첨부 디자인 기준). 화면이 낮을 때 문서가 세로로 스크롤되며 코드 네 칸은 한 줄에서 줄어든다.
 
 ## 5. Components
 
@@ -157,10 +160,16 @@ All spacing derives from 4px.
 
 ### AuthCard
 - **Structure**: 340px dark brand panel + 470px light form panel
-- **Variants**: student login, company code login, signup step, reversed teacher login
-- **Company login**: the form presents the company code field and login button. The brand panel provides a return to student login.
+- **Variants**: student login, signup step, reversed teacher login
 - **States**: default, pending, error, success
 - **Responsive**: desktop uses a stable 810px by 484px card; mobile reflows to a single 430px column
+
+### 기업 인증 화면
+
+- **구성**: 단색 다크 배경, 좌상단 Repo 홈 링크, 중앙의 인증 제목과 16자리 형식 안내, 하이픈으로 나뉘는 네 입력칸, 주 동작인 「입장하기」 버튼.
+- **크기**: 데스크톱 입력칸은 약 112×56px, 입력 줄 전체 폭은 556px, 버튼은 너비 200px, 최소 높이 36px이다. 좁은 화면에서는 입력칸 폭을 줄이고 버튼 최소 높이를 44px로 키운다.
+- **입력**: 영문과 숫자를 받으며 소문자는 대문자로 표시한다. 전체 코드를 붙여넣으면 네 칸이 채워지고, 직접 입력하면 네 글자마다 다음 칸으로 이동한다.
+- **상태**: 각 입력칸에 키보드 포커스를 표시한다. 전체 코드를 채우면 제출할 수 있고, 인증 실패는 입력 줄 아래에 표시한다.
 
 ### AuthAccountPrompt
 - **Structure**: 14px muted prompt plus semibold route link below the primary action
