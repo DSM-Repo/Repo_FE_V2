@@ -159,6 +159,8 @@ test.describe('auth login route', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto('/login')
     await page.getByRole('button', { name: '기업으로 전환하기' }).click()
+    await expect(page).toHaveURL(/\/company\/login$/)
+    await page.reload()
     const title = '인증 코드를 입력해 주세요.'
     await expect(page.getByRole('heading', { name: title })).toBeVisible()
     await expect(page.getByLabel('이메일')).toHaveCount(0)

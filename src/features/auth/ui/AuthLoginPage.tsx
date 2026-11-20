@@ -9,7 +9,6 @@ import { loginWithAuthApi, saveAuthTokens, type AuthLoginResult, type AuthLoginR
 import { Button, Icon, Input, Logo } from '@/shared/ui'
 
 import { AuthAccountPrompt } from './AuthAccountPrompt'
-import { CompanyCodeLogin } from './CompanyCodeLogin'
 import { authHomePath } from './authHomePath'
 import styles from './AuthLoginPage.module.css'
 
@@ -17,13 +16,15 @@ type LoginField = 'email' | 'password'
 type SubmitState = 'idle' | 'pending'
 type AuthLoginFailure = Exclude<AuthLoginResult, { readonly kind: 'success' }>
 
+type SchoolLoginRole = Exclude<AuthLoginRole, 'company'>
+
 type LoginContent = {
   description: string
   switchLabel: string
   title: string
 }
 
-const LOGIN_CONTENT: Record<Exclude<AuthLoginRole, 'company'>, LoginContent> = {
+const LOGIN_CONTENT: Record<SchoolLoginRole, LoginContent> = {
   student: {
     description: 'DSM학생들을 위한 이력서 관리 플랫폼, Repo',
     switchLabel: '선생님으로 전환하기',
@@ -52,14 +53,13 @@ function hasValue(value: string) {
 
 export function AuthLoginPage() {
   const router = useRouter()
-  const [role, setRole] = useState<AuthLoginRole>('student')
+  const [role, setRole] = useState<SchoolLoginRole>('student')
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [touchedFields, setTouchedFields] = useState(emptyTouchedFields)
   const [submitState, setSubmitState] = useState<SubmitState>('idle')
   const [feedback, setFeedback] = useState<AuthLoginFailure>()
-  if (role === 'company') return <CompanyCodeLogin />
 
   const content = LOGIN_CONTENT[role]
   const nextRole = role === 'student' ? 'teacher' : 'student'
@@ -96,7 +96,7 @@ export function AuthLoginPage() {
     clearFeedback()
   }
 
-  const handleRoleSwitch = (targetRole: AuthLoginRole) => {
+  const handleRoleSwitch = (targetRole: SchoolLoginRole) => {
     setRole(targetRole)
     clearFeedback()
   }
@@ -212,7 +212,7 @@ export function AuthLoginPage() {
           <span>{content.switchLabel}</span>
           <Icon className={styles.switchIcon} name="chevron-right" />
         </button>
-        <button className={styles.switchButton} disabled={isSubmitting} onClick={() => handleRoleSwitch('company')} type="button">
+        <button className={styles.switchButton} disabled={isSubmitting} onClick={() => router.push('/company/login')} type="button">
           <span>기업으로 전환하기</span>
           <Icon className={styles.switchIcon} name="chevron-right" />
         </button>
