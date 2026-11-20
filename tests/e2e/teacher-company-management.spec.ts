@@ -10,6 +10,7 @@ test('교사는 기업 계정을 생성하고 코드를 확인한 뒤 삭제할 
     code: 'ABCD-EFGH-IJKL-MNOP',
     createdAt: '2026-11-12T01:00:00Z',
   }
+  const secondCompany = { ...company, companyId: 8, name: '하나 기업', code: 'AAAA-BBBB-CCCC-DDDD' }
   let companies: (typeof company)[] = []
   let deleteRequests = 0
 
@@ -22,25 +23,29 @@ test('교사는 기업 계정을 생성하고 코드를 확인한 뒤 삭제할 
     expect(request.headers().authorization).toBe(`Bearer ${accessToken}`)
 
     if (request.method() === 'GET') {
-      await route.fulfill({ json: { companies } })
+      await route.fulfill({ json: { companies, numberOfData: companies.length } })
       return
     }
 
     expect(request.method()).toBe('POST')
-    expect(request.postDataJSON()).toEqual({ name: company.name })
-    if (companies.length > 0) {
+    const body = request.postDataJSON()
+    const { name } = body
+    expect([company.name, secondCompany.name]).toContain(name)
+    expect(body).toEqual({ name })
+    if (companies.some((item) => item.name === name)) {
       await route.fulfill({ status: 409, json: { code: 'COMPANY_ALREADY_EXISTS' } })
       return
     }
 
-    companies = [company]
-    await route.fulfill({ status: 201, json: company })
+    const created = name === company.name ? company : secondCompany
+    companies = [...companies, created]
+    await route.fulfill({ status: 201, json: created })
   })
   await page.route(`${apiBaseUrl}/company/${company.companyId}`, async (route) => {
     expect(route.request().method()).toBe('DELETE')
     expect(route.request().headers().authorization).toBe(`Bearer ${accessToken}`)
     deleteRequests += 1
-    companies = []
+    companies = companies.filter((item) => item.companyId !== company.companyId)
     await route.fulfill({ status: 204 })
   })
 
@@ -49,6 +54,11 @@ test('교사는 기업 계정을 생성하고 코드를 확인한 뒤 삭제할 
   await expect(page.getByText('등록된 기업 계정이 없습니다.')).toBeVisible()
 
   const nameField = page.getByRole('textbox', { name: '회사 이름' })
+  const formAlert = page.getByRole('form', { name: '기업 계정 생성' }).getByRole('alert')
+  await nameField.fill('가'.repeat(51))
+  await nameField.press('Enter')
+  await expect(formAlert).toHaveText('회사 이름을 50자 이하로 입력해 주세요.')
+
   await nameField.fill(`  ${company.name}  `)
   await nameField.press('Enter')
   await expect(page.getByText(company.code)).toBeVisible()
@@ -58,8 +68,13 @@ test('교사는 기업 계정을 생성하고 코드를 확인한 뒤 삭제할 
   await expect(page.getByText(company.code)).toBeVisible()
   await nameField.fill(company.name)
   await page.getByRole('button', { name: '계정 생성' }).click()
-  await expect(page.getByRole('form', { name: '기업 계정 생성' }).getByRole('alert')).toHaveText('이미 등록된 회사 이름입니다.')
+  await expect(formAlert).toHaveText('이미 등록된 회사 이름입니다.')
   await expect(page.getByText(company.code)).toHaveCount(1)
+
+  await nameField.fill(secondCompany.name)
+  await nameField.press('Enter')
+  const accounts = page.getByRole('region', { name: '기업 계정 목록' })
+  await expect(accounts.locator('li strong')).toHaveText([company.name, secondCompany.name])
 
   for (const width of [390, 320]) {
     await page.setViewportSize({ height: 844, width })
@@ -75,6 +90,7 @@ test('교사는 기업 계정을 생성하고 코드를 확인한 뒤 삭제할 
 
   page.once('dialog', (dialog) => dialog.accept())
   await deleteButton.click()
-  await expect(page.getByText('등록된 기업 계정이 없습니다.')).toBeVisible()
+  await expect(page.getByText(company.code)).toHaveCount(0)
+  await expect(page.getByText(secondCompany.code)).toBeVisible()
   expect(deleteRequests).toBe(1)
 })
