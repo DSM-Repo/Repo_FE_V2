@@ -15,6 +15,7 @@ type CompanyListState =
   | { readonly kind: 'ready'; readonly companies: readonly Company[] }
 
 type Notice = { readonly message: string; readonly variant: ToastVariant }
+const COMPANY_NAME_MAX_LENGTH = 50
 
 export default function TeacherCompaniesPage() {
   const [list, setList] = useState<CompanyListState>({ kind: 'loading' })
@@ -54,8 +55,8 @@ export default function TeacherCompaniesPage() {
 
     setNotice(null)
     const name = companyName.trim()
-    if (!name) {
-      setNameError('회사 이름을 입력해 주세요.')
+    if (!name || name.length > COMPANY_NAME_MAX_LENGTH) {
+      setNameError(name ? `회사 이름을 ${COMPANY_NAME_MAX_LENGTH}자 이하로 입력해 주세요.` : '회사 이름을 입력해 주세요.')
       nameField.current?.querySelector('input')?.focus()
       return
     }
@@ -81,7 +82,10 @@ export default function TeacherCompaniesPage() {
       return
     }
 
-    setList({ kind: 'ready', companies: [result.value, ...list.companies] })
+    setList({
+      kind: 'ready',
+      companies: [...list.companies, result.value].sort((left, right) => left.name.localeCompare(right.name, 'ko')),
+    })
     setCompanyName('')
     setNotice({ message: '기업 계정을 생성했습니다.', variant: 'success' })
   }

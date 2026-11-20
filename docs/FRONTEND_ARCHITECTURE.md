@@ -76,7 +76,8 @@ src/
 | URL | `src/app` 아래 구현 | 현재 역할/상태 |
 | --- | --- | --- |
 | `/` | `(public)/page.tsx` | 랜딩 |
-| `/login`, `/signup` | `(auth)/login/page.tsx`, `(auth)/signup/page.tsx` | 인증 |
+| `/login`, `/signup` | `(auth)/login/page.tsx`, `(auth)/signup/page.tsx` | 학생·교사 로그인, 학생 회원가입 |
+| `/company/login` | `(auth)/company/login/page.tsx` | 기업 코드 로그인 |
 | `/home`, `/resume` | `(student)/home/page.tsx`, `(student)/resume/page.tsx` | student guard |
 | `/students`, `/students/[studentId]` | `(teacher)/students/page.tsx`, `(teacher)/students/[studentId]/page.tsx` | teacher guard, 상세 본문 연결 후속 |
 | `/majors`, `/companies` | `(teacher)/majors/page.tsx`, `(teacher)/companies/page.tsx` | teacher guard |
@@ -115,6 +116,17 @@ src/
 - 기업 계정은 코드로 로그인하고 도서관으로 이동한다. 학생·교사 전용 경로에 접근하면 도서관으로 돌아간다.
 
 ## API 연동 방향
+
+### 기업 계정 API (2026-11-20 Swagger 확인)
+
+| 요청 | 프런트엔드 사용 방식 |
+| --- | --- |
+| `GET /company` | 선생님 토큰으로 `{ companies, numberOfData }`를 조회한다. 서버는 회사 이름 오름차순으로 반환한다. |
+| `POST /company` | 선생님 토큰과 `{ name }`을 전송한다. 이름은 50자 이하여야 하며, `201` 응답에서 발급된 코드를 표시한다. |
+| `DELETE /company/{companyId}` | 선생님 토큰으로 계정을 삭제하고 `204` 성공 시 화면의 목록에서 제거한다. |
+| `POST /company/login` | `{ code }`를 전송하고 `200` 응답의 토큰을 저장한 뒤 공통 도서관으로 이동한다. 토큰 재발급은 `POST /user/refresh`를 사용한다. |
+
+[백엔드 Swagger OpenAPI 명세](https://repo-v2.dsmrepo.workers.dev/api/backend/v3/api-docs)
 
 현재 feature별 API 경계:
 
